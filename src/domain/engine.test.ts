@@ -5,6 +5,7 @@ import { DEFAULT_CONFIG } from './config';
 import {
   activeSec,
   daySecMap,
+  recommendedHabitId,
   selectProjects,
   selectStats,
   selectStageSheet,
@@ -76,10 +77,7 @@ test('selectToday / selectProjects / selectStats produce coherent output on seed
   const shares = projects.cards[0].habits.map((h) => h.shareBarW);
   assert.deepEqual(shares, shares.slice().sort((a, b) => b - a));
 
-  const stats = selectStats(data, DEFAULT_CONFIG, NOW, {
-    heatSel: null,
-    heatExpanded: false,
-  });
+  const stats = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
   assert.ok(stats.heatRows.length >= 8);
   assert.equal(stats.projDist.length, 1);
   assert.ok(stats.hasTopHabit);
@@ -105,4 +103,139 @@ test('active timer contributes to today/day totals and timer model', () => {
 
   const map = daySecMap(data, NOW, ['h1']);
   assert.ok(map[dkey(new Date(NOW))] >= 600);
+});
+
+test('selectToday focus summary and recommendation use deterministic daily progress', () => {
+  const today = dkey(new Date(NOW));
+  assert.equal(today, '2026-07-10');
+  const data: PersistedState = {
+    projects: [
+      { id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 86_400_000 },
+    ],
+    habits: [
+      {
+        id: 'h1',
+        projectId: 'p1',
+        name: 'Writing',
+        icon: 'code',
+        tile: '#EDE7F6',
+        dailyTargetMin: 60,
+        weeklyTargetMin: 300,
+      },
+      {
+        id: 'h2',
+        projectId: 'p1',
+        name: 'Reading',
+        icon: 'book',
+        tile: '#E3F2FD',
+        dailyTargetMin: 30,
+        weeklyTargetMin: 150,
+      },
+    ],
+    sessions: [
+      {
+        id: 's1',
+        habitId: 'h1',
+        start: new Date(2026, 6, 10, 8, 0, 0).getTime(),
+        end: new Date(2026, 6, 10, 8, 30, 0).getTime(),
+        duration: 30 * 60,
+      },
+      {
+        id: 's2',
+        habitId: 'h2',
+        start: new Date(2026, 6, 10, 9, 0, 0).getTime(),
+        end: new Date(2026, 6, 10, 9, 10, 0).getTime(),
+        duration: 10 * 60,
+      },
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+
+  const model = selectToday(data, DEFAULT_CONFIG, NOW);
+  assert.equal(model.focusPctLabel, '44%');
+  assert.equal(model.focusDotsLabel, '0 of 2 habits done');
+  assert.equal(model.hasHabits, true);
+  assert.equal(recommendedHabitId(data, DEFAULT_CONFIG, NOW), 'h2');
+});
+
+test('manual sessions surface an edit payload and a "logged manually" marker in history', () => {
+  const start = new Date(2026, 6, 8, 12, 0, 0).getTime(); // Wed Jul 8
+  const data: PersistedState = {
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: start }],
+    habits: [
+      {
+        id: 'h1',
+        projectId: 'p1',
+        name: 'Reading',
+        icon: 'book',
+        tile: '#E3F2FD',
+        dailyTargetMin: 30,
+        weeklyTargetMin: 150,
+      },
+    ],
+    sessions: [
+      { id: 'm1', habitId: 'h1', start, end: start + 45 * 60000, duration: 45 * 60, manual: true, notes: 'chapter 3' },
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+
+  const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
+  const row = model.historyRows.find((r) => r.id === 'm1');
+  assert.ok(row);
+  assert.equal(row!.editMinutes, 45);
+  assert.equal(row!.editNote, 'chapter 3');
+  assert.ok(row!.sub.includes('logged manually'));
+  assert.ok(row!.editMeta.startsWith('Reading · '));
+});
+
+test('activity heatmap: inline card caps at base weeks, full history extends back to first day', () => {
+  const mk = (daysAgo: number, id: string) => {
+    const start = NOW - daysAgo * 86400000;
+    return { id, habitId: 'h1', start, end: start + 3600_000, duration: 3600 };
+  };
+  const data: PersistedState = {
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 200 * 86400000 }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#E3F2FD', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions: [mk(1, 's1'), mk(200, 's2')], // ~28+ weeks of span
+    active: null,
+    historyClearedAt: 0,
+  };
+
+  const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
+  // inline card is capped at the config base (default 10 weeks)
+  assert.equal(model.heatRows.length, 10);
+  // every row is a full 7-day week
+  assert.ok(model.heatRows.every((r) => r.cells.length === 7));
+  // history spans far enough that the "see full history" affordance shows
+  assert.equal(model.heatCanToggle, true);
+  // full sheet shows at least ~6 months and reaches back to the first active day
+  assert.ok(model.heatFullRows.length >= 26);
+  assert.ok(model.heatFullRows.length >= model.heatRows.length);
+  assert.match(model.heatOpenLabel, /^See full history · \d+ weeks?$/);
+});
+
+test('stats insights surface a weekly leader and an ahead/behind-pace note', () => {
+  const thisWeek = new Date(2026, 6, 7, 10, 0, 0).getTime(); // Tue in NOW's week
+  const lastWeek = new Date(2026, 5, 30, 10, 0, 0).getTime(); // prior week
+  const data: PersistedState = {
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: lastWeek }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#E3F2FD', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions: [
+      { id: 's1', habitId: 'h1', start: thisWeek, end: thisWeek + 2 * 3600_000, duration: 2 * 3600 },
+      { id: 's2', habitId: 'h1', start: lastWeek, end: lastWeek + 3600_000, duration: 3600 },
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+
+  const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
+  assert.equal(model.hasInsights, true);
+  assert.ok(model.insights.some((i) => i.text.includes('Reading is leading this week')));
+  assert.ok(model.insights.some((i) => i.text.includes('ahead of last week')));
 });

@@ -10,7 +10,8 @@ import React, {
 
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
-import { activeSec } from '../domain/engine';
+import { activeSec, recommendedHabitId } from '../domain/engine';
+import { addDays } from '../domain/time';
 import {
   ActiveTimer,
   Habit,
@@ -27,33 +28,53 @@ export interface HabitSheetState {
   name: string;
   icon: IconKey;
   projectId: string;
+  dailyTargetMin: number;
+  weeklyTargetMin: number;
 }
 export interface ProjectSheetState {
   id: string | null;
   name: string;
   weeklyTarget: number;
 }
+export interface LogSheetState {
+  habitId: string | null;
+  minutes: number;
+  /** 0 = today, 1 = yesterday, 2 = two days ago. */
+  dayOffset: number;
+  note: string;
+}
+export interface SessionSheetState {
+  id: string;
+  minutes: number;
+  note: string;
+  /** Read-only context label, e.g. "LeetCode · Tue, Jul 8". */
+  meta: string;
+}
 
 export interface UIState {
   screen: Screen;
   timerOpen: boolean;
   heatSel: string | null;
-  heatExpanded: boolean;
+  heatSheet: boolean;
   clearArmed: boolean;
   habitSheet: HabitSheetState | null;
   projectSheet: ProjectSheetState | null;
   stageSheet: string | null; // projectId
+  logSheet: LogSheetState | null;
+  sessionSheet: SessionSheetState | null;
 }
 
 const INITIAL_UI: UIState = {
   screen: 'today',
   timerOpen: false,
   heatSel: null,
-  heatExpanded: false,
+  heatSheet: false,
   clearArmed: false,
   habitSheet: null,
   projectSheet: null,
   stageSheet: null,
+  logSheet: null,
+  sessionSheet: null,
 };
 
 export interface StreakActions {
@@ -66,8 +87,10 @@ export interface StreakActions {
   togglePause(): void;
   stopTimer(): void;
   // heatmap
-  toggleHeatExpanded(): void;
+  openHeatSheet(): void;
+  closeHeatSheet(): void;
   pickHeat(key: string): void;
+  closeHeatSel(): void;
   // recent-sessions clear
   armClear(): void;
   cancelClear(): void;
@@ -90,6 +113,17 @@ export interface StreakActions {
   // stage sheet
   openStageSheet(projectId: string): void;
   closeStageSheet(): void;
+  // log-time sheet
+  openLogSheet(): void;
+  closeLogSheet(): void;
+  patchLogSheet(patch: Partial<LogSheetState>): void;
+  saveLogSheet(): void;
+  // edit-session sheet
+  openSessionSheet(sheet: SessionSheetState): void;
+  closeSessionSheet(): void;
+  patchSessionSheet(patch: Partial<SessionSheetState>): void;
+  saveSessionSheet(): void;
+  deleteSession(id: string): void;
 }
 
 interface StreakContextValue {
@@ -213,10 +247,11 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
         patchUi({ timerOpen: false });
       },
 
-      toggleHeatExpanded: () =>
-        setUi((p) => ({ ...p, heatExpanded: !p.heatExpanded })),
+      openHeatSheet: () => patchUi({ heatSheet: true }),
+      closeHeatSheet: () => patchUi({ heatSheet: false }),
       pickHeat: (key) =>
         setUi((p) => ({ ...p, heatSel: p.heatSel === key ? null : key })),
+      closeHeatSel: () => patchUi({ heatSel: null }),
 
       armClear: () => patchUi({ clearArmed: true }),
       cancelClear: () => patchUi({ clearArmed: false }),
@@ -227,7 +262,14 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
 
       openNewHabit: (projectId) =>
         patchUi({
-          habitSheet: { id: null, name: '', icon: 'code', projectId },
+          habitSheet: {
+            id: null,
+            name: '',
+            icon: 'code',
+            projectId,
+            dailyTargetMin: 30,
+            weeklyTargetMin: 150,
+          },
         }),
       openEditHabit: (habit) =>
         patchUi({
@@ -236,6 +278,8 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
             name: habit.name,
             icon: habit.icon,
             projectId: habit.projectId,
+            dailyTargetMin: habit.dailyTargetMin,
+            weeklyTargetMin: habit.weeklyTargetMin,
           },
         }),
       closeHabitSheet: () => patchUi({ habitSheet: null }),
@@ -260,6 +304,8 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
                         name: sh.name.trim(),
                         icon: sh.icon,
                         projectId: sh.projectId,
+                        dailyTargetMin: sh.dailyTargetMin,
+                        weeklyTargetMin: sh.weeklyTargetMin,
                       }
                     : h
                 ),
@@ -276,6 +322,8 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
               name: sh.name.trim(),
               icon: sh.icon,
               tile,
+              dailyTargetMin: sh.dailyTargetMin,
+              weeklyTargetMin: sh.weeklyTargetMin,
             };
             return { ...d, habits: [...d.habits, newHabit] };
           });
@@ -381,6 +429,86 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
 
       openStageSheet: (projectId) => patchUi({ stageSheet: projectId }),
       closeStageSheet: () => patchUi({ stageSheet: null }),
+
+      openLogSheet: () => {
+        const def =
+          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ??
+          (data.habits[0] ? data.habits[0].id : null);
+        patchUi({
+          logSheet: { habitId: def, minutes: 30, dayOffset: 0, note: '' },
+        });
+      },
+      closeLogSheet: () => patchUi({ logSheet: null }),
+      patchLogSheet: (patch) =>
+        setUi((p) =>
+          p.logSheet ? { ...p, logSheet: { ...p.logSheet, ...patch } } : p
+        ),
+      saveLogSheet: () => {
+        setUi((prevUi) => {
+          const sh = prevUi.logSheet;
+          if (!sh || !sh.habitId || !sh.minutes) return prevUi;
+          setData((d) => {
+            const base = addDays(new Date(), -sh.dayOffset);
+            const start = new Date(
+              base.getFullYear(),
+              base.getMonth(),
+              base.getDate(),
+              12,
+              0
+            ).getTime();
+            const note = sh.note.trim();
+            const session: Session = {
+              id: 's' + Date.now(),
+              habitId: sh.habitId!,
+              start,
+              end: start + sh.minutes * 60000,
+              duration: sh.minutes * 60,
+              manual: true,
+              ...(note ? { notes: note } : {}),
+            };
+            return { ...d, sessions: [...d.sessions, session] };
+          });
+          return { ...prevUi, logSheet: null };
+        });
+      },
+
+      openSessionSheet: (sheet) => patchUi({ sessionSheet: sheet }),
+      closeSessionSheet: () => patchUi({ sessionSheet: null }),
+      patchSessionSheet: (patch) =>
+        setUi((p) =>
+          p.sessionSheet
+            ? { ...p, sessionSheet: { ...p.sessionSheet, ...patch } }
+            : p
+        ),
+      saveSessionSheet: () => {
+        setUi((prevUi) => {
+          const sh = prevUi.sessionSheet;
+          if (!sh || !sh.minutes) return prevUi;
+          setData((d) => ({
+            ...d,
+            sessions: d.sessions.map((s) => {
+              if (s.id !== sh.id) return s;
+              const note = sh.note.trim();
+              const next: Session = {
+                ...s,
+                duration: sh.minutes * 60,
+                end: s.start + sh.minutes * 60000,
+              };
+              if (note) next.notes = note;
+              else delete next.notes;
+              return next;
+            }),
+          }));
+          return { ...prevUi, sessionSheet: null };
+        });
+      },
+      deleteSession: (id) => {
+        setData((d) => ({
+          ...d,
+          sessions: d.sessions.filter((s) => s.id !== id),
+        }));
+        patchUi({ sessionSheet: null });
+      },
     };
     // `data` referenced only inside deleteHabit's timerOpen decision; actions
     // otherwise use functional updates. Recreate when data identity changes so

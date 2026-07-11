@@ -9,10 +9,10 @@ export function seed(now: number = Date.now()): PersistedState {
     { id: 'g1', name: 'Become ML Engineer', weeklyTarget: 12, started: null },
   ];
   const habits: Habit[] = [
-    { id: 'h1', projectId: 'g1', name: 'Coding', icon: 'code', tile: '#E4E0F7' },
-    { id: 'h2', projectId: 'g1', name: 'LeetCode', icon: 'target', tile: '#D9F2E3' },
-    { id: 'h3', projectId: 'g1', name: 'Reading', icon: 'book', tile: '#FDE4D5' },
-    { id: 'h4', projectId: 'g1', name: 'Portfolio', icon: 'briefcase', tile: '#FADCE8' },
+    { id: 'h1', projectId: 'g1', name: 'Coding', icon: 'code', tile: '#E4E0F7', dailyTargetMin: 60, weeklyTargetMin: 300 },
+    { id: 'h2', projectId: 'g1', name: 'LeetCode', icon: 'target', tile: '#D9F2E3', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    { id: 'h3', projectId: 'g1', name: 'Reading', icon: 'book', tile: '#FDE4D5', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    { id: 'h4', projectId: 'g1', name: 'Portfolio', icon: 'briefcase', tile: '#FADCE8', dailyTargetMin: 30, weeklyTargetMin: 120 },
   ];
   const sessions: Session[] = [];
   const nowD = new Date(now);

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { seed } from '../domain/seed';
 import { PersistedState } from '../domain/types';
 
-const KEY = 'streak-v2';
+const KEY = 'streak-v3';
 
 /**
  * Load + migrate persisted state, mirroring the design's load().
@@ -13,7 +13,8 @@ const KEY = 'streak-v2';
 export async function loadState(now: number = Date.now()): Promise<PersistedState> {
   let saved: any = null;
   try {
-    const raw = await AsyncStorage.getItem(KEY);
+    let raw = await AsyncStorage.getItem(KEY);
+    if (raw === null) raw = await AsyncStorage.getItem('streak-v2');
     saved = raw ? JSON.parse(raw) : null;
   } catch {
     saved = null;
@@ -33,6 +34,8 @@ export async function loadState(now: number = Date.now()): Promise<PersistedStat
   const habits = (saved.habits || []).map((h: any) => ({
     ...h,
     projectId: h.projectId || h.goalId,
+    dailyTargetMin: h.dailyTargetMin ?? 30,
+    weeklyTargetMin: h.weeklyTargetMin ?? ((h.dailyTargetMin ?? 30) * 5),
   }));
   const sessions = saved.sessions || [];
 

@@ -47,6 +47,16 @@ export function fmtHM(sec: number): string {
   return h ? h + 'h ' + pad(m) + 'm' : m + 'm';
 }
 
+/** "1h 30m" / "45m" from a minute count. */
+export function fmtMin(min: number): string {
+  return fmtHM(min * 60);
+}
+
+/** Stepper increment for a minute value: 30 at >=120, 15 at >=60, else 5. */
+export function stepFor(m: number): number {
+  return m >= 120 ? 30 : m >= 60 ? 15 : 5;
+}
+
 /** Compact hours label: "120h" / "3.5h" / "45m". */
 export function fmtH(sec: number): string {
   const h = sec / 3600;

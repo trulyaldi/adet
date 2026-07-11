@@ -4,6 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { ICONS, ICON_KEYS } from '../domain/constants';
+import { fmtMin, stepFor } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
 
@@ -102,6 +103,117 @@ export function HabitSheet() {
             </View>
           </View>
 
+          {/* Targets */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: colors.screen,
+                borderRadius: 14,
+                padding: 12,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.subtext }}>
+                Daily target
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  marginTop: 8,
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <Pressable
+                  onPress={() =>
+                    actions.patchHabitSheet({
+                      dailyTargetMin: Math.max(
+                        5,
+                        sheet.dailyTargetMin - stepFor(sheet.dailyTargetMin)
+                      ),
+                    })
+                  }
+                  style={stepButtonStyle}
+                >
+                  <Text style={stepButtonTextStyle}>−</Text>
+                </Pressable>
+                <Text
+                  style={{
+                    fontWeight: '800',
+                    color: colors.ink,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {fmtMin(sheet.dailyTargetMin)}
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    actions.patchHabitSheet({
+                      dailyTargetMin: Math.min(
+                        480,
+                        sheet.dailyTargetMin + stepFor(sheet.dailyTargetMin)
+                      ),
+                    })
+                  }
+                  style={stepButtonStyle}
+                >
+                  <Text style={stepButtonTextStyle}>+</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: colors.screen,
+                borderRadius: 14,
+                padding: 12,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.subtext }}>
+                Weekly target
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  marginTop: 8,
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <Pressable
+                  onPress={() =>
+                    actions.patchHabitSheet({
+                      weeklyTargetMin: Math.max(30, sheet.weeklyTargetMin - 30),
+                    })
+                  }
+                  style={stepButtonStyle}
+                >
+                  <Text style={stepButtonTextStyle}>−</Text>
+                </Pressable>
+                <Text
+                  style={{
+                    fontWeight: '800',
+                    color: colors.ink,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {fmtMin(sheet.weeklyTargetMin)}
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    actions.patchHabitSheet({
+                      weeklyTargetMin: Math.min(3000, sheet.weeklyTargetMin + 30),
+                    })
+                  }
+                  style={stepButtonStyle}
+                >
+                  <Text style={stepButtonTextStyle}>+</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
           {/* Merge (edit only) */}
           {isEdit && (
             <View>
@@ -179,5 +291,20 @@ const inputStyle = {
   paddingVertical: 15,
   paddingHorizontal: 16,
   fontSize: 16,
+  color: colors.ink,
+};
+
+const stepButtonStyle = {
+  width: 30,
+  height: 30,
+  borderRadius: 10,
+  backgroundColor: colors.card,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+};
+
+const stepButtonTextStyle = {
+  fontSize: 16,
+  fontWeight: '600' as const,
   color: colors.ink,
 };

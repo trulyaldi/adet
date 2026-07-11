@@ -26,6 +26,10 @@ export interface Habit {
   icon: IconKey;
   /** Pastel tile background color. */
   tile: string;
+  /** Daily time target in minutes. */
+  dailyTargetMin: number;
+  /** Weekly time target in minutes. */
+  weeklyTargetMin: number;
 }
 
 export interface Session {
@@ -38,6 +42,8 @@ export interface Session {
   /** Duration in seconds. */
   duration: number;
   notes?: string;
+  /** True when the session was logged manually rather than via the timer. */
+  manual?: boolean;
 }
 
 export interface ActiveTimer {

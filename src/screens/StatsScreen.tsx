@@ -9,10 +9,7 @@ import { colors, radius, shadowCard } from '../theme/tokens';
 
 export function StatsScreen() {
   const { data, ui, now, config, actions } = useStreak();
-  const model = selectStats(data, config, now, {
-    heatSel: ui.heatSel,
-    heatExpanded: ui.heatExpanded,
-  });
+  const model = selectStats(data, config, now, { heatSel: ui.heatSel });
 
   return (
     <ScrollView
@@ -75,6 +72,30 @@ export function StatsScreen() {
             <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>Most active habit</Text>
           </View>
           <Text style={{ fontSize: 15, fontWeight: '800', color: colors.ink }}>{model.topHabitHours}</Text>
+        </View>
+      )}
+
+      {/* Insights */}
+      {model.hasInsights && (
+        <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, padding: 16, marginTop: 10, gap: 12 }, shadowCard]}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Insights</Text>
+          {model.insights.map((ins, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  backgroundColor: ins.bg,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon path={ins.iconPath} size={19} />
+              </View>
+              <Text style={{ flex: 1, fontSize: 13.5, color: colors.ink, lineHeight: 19 }}>{ins.text}</Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -159,54 +180,21 @@ export function StatsScreen() {
           </View>
         ))}
 
-        {/* Toggle weeks */}
-        <Pressable
-          onPress={actions.toggleHeatExpanded}
-          style={{
-            marginTop: 16,
-            padding: 10,
-            borderRadius: 12,
-            backgroundColor: colors.screen,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>{model.heatToggleLabel}</Text>
-        </Pressable>
-
-        {/* Selection detail */}
-        {model.heatSelOpen && (
-          <View style={{ marginTop: 14, backgroundColor: colors.screen, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 14 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>{model.heatSelDate}</Text>
-              <Text style={{ fontSize: 13, color: colors.subtext }}>{model.heatSelInfo}</Text>
-            </View>
-            {model.heatSelRows.length > 0 && (
-              <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(23,24,26,0.07)' }}>
-                {model.heatSelRows.map((hs, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 10,
-                      paddingVertical: 9,
-                      borderBottomWidth: 1,
-                      borderBottomColor: 'rgba(23,24,26,0.05)',
-                    }}
-                  >
-                    <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: hs.tile, alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon path={hs.iconPath} size={16} />
-                    </View>
-                    <Text numberOfLines={1} style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.ink }}>
-                      {hs.name}
-                    </Text>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>{hs.timeLabel}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+        {/* See full history */}
+        {model.heatCanToggle && (
+          <Pressable
+            onPress={actions.openHeatSheet}
+            style={{
+              marginTop: 16,
+              padding: 10,
+              borderRadius: 12,
+              backgroundColor: colors.screen,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>{model.heatOpenLabel}</Text>
+          </Pressable>
         )}
       </View>
 
@@ -214,21 +202,26 @@ export function StatsScreen() {
       <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, paddingHorizontal: 18, marginTop: 10 }, shadowCard]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingBottom: 4 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Recent sessions</Text>
-          {model.historyHasRows &&
-            (ui.clearArmed ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                <Pressable onPress={actions.cancelClear}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>Cancel</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <Pressable onPress={actions.openLogSheet}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: config.accent }}>+ Log</Text>
+            </Pressable>
+            {model.historyHasRows &&
+              (ui.clearArmed ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <Pressable onPress={actions.cancelClear}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={actions.confirmClear}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.danger }}>Clear all</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable onPress={actions.armClear}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#0A84FF' }}>Clear</Text>
                 </Pressable>
-                <Pressable onPress={actions.confirmClear}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.danger }}>Clear all</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable onPress={actions.armClear}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0A84FF' }}>Clear</Text>
-              </Pressable>
-            ))}
+              ))}
+          </View>
         </View>
 
         {!model.historyHasRows && (
@@ -238,8 +231,16 @@ export function StatsScreen() {
         )}
 
         {model.historyRows.map((hr) => (
-          <View
+          <Pressable
             key={hr.id}
+            onPress={() =>
+              actions.openSessionSheet({
+                id: hr.id,
+                minutes: hr.editMinutes,
+                note: hr.editNote,
+                meta: hr.editMeta,
+              })
+            }
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -257,7 +258,7 @@ export function StatsScreen() {
               <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>{hr.sub}</Text>
             </View>
             <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hr.timeLabel}</Text>
-          </View>
+          </Pressable>
         ))}
         <View style={{ height: 8 }} />
       </View>

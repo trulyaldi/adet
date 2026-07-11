@@ -3,7 +3,7 @@
 
 import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
-import { addDays, dkey, fmtH, fmtHM, monday, pkey } from './time';
+import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pkey } from './time';
 import {
   ActiveTimer,
   Habit,
@@ -184,9 +184,12 @@ function buildContext(data: PersistedState, now: number): StatContext {
 }
 
 function trendOf(ps: { week: number; lastWeek: number }) {
+  // Non-punitive: gains read as progress; shortfalls read as an actionable
+  // "to match last week" rather than a red penalty.
   const d = ps.week - ps.lastWeek;
-  const sign = d >= 0 ? '+' : '−';
-  return { label: sign + fmtH(Math.abs(d)), color: d >= 0 ? '#1F8A3B' : '#C24040' };
+  if (d >= 0)
+    return { label: '↑ ' + fmtH(d), sub: 'vs last week', color: '#1F8A3B' };
+  return { label: '↓ ' + fmtH(-d), sub: 'vs last week', color: '#FF3B30' };
 }
 
 function iconPath(icon: IconKey): string {
@@ -194,14 +197,48 @@ function iconPath(icon: IconKey): string {
 }
 
 // ---------- TODAY ----------
+function recommendedIdFrom(
+  ctx: StatContext,
+  data: PersistedState,
+  now: number
+): string | null {
+  void now;
+  let recommendedId: string | null = null;
+  let lowestScore = Infinity;
+
+  for (const h of data.habits) {
+    if (data.active && data.active.habitId === h.id) continue;
+
+    const stt = ctx.habitStats[h.id];
+    const dGoal = (h.dailyTargetMin || 30) * 60;
+    if (stt.day >= dGoal) continue;
+
+    const wGoal = (h.weeklyTargetMin || 150) * 60;
+    const score = stt.day / dGoal + (stt.week / wGoal) * 0.25;
+    if (score < lowestScore) {
+      lowestScore = score;
+      recommendedId = h.id;
+    }
+  }
+
+  return recommendedId;
+}
+
 export interface TodayRow {
   habitId: string;
   iconPath: string;
   tile: string;
   name: string;
   sub: string;
+  todayPct: string;
+  barColor: string;
+  done: boolean;
+  recommended: boolean;
   running: boolean;
+  paused: boolean;
+  cardBorder: string;
   btnLabelSec: number; // seconds to render as clock when running
+  btnLabel: string;
   btnBg: string;
   btnFg: string;
 }
@@ -220,6 +257,23 @@ export interface TodayModel {
   streakLabel: string;
   groups: TodayGroup[];
   noHabits: boolean;
+  hasHabits: boolean;
+  focusPctLabel: string;
+  focusRingOffset: number;
+  focusRingColor: string;
+  focusTimeLabel: string;
+  focusDots: { c: string }[];
+  focusDotsLabel: string;
+}
+
+export function recommendedHabitId(
+  data: PersistedState,
+  config: AppConfig,
+  now: number
+): string | null {
+  void config;
+  const ctx = buildContext(data, now);
+  return recommendedIdFrom(ctx, data, now);
 }
 
 export function selectToday(
@@ -231,6 +285,19 @@ export function selectToday(
   const stages = stagesFor(config);
   const globalStreak = streakOf(daySecMap(data, now));
   const todayD = ctx.todayD;
+  const dayGoalSec = data.habits.reduce(
+    (total, h) => total + (h.dailyTargetMin || 30) * 60,
+    0
+  );
+  const dayDoneSec = data.habits.reduce(
+    (total, h) => total + ctx.habitStats[h.id].day,
+    0
+  );
+  const doneCount = data.habits.filter(
+    (h) => ctx.habitStats[h.id].day >= (h.dailyTargetMin || 30) * 60
+  ).length;
+  const fp = dayGoalSec > 0 ? Math.min(1, dayDoneSec / dayGoalSec) : 0;
+  const recommendedId = recommendedIdFrom(ctx, data, now);
 
   const groups: TodayGroup[] = data.projects
     .map((p) => {
@@ -255,21 +322,58 @@ export function selectToday(
         consistencyLabel:
           pStreak + '-day streak · ' + trend.label + ' vs last week',
         rows: ps.habits.map((h) => {
-          const running = !!(data.active && data.active.habitId === h.id);
           const stt = ctx.habitStats[h.id];
+          const active = data.active;
+          const dGoal = (h.dailyTargetMin || 30) * 60;
+          const running = !!(active && active.habitId === h.id);
+          const paused = running && !active?.startedAt;
+          const done = stt.day >= dGoal;
+          const rec = h.id === recommendedId;
           return {
             habitId: h.id,
             iconPath: iconPath(h.icon),
             tile: h.tile,
             name: h.name,
             sub:
-              (stt.day > 0 ? fmtHM(Math.floor(stt.day)) + ' today · ' : '') +
-              fmtHM(Math.floor(stt.week)) +
-              ' this week',
+              fmtHM(Math.floor(stt.day)) +
+              ' / ' +
+              fmtMin(h.dailyTargetMin || 30) +
+              ' today',
+            todayPct: Math.min(100, Math.round((stt.day / dGoal) * 100)) + '%',
+            barColor: done ? '#34C759' : '#17181A',
+            done,
+            recommended: rec,
             running,
-            btnLabelSec: running ? activeSec(data.active, now) : 0,
-            btnBg: running ? '#FFECEB' : '#F1F2F5',
-            btnFg: running ? '#FF3B30' : config.accent,
+            paused,
+            cardBorder: running ? config.accent : 'transparent',
+            btnLabelSec: running && !paused ? activeSec(active, now) : 0,
+            btnLabel: running
+              ? paused
+                ? 'Resume'
+                : ''
+              : done
+              ? 'Done ✓'
+              : stt.day > 0
+              ? 'Continue'
+              : 'Start timer',
+            btnBg: running
+              ? paused
+                ? '#FFF4E5'
+                : '#FFECEB'
+              : done
+              ? '#E8F5EC'
+              : rec
+              ? config.accent
+              : '#F1F2F5',
+            btnFg: running
+              ? paused
+                ? '#C77800'
+                : '#FF3B30'
+              : done
+              ? '#1F8A3B'
+              : rec
+              ? '#FFFFFF'
+              : config.accent,
           };
         }),
       };
@@ -286,6 +390,18 @@ export function selectToday(
     streakLabel: globalStreak + ' day' + (globalStreak === 1 ? '' : 's'),
     groups,
     noHabits: data.habits.length === 0,
+    hasHabits: data.habits.length > 0,
+    focusPctLabel: Math.round(fp * 100) + '%',
+    focusRingOffset: Number((157.1 * (1 - fp)).toFixed(1)),
+    focusRingColor: fp >= 1 ? '#34C759' : config.accent,
+    focusTimeLabel: fmtHM(Math.floor(dayDoneSec)) + ' of ' + fmtHM(dayGoalSec),
+    focusDots: data.habits.map((h) => ({
+      c:
+        ctx.habitStats[h.id].day >= (h.dailyTargetMin || 30) * 60
+          ? '#34C759'
+          : '#E3E4E8',
+    })),
+    focusDotsLabel: doneCount + ' of ' + data.habits.length + ' habits done',
   };
 }
 
@@ -502,9 +618,20 @@ export interface HistoryRow {
   name: string;
   sub: string;
   timeLabel: string;
+  /** Fields the UI passes to actions.openSessionSheet to edit this session. */
+  editMinutes: number;
+  editNote: string;
+  editMeta: string;
+}
+export interface Insight {
+  iconPath: string;
+  bg: string;
+  text: string;
 }
 export interface StatsModel {
   sub: string;
+  insights: Insight[];
+  hasInsights: boolean;
   lifetimeLabel: string;
   lifetimeSub: string;
   weekHours: string;
@@ -520,10 +647,13 @@ export interface StatsModel {
   legendCells: string[];
   dayHeads: string[];
   heatRows: HeatRow[];
+  heatFullRows: HeatRow[];
   heatRangeLabel: string;
-  heatToggleLabel: string;
-  heatExpanded: boolean;
+  heatFullRangeLabel: string;
+  heatOpenLabel: string;
+  heatCanToggle: boolean;
   heatSelOpen: boolean;
+  heatSelEmpty: boolean;
   heatSelDate: string;
   heatSelInfo: string;
   heatSelRows: HeatSelRow[];
@@ -535,7 +665,7 @@ export function selectStats(
   data: PersistedState,
   config: AppConfig,
   now: number,
-  ui: { heatSel: string | null; heatExpanded: boolean }
+  ui: { heatSel: string | null }
 ): StatsModel {
   const ctx = buildContext(data, now);
   const todayD = ctx.todayD;
@@ -557,39 +687,77 @@ export function selectStats(
 
   // heatmap
   const baseWeeks = Math.min(20, Math.max(4, config.heatmapWeeks ?? 10));
-  const weeks = ui.heatExpanded ? Math.max(baseWeeks, 26) : baseWeeks;
   const lvlOf = (sec: number) =>
     sec <= 0 ? 0 : sec < 1800 ? 1 : sec < 3600 ? 2 : sec < 7200 ? 3 : 4;
-  const start = addDays(mon, -(weeks - 1) * 7);
-  const heatRows: HeatRow[] = [];
-  let prevMonth = -1;
-  for (let w = 0; w < weeks; w++) {
-    const cells: HeatCell[] = [];
-    const rowStart = addDays(start, w * 7);
-    const rowMonth = rowStart.getMonth();
-    const monthLabel = rowMonth !== prevMonth ? MONTHS[rowMonth].slice(0, 3) : '';
-    prevMonth = rowMonth;
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(start, w * 7 + i);
-      if (d > todayD) {
+
+  // Full history: from the Monday of the first-ever active day up to now. The
+  // inline card shows recent weeks; a sheet shows the full history so years of
+  // activity are never lost.
+  const firstMon = monday(firstDay);
+  const fullWeeks = Math.max(
+    1,
+    Math.round((mon.getTime() - firstMon.getTime()) / (7 * 86400000)) + 1
+  );
+  const heatCanToggle = fullWeeks > baseWeeks;
+  const weeks = Math.min(baseWeeks, fullWeeks);
+
+  // Build most-recent-on-top rows for the last `nWeeks` weeks, with month/year
+  // gutter labels (a year label like "Jul '25" appears when the span crosses years).
+  const buildHeatRows = (nWeeks: number): HeatRow[] => {
+    const s = addDays(mon, -(nWeeks - 1) * 7);
+    const multiYear = s.getFullYear() !== todayD.getFullYear();
+    const built: { cells: HeatCell[]; month: number; year: number }[] = [];
+    for (let w = 0; w < nWeeks; w++) {
+      const cells: HeatCell[] = [];
+      const rowStart = addDays(s, w * 7);
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(s, w * 7 + i);
+        if (d > todayD) {
+          cells.push({
+            key: null,
+            color: 'transparent',
+            bcolor: 'transparent',
+            selected: false,
+          });
+          continue;
+        }
+        const key = dkey(d);
         cells.push({
-          key: null,
-          color: 'transparent',
-          bcolor: 'transparent',
-          selected: false,
+          key,
+          color: HEAT_SCALE[lvlOf(dayMap[key] || 0)],
+          bcolor: 'rgba(23,24,26,0.07)',
+          selected: ui.heatSel === key,
         });
-        continue;
       }
-      const key = dkey(d);
-      cells.push({
-        key,
-        color: HEAT_SCALE[lvlOf(dayMap[key] || 0)],
-        bcolor: 'rgba(23,24,26,0.07)',
-        selected: ui.heatSel === key,
-      });
+      built.push({ cells, month: rowStart.getMonth(), year: rowStart.getFullYear() });
     }
-    heatRows.push({ cells, monthLabel });
-  }
+    built.reverse();
+    const rows: HeatRow[] = [];
+    let prevMonth = -1;
+    let prevYear: number | null = null;
+    for (const r of built) {
+      let monthLabel = '';
+      const yearChanged = prevYear !== null && r.year !== prevYear;
+      if (yearChanged || (prevYear === null && multiYear)) {
+        monthLabel = MONTHS[r.month].slice(0, 3) + " '" + String(r.year).slice(2);
+      } else if (r.month !== prevMonth) {
+        monthLabel = MONTHS[r.month].slice(0, 3);
+      }
+      rows.push({ cells: r.cells, monthLabel });
+      prevMonth = r.month;
+      prevYear = r.year;
+    }
+    return rows;
+  };
+
+  const start = addDays(mon, -(weeks - 1) * 7);
+  const spanYears = start.getFullYear() !== todayD.getFullYear();
+  const heatRows = buildHeatRows(weeks);
+  // The history sheet shows at least ~6 months of past, and extends back to the
+  // first active day for long-time users.
+  const sheetWeeks = Math.max(fullWeeks, 26);
+  const heatFullRows = buildHeatRows(sheetWeeks);
+  const fullStart = addDays(mon, -(sheetWeeks - 1) * 7);
 
   // heat selection detail
   let heatSelRows: HeatSelRow[] = [];
@@ -652,6 +820,58 @@ export function selectStats(
       .sort((a, b) => ctx.habitStats[b.id].life - ctx.habitStats[a.id].life)[0] ||
     null;
 
+  // insights (icon paths are 24x24 stroke glyphs: flame / bars / calendar)
+  const FLAME_PATH =
+    'M12 21c3.9 0 6.5-2.4 6.5-6 0-2.5-1.4-4.7-3-6.5-.3 1-.8 1.9-1.7 2.5C13.6 8.6 13 5.5 10 3c.3 2.5-.7 4.4-2.1 6C6.6 10.6 5.5 12.4 5.5 15c0 3.6 2.6 6 6.5 6z';
+  const BARS_PATH = 'M5 20V12M12 20V4M19 20v-6';
+  const CAL_PATH =
+    'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11zM8 2.5V5M16 2.5V5M4 8.5h16';
+  const lastWeekAll = data.habits.reduce(
+    (a, h) => a + ctx.habitStats[h.id].lastWeek,
+    0
+  );
+  const insights: Insight[] = [];
+  const topWeekHabit = data.habits
+    .slice()
+    .sort((a, b) => ctx.habitStats[b.id].week - ctx.habitStats[a.id].week)[0];
+  if (topWeekHabit && ctx.habitStats[topWeekHabit.id].week > 0) {
+    insights.push({
+      iconPath: FLAME_PATH,
+      bg: '#FDE4D5',
+      text:
+        topWeekHabit.name +
+        ' is leading this week with ' +
+        fmtHM(Math.floor(ctx.habitStats[topWeekHabit.id].week)) +
+        '.',
+    });
+  }
+  if (weekAll > 0 || lastWeekAll > 0) {
+    const d = weekAll - lastWeekAll;
+    if (d >= 0)
+      insights.push({
+        iconPath: BARS_PATH,
+        bg: '#D9F2E3',
+        text: 'You’re ' + fmtH(d) + ' ahead of last week’s pace.',
+      });
+    else
+      insights.push({
+        iconPath: BARS_PATH,
+        bg: '#D8EAF9',
+        text: 'About ' + fmtHM(Math.floor(-d)) + ' more this week matches last week.',
+      });
+  }
+  const wdTotals = [0, 0, 0, 0, 0, 0, 0];
+  for (const s of data.sessions) wdTotals[new Date(s.start).getDay()] += s.duration;
+  let bestWd = 0;
+  for (let i = 1; i < 7; i++) if (wdTotals[i] > wdTotals[bestWd]) bestWd = i;
+  if (wdTotals[bestWd] > 0) {
+    insights.push({
+      iconPath: CAL_PATH,
+      bg: '#E4E0F7',
+      text: 'You log the most time on ' + DOWFULL[bestWd] + 's.',
+    });
+  }
+
   const projDist: DistRow[] = data.projects
     .map((p) => ({ p, t: ctx.projStats[p.id].life }))
     .sort((a, b) => b.t - a.t)
@@ -687,14 +907,22 @@ export function selectStats(
         iconPath: iconPath(h.icon),
         tile: h.tile,
         name: h.name,
-        sub: dateLabel + (s.notes ? ' · ' + s.notes : ''),
+        sub:
+          dateLabel +
+          (s.manual ? ' · logged manually' : '') +
+          (s.notes ? ' · ' + s.notes : ''),
         timeLabel: fmtHM(s.duration),
+        editMinutes: Math.max(1, Math.round(s.duration / 60)),
+        editNote: s.notes || '',
+        editMeta: h.name + ' · ' + dateLabel,
       };
     })
     .filter((x): x is HistoryRow => !!x);
 
   return {
     sub: data.sessions.length + ' sessions logged',
+    insights,
+    hasInsights: insights.length > 0,
     lifetimeLabel: (lifeAll / 3600).toFixed(1) + ' hours',
     lifetimeSub:
       'Since ' +
@@ -717,17 +945,34 @@ export function selectStats(
     legendCells: HEAT_SCALE.slice(),
     dayHeads: DOWS.map((d) => d[0]),
     heatRows,
+    heatFullRows,
     heatRangeLabel:
       MONTHS[start.getMonth()].slice(0, 3) +
       ' ' +
       start.getDate() +
+      (spanYears ? ', ' + start.getFullYear() : '') +
       ' – ' +
       MONTHS[todayD.getMonth()].slice(0, 3) +
       ' ' +
-      todayD.getDate(),
-    heatToggleLabel: ui.heatExpanded ? 'Show fewer weeks' : 'Show more weeks',
-    heatExpanded: ui.heatExpanded,
+      todayD.getDate() +
+      (spanYears ? ', ' + todayD.getFullYear() : ''),
+    heatFullRangeLabel:
+      MONTHS[fullStart.getMonth()].slice(0, 3) +
+      ' ' +
+      fullStart.getDate() +
+      ', ' +
+      fullStart.getFullYear() +
+      ' – ' +
+      MONTHS[todayD.getMonth()].slice(0, 3) +
+      ' ' +
+      todayD.getDate() +
+      ', ' +
+      todayD.getFullYear(),
+    heatOpenLabel:
+      'See full history · ' + fullWeeks + (fullWeeks === 1 ? ' week' : ' weeks'),
+    heatCanToggle,
     heatSelOpen: !!ui.heatSel,
+    heatSelEmpty: !!ui.heatSel && heatSelRows.length === 0,
     heatSelDate,
     heatSelInfo,
     heatSelRows,

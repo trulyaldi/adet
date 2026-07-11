@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -18,13 +20,49 @@ interface SheetProps {
   maxHeightPct?: number;
 }
 
-/** Bottom sheet modal with a dimmed backdrop and rounded top corners. */
+/** Past this downward drag (px) — or a fast flick — the sheet dismisses. */
+const CLOSE_THRESHOLD = 120;
+
+/** Bottom sheet modal with a dimmed backdrop, rounded top corners, and drag-to-dismiss. */
 export function Sheet({
   visible,
   onClose,
   children,
   maxHeightPct = 0.82,
 }: SheetProps) {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  // Reset the drag offset whenever the sheet (re)opens.
+  useEffect(() => {
+    if (visible) translateY.setValue(0);
+  }, [visible, translateY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Only claim vertical, downward drags so inner scrolling still works.
+      onMoveShouldSetPanResponder: (_evt, g) =>
+        g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_evt, g) => {
+        translateY.setValue(g.dy > 0 ? g.dy : g.dy * 0.2);
+      },
+      onPanResponderRelease: (_evt, g) => {
+        if (g.dy > CLOSE_THRESHOLD || g.vy > 0.6) {
+          Animated.timing(translateY, {
+            toValue: 700,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => onClose());
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   return (
     <Modal
       visible={visible}
@@ -48,24 +86,29 @@ export function Sheet({
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View
+          <Animated.View
             style={{
               backgroundColor: colors.card,
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
               maxHeight: `${Math.round(maxHeightPct * 100)}%`,
               paddingTop: 12,
+              transform: [{ translateY }],
             }}
           >
             <View
-              style={{
-                width: 36,
-                height: 5,
-                borderRadius: 999,
-                backgroundColor: '#E3E4E8',
-                alignSelf: 'center',
-              }}
-            />
+              {...panResponder.panHandlers}
+              style={{ alignSelf: 'stretch', alignItems: 'center', paddingVertical: 6, marginTop: -6 }}
+            >
+              <View
+                style={{
+                  width: 36,
+                  height: 5,
+                  borderRadius: 999,
+                  backgroundColor: '#E3E4E8',
+                }}
+              />
+            </View>
             <ScrollView
               contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 42 }}
               keyboardShouldPersistTaps="handled"
@@ -73,7 +116,7 @@ export function Sheet({
             >
               {children}
             </ScrollView>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>

@@ -4,7 +4,11 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { TabBar } from './src/components/TabBar';
+import { ActivityDaySheet } from './src/overlays/ActivityDaySheet';
+import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
+import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
+import { LogTimeSheet } from './src/overlays/LogTimeSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { TimerOverlay } from './src/overlays/TimerOverlay';
@@ -40,6 +44,10 @@ function Root() {
       <HabitSheet />
       <ProjectSheet />
       <StageSheet />
+      <LogTimeSheet />
+      <EditSessionSheet />
+      <ActivityHistorySheet />
+      <ActivityDaySheet />
     </View>
   );
 }
