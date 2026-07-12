@@ -1,5 +1,7 @@
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, Text, View } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
@@ -19,24 +21,90 @@ export function StatsScreen() {
       <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>Stats</Text>
       <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>{model.sub}</Text>
 
-      {/* Lifetime hero */}
-      <View style={{ backgroundColor: colors.ink, borderRadius: radius.xxl, padding: 20, marginTop: 18 }}>
-        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1 }}>
-          LIFETIME
-        </Text>
-        <Text style={{ fontSize: 40, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1, marginTop: 4 }}>
-          {model.lifetimeLabel}
-        </Text>
-        <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', marginTop: 8 }}>{model.lifetimeSub}</Text>
-      </View>
+      <LifetimeHero lifetimeLabel={model.lifetimeLabel} lifetimeSub={model.lifetimeSub} />
 
       {/* Period stats 2x2 */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
-        <PeriodTile value={model.weekHours} label="This week" />
-        <PeriodTile value={model.monthHours} label="This month" />
-        <PeriodTile value={model.avgDaily} label="Avg per day" />
-        <PeriodTile value={model.recStreak} label="Longest streak" />
+        <PeriodTile
+          value={model.weekHours}
+          label="This week"
+          iconBg="#D8EAF9"
+          icon={
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+              <Circle cx={12} cy={12} r={9} stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M12 7v5l3 2" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          }
+        />
+        <PeriodTile
+          value={model.monthHours}
+          label="This month"
+          iconBg="#E4E0F7"
+          icon={
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+              <Rect x={4} y={5} width={16} height={16} rx={2} stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M4 9h16 M8 3v3 M16 3v3" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          }
+        />
+        <PeriodTile
+          value={model.avgDaily}
+          label="Avg per day"
+          iconBg="#D9F2E3"
+          icon={
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+              <Path d="M4 20h16 M7 20v-5 M12 20V9 M17 20v-8" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          }
+        />
+        <PeriodTile
+          value={model.recStreak}
+          label="Longest streak"
+          iconBg="#FDE4D5"
+          icon={
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M12 21c3.9 0 6.5-2.4 6.5-6 0-2.5-1.4-4.7-3-6.5-.3 1-.8 1.9-1.7 2.5C13.6 8.6 13 5.5 10 3c.3 2.5-.7 4.4-2.1 6C6.6 10.6 5.5 12.4 5.5 15c0 3.6 2.6 6 6.5 6z"
+                stroke={colors.ink}
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          }
+        />
       </View>
+
+      {/* Insights */}
+      {model.hasInsights && (
+        <View
+          style={[
+            { backgroundColor: colors.card, borderRadius: radius.xxl, paddingVertical: 16, paddingHorizontal: 18, marginTop: 10 },
+            shadowCard,
+          ]}
+        >
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Insights</Text>
+          <View style={{ gap: 11, marginTop: 12 }}>
+            {model.insights.map((ins, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <View
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 9,
+                    backgroundColor: ins.bg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon path={ins.iconPath} size={14} strokeWidth={2} />
+                </View>
+                <Text style={{ flex: 1, fontSize: 13, color: '#3A3D42', lineHeight: 19 }}>{ins.text}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Most active habit */}
       {model.hasTopHabit && (
@@ -75,30 +143,6 @@ export function StatsScreen() {
         </View>
       )}
 
-      {/* Insights */}
-      {model.hasInsights && (
-        <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, padding: 16, marginTop: 10, gap: 12 }, shadowCard]}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Insights</Text>
-          {model.insights.map((ins, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  backgroundColor: ins.bg,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon path={ins.iconPath} size={19} />
-              </View>
-              <Text style={{ flex: 1, fontSize: 13.5, color: colors.ink, lineHeight: 19 }}>{ins.text}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
       {/* Time by project */}
       <View
         style={[
@@ -127,10 +171,13 @@ export function StatsScreen() {
       {/* Activity heatmap */}
       <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, padding: 18, marginTop: 10 }, shadowCard]}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Activity map</Text>
-            <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{model.heatRangeLabel}</Text>
-          </View>
+          <Pressable onPress={actions.openHeatSheet} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+            <View style={{ flexShrink: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Activity map</Text>
+              <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{model.heatRangeLabel}</Text>
+            </View>
+            <Icon path="M9 6l6 6-6 6" size={18} color={colors.muted} />
+          </Pressable>
           <View style={{ alignItems: 'flex-end', gap: 5 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text style={{ fontSize: 11, color: colors.muted, marginRight: 3 }}>Less</Text>
@@ -266,16 +313,112 @@ export function StatsScreen() {
   );
 }
 
-function PeriodTile({ value, label }: { value: string; label: string }) {
+function LifetimeHero({ lifetimeLabel, lifetimeSub }: { lifetimeLabel: string; lifetimeSub: string }) {
+  const gloss = React.useRef(new Animated.Value(0)).current;
+  const [size, setSize] = React.useState({ width: 0, height: 0 });
+
+  React.useEffect(() => {
+    if (size.width <= 0 || size.height <= 0) return undefined;
+
+    gloss.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(gloss, {
+        toValue: 1,
+        duration: 3600,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+
+    loop.start();
+
+    return () => {
+      loop.stop();
+    };
+  }, [gloss, size.height, size.width]);
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+
+    setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+  };
+
+  const hasSize = size.width > 0 && size.height > 0;
+  const bandWidth = size.width * 0.45;
+  const bandHeight = size.height * 1.4;
+  const translateX = gloss.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-bandWidth, size.width],
+  });
+
+  return (
+    <View
+      onLayout={onLayout}
+      style={{ backgroundColor: colors.ink, borderRadius: radius.xxl, padding: 20, marginTop: 18, overflow: 'hidden' }}
+    >
+      {hasSize && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -size.height * 0.2,
+            left: 0,
+            width: bandWidth,
+            height: bandHeight,
+            transform: [{ translateX }, { skewX: '-18deg' }],
+          }}
+        >
+          <Svg width="100%" height="100%" viewBox={`0 0 ${bandWidth} ${bandHeight}`} preserveAspectRatio="none">
+            <Defs>
+              <LinearGradient id="lifetimeGloss" x1="0%" y1="0%" x2="100%" y2="0%">
+                <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0} />
+                <Stop offset="50%" stopColor="#FFFFFF" stopOpacity={0.14} />
+                <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
+              </LinearGradient>
+            </Defs>
+            <Rect x={0} y={0} width={bandWidth} height={bandHeight} fill="url(#lifetimeGloss)" />
+          </Svg>
+        </Animated.View>
+      )}
+      <View style={{ position: 'relative', zIndex: 1 }}>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1 }}>
+          LIFETIME
+        </Text>
+        <Text style={{ fontSize: 40, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1, marginTop: 4 }}>
+          {lifetimeLabel}
+        </Text>
+        <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', marginTop: 8 }}>{lifetimeSub}</Text>
+      </View>
+    </View>
+  );
+}
+
+function PeriodTile({ value, label, icon, iconBg }: { value: string; label: string; icon: React.ReactNode; iconBg: string }) {
   return (
     <View
       style={[
-        { width: '48%', backgroundColor: colors.card, borderRadius: radius.xl, paddingVertical: 14, paddingHorizontal: 16 },
+        { width: '48%', backgroundColor: colors.card, borderRadius: radius.xl, paddingVertical: 15, paddingHorizontal: 16, gap: 12 },
         shadowCard,
       ]}
     >
-      <Text style={{ fontSize: 18, fontWeight: '800', color: colors.ink }}>{value}</Text>
-      <Text style={{ fontSize: 11.5, color: colors.subtext, marginTop: 2 }}>{label}</Text>
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: radius.sm,
+          backgroundColor: iconBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {icon}
+      </View>
+      <View>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], lineHeight: 24 }}>
+          {value}
+        </Text>
+        <Text style={{ fontSize: 12, fontWeight: '600', color: '#8A8F98', marginTop: 5 }}>{label}</Text>
+      </View>
     </View>
   );
 }
