@@ -7,7 +7,7 @@ interface AuthContextValue {
   /** False until the stored session (if any) has been restored. */
   ready: boolean;
   session: Session | null;
-  /** Ends this device's session. Local data is kept. */
+  /** Ends this device's session. Callers clear local data first (StreakStore.clearLocalData). */
   signOut(): Promise<void>;
 }
 
@@ -38,8 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ready,
       session,
       signOut: async () => {
-        // TODO(ticket-3): wipe local data here (clearState()) once sync exists,
-        // warning first about any changes not yet synced.
         // 'local' ends only this device's session and works offline.
         await supabase.auth.signOut({ scope: 'local' });
       },

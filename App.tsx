@@ -69,7 +69,7 @@ function AuthGate() {
 
   // Keyed by user so a sign-out/sign-in never reuses the previous user's in-memory state.
   return (
-    <StreakProvider key={session.user.id}>
+    <StreakProvider key={session.user.id} userId={session.user.id}>
       <Root />
     </StreakProvider>
   );

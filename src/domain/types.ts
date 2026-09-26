@@ -23,6 +23,8 @@ export interface Project {
   weeklyTarget: number;
   /** Epoch ms the project was started; backfilled from earliest session on load. */
   started?: number | null;
+  /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
+  updatedAt?: number;
 }
 
 export interface Habit {
@@ -36,6 +38,8 @@ export interface Habit {
   dailyTargetMin: number;
   /** Weekly time target in minutes. */
   weeklyTargetMin: number;
+  /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
+  updatedAt?: number;
 }
 
 export interface Session {
@@ -50,6 +54,8 @@ export interface Session {
   notes?: string;
   /** True when the session was logged manually rather than via the timer. */
   manual?: boolean;
+  /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
+  updatedAt?: number;
 }
 
 export interface ActiveTimer {
@@ -58,6 +64,8 @@ export interface ActiveTimer {
   startedAt: number | null;
   /** Accumulated seconds from previous (paused) segments. */
   baseSec: number;
+  /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
+  updatedAt?: number;
 }
 
 /** The slice of state that is persisted to device storage. */
