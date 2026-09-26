@@ -13,9 +13,11 @@ import { ProjectSheet } from './src/overlays/ProjectSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { TimerOverlay } from './src/overlays/TimerOverlay';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
+import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
+import { AuthProvider, useAuth } from './src/sync/AuthProvider';
 import { colors } from './src/theme/tokens';
 
 function Root() {
@@ -52,13 +54,34 @@ function Root() {
   );
 }
 
+function AuthGate() {
+  const { ready, session } = useAuth();
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.ink} />
+      </View>
+    );
+  }
+
+  if (!session) return <SignInScreen />;
+
+  // Keyed by user so a sign-out/sign-in never reuses the previous user's in-memory state.
+  return (
+    <StreakProvider key={session.user.id}>
+      <Root />
+    </StreakProvider>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StreakProvider>
+      <AuthProvider>
         <StatusBar style="dark" />
-        <Root />
-      </StreakProvider>
+        <AuthGate />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

@@ -23,6 +23,15 @@ export async function loadState(now: number = Date.now()): Promise<PersistedStat
   return hydrate({ v3, v2 }, now);
 }
 
+/** Remove all persisted app data from this device (used on sign-out). */
+export async function clearState(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([KEY, 'streak-v2']);
+  } catch {
+    // ignore
+  }
+}
+
 /** Persist only the durable slice, mirroring the design's commit(). */
 export async function saveState(data: PersistedState): Promise<void> {
   try {

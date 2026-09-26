@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Easing, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Animated, Easing, Pressable, ScrollView, Text, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
 import { selectStats } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
+import { useAuth } from '../sync/AuthProvider';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
 export function StatsScreen() {
@@ -309,7 +310,61 @@ export function StatsScreen() {
         ))}
         <View style={{ height: 8 }} />
       </View>
+
+      <AccountCard />
     </ScrollView>
+  );
+}
+
+function AccountCard() {
+  const { session, signOut } = useAuth();
+  const [busy, setBusy] = React.useState(false);
+
+  const confirmSignOut = () => {
+    Alert.alert('Sign out?', "You'll need to sign in again. Your data stays on this device.", [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await signOut();
+          } catch (e) {
+            setBusy(false);
+            Alert.alert('Could not sign out', e instanceof Error ? e.message : String(e));
+          }
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: 14,
+          paddingHorizontal: 16,
+          marginTop: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        },
+        shadowCard,
+      ]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 12, color: colors.subtext }}>Signed in as</Text>
+        <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink, marginTop: 2 }}>
+          {session?.user.email ?? 'Unknown account'}
+        </Text>
+      </View>
+      <Pressable disabled={busy} onPress={confirmSignOut} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.dangerSoft, opacity: busy ? 0.5 : 1 }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.danger }}>Sign out</Text>
+      </Pressable>
+    </View>
   );
 }
 
