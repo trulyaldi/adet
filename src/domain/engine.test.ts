@@ -109,6 +109,7 @@ test('selectToday focus summary and recommendation use deterministic daily progr
   const today = dkey(new Date(NOW));
   assert.equal(today, '2026-07-10');
   const data: PersistedState = {
+    schemaVersion: 3,
     projects: [
       { id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 86_400_000 },
     ],
@@ -162,6 +163,7 @@ test('selectToday focus summary and recommendation use deterministic daily progr
 test('manual sessions surface an edit payload and a "logged manually" marker in history', () => {
   const start = new Date(2026, 6, 8, 12, 0, 0).getTime(); // Wed Jul 8
   const data: PersistedState = {
+    schemaVersion: 3,
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: start }],
     habits: [
       {
@@ -196,6 +198,7 @@ test('activity heatmap: inline card caps at base weeks, full history extends bac
     return { id, habitId: 'h1', start, end: start + 3600_000, duration: 3600 };
   };
   const data: PersistedState = {
+    schemaVersion: 3,
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 200 * 86400000 }],
     habits: [
       { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#E3F2FD', dailyTargetMin: 30, weeklyTargetMin: 150 },
@@ -222,6 +225,7 @@ test('stats insights surface a weekly leader and an ahead/behind-pace note', () 
   const thisWeek = new Date(2026, 6, 7, 10, 0, 0).getTime(); // Tue in NOW's week
   const lastWeek = new Date(2026, 5, 30, 10, 0, 0).getTime(); // prior week
   const data: PersistedState = {
+    schemaVersion: 3,
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: lastWeek }],
     habits: [
       { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#E3F2FD', dailyTargetMin: 30, weeklyTargetMin: 150 },

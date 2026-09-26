@@ -2,7 +2,13 @@
 // deterministic sample sessions so a fresh install has something to show.
 
 import { addDays, dkey, rand } from './time';
-import { Habit, PersistedState, Project, Session } from './types';
+import {
+  CURRENT_SCHEMA_VERSION,
+  Habit,
+  PersistedState,
+  Project,
+  Session,
+} from './types';
 
 export function seed(now: number = Date.now()): PersistedState {
   const projects: Project[] = [
@@ -67,7 +73,14 @@ export function seed(now: number = Date.now()): PersistedState {
     p.started = min || now;
   }
 
-  return { projects, habits, sessions, active: null, historyClearedAt: 0 };
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    projects,
+    habits,
+    sessions,
+    active: null,
+    historyClearedAt: 0,
+  };
 }
 
 /** dkey re-export kept close to seed for tests. */
