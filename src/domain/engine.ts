@@ -252,6 +252,9 @@ export interface TodayGroup {
 export interface TodayModel {
   todayDateLabel: string;
   streakLabel: string;
+  /** After the streak in the header chip: "❄ 2" freezes left, "track today" when at risk, or "". */
+  streakNote: string;
+  streakAtRisk: boolean;
   groups: TodayGroup[];
   noHabits: boolean;
   hasHabits: boolean;
@@ -280,7 +283,8 @@ export function selectToday(
 ): TodayModel {
   const ctx = buildContext(data, now);
   const stages = stagesFor(config);
-  const globalStreak = dailyStreak(daySecMap(data, now), now).current;
+  const global = dailyStreak(daySecMap(data, now), now);
+  const globalStreak = global.current;
   const todayD = ctx.todayD;
   const dayGoalSec = data.habits.reduce(
     (total, h) => total + (h.dailyTargetMin || 30) * 60,
@@ -392,6 +396,8 @@ export function selectToday(
       ', ' +
       todayD.getFullYear(),
     streakLabel: globalStreak + ' day' + (globalStreak === 1 ? '' : 's'),
+    streakNote: global.atRisk ? 'track today' : globalStreak > 0 ? '❄ ' + global.freezesLeft : '',
+    streakAtRisk: global.atRisk,
     groups,
     noHabits: data.habits.length === 0,
     hasHabits: data.habits.length > 0,

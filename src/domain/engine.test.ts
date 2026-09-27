@@ -351,3 +351,32 @@ test('Today project line: compact streaks, weekly part hidden at 0, at-risk nudg
   assert.equal(risky.streakAtRisk, true);
   assert.equal(selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0].streakAtRisk, true);
 });
+
+test('Today header chip shows freezes left, or a nudge when the streak is at risk', () => {
+  const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
+  const s = (id: string, d: number) => ({ id, habitId: 'h1', start: at(d), end: at(d) + 1800_000, duration: 1800 });
+  const data = (sessions: ReturnType<typeof s>[]): PersistedState => ({
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(1) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions,
+    active: null,
+    historyClearedAt: 0,
+  });
+  const now = new Date(2026, 8, 16, 12, 0).getTime(); // Sep 16
+
+  // Sep 12 frozen: one of September's two freezes used.
+  const alive = selectToday(data([s('a', 11), s('b', 13), s('c', 14), s('d', 15)]), DEFAULT_CONFIG, now);
+  assert.equal(alive.streakLabel, '4 days');
+  assert.equal(alive.streakNote, '❄ 1');
+  assert.equal(alive.streakAtRisk, false);
+
+  const risky = selectToday(data([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, now);
+  assert.equal(risky.streakLabel, '2 days');
+  assert.equal(risky.streakNote, 'track today');
+  assert.equal(risky.streakAtRisk, true);
+
+  assert.equal(selectToday(data([]), DEFAULT_CONFIG, now).streakNote, '', 'no streak: no freeze count');
+});
