@@ -160,7 +160,7 @@ test('selectToday focus summary and recommendation use deterministic daily progr
   assert.equal(recommendedHabitId(data, DEFAULT_CONFIG, NOW), 'h2');
 });
 
-test('manual sessions surface an edit payload and a "logged manually" marker in history', () => {
+test('manual sessions show a "logged manually" marker and their note in history', () => {
   const start = new Date(2026, 6, 8, 12, 0, 0).getTime(); // Wed Jul 8
   const data: PersistedState = {
     schemaVersion: 3,
@@ -186,10 +186,44 @@ test('manual sessions surface an edit payload and a "logged manually" marker in 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
   const row = model.historyRows.find((r) => r.id === 'm1');
   assert.ok(row);
-  assert.equal(row!.editMinutes, 45);
-  assert.equal(row!.editNote, 'chapter 3');
   assert.ok(row!.sub.includes('logged manually'));
-  assert.ok(row!.editMeta.startsWith('Reading · '));
+  assert.ok(row!.sub.includes('chapter 3'));
+});
+
+test('selected heatmap day lists each session in time order with its range and note', () => {
+  const at = (h: number, m: number) => new Date(2026, 6, 8, h, m).getTime(); // Wed Jul 8
+  const habit = (id: string, name: string) => ({
+    id,
+    projectId: 'p1',
+    name,
+    icon: 'book' as const,
+    tile: '#E3F2FD',
+    dailyTargetMin: 30,
+    weeklyTargetMin: 150,
+  });
+  const data: PersistedState = {
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(0, 0) }],
+    habits: [habit('h1', 'Reading'), habit('h2', 'Writing')],
+    sessions: [
+      { id: 'late', habitId: 'h1', start: at(20, 0), end: at(20, 30), duration: 1800, notes: 'chapter 3' },
+      { id: 'early', habitId: 'h2', start: at(9, 5), end: at(10, 10), duration: 3900 },
+      { id: 'otherDay', habitId: 'h1', start: at(9, 0) + 86400000, end: at(10, 0) + 86400000, duration: 3600 },
+      { id: 'orphan', habitId: 'gone', start: at(12, 0), end: at(13, 0), duration: 3600 },
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+
+  const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: '2026-07-08' });
+  assert.deepEqual(
+    model.heatSelSessions.map((s) => [s.id, s.name, s.sub, s.timeLabel]),
+    [
+      ['early', 'Writing', '09:05–10:10', '1h 05m'],
+      ['late', 'Reading', '20:00–20:30 · chapter 3', '30m'],
+    ]
+  );
+  assert.deepEqual(selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null }).heatSelSessions, []);
 });
 
 test('activity heatmap: inline card caps at base weeks, full history extends back to first day', () => {

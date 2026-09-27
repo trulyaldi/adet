@@ -3,7 +3,7 @@
 
 import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
-import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pkey } from './time';
+import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
 import {
   ActiveTimer,
   Habit,
@@ -606,6 +606,16 @@ export interface HeatSelRow {
   name: string;
   timeLabel: string;
 }
+/** One completed session on the selected heatmap day (tappable to edit). */
+export interface HeatSelSession {
+  id: string;
+  iconPath: string;
+  tile: string;
+  name: string;
+  /** e.g. "14:05–15:10 · chapter 3" */
+  sub: string;
+  timeLabel: string;
+}
 export interface DistRow {
   name: string;
   label: string;
@@ -618,10 +628,6 @@ export interface HistoryRow {
   name: string;
   sub: string;
   timeLabel: string;
-  /** Fields the UI passes to actions.openSessionSheet to edit this session. */
-  editMinutes: number;
-  editNote: string;
-  editMeta: string;
 }
 export interface Insight {
   iconPath: string;
@@ -657,6 +663,7 @@ export interface StatsModel {
   heatSelDate: string;
   heatSelInfo: string;
   heatSelRows: HeatSelRow[];
+  heatSelSessions: HeatSelSession[];
   historyRows: HistoryRow[];
   historyHasRows: boolean;
 }
@@ -761,6 +768,7 @@ export function selectStats(
 
   // heat selection detail
   let heatSelRows: HeatSelRow[] = [];
+  let heatSelSessions: HeatSelSession[] = [];
   let heatSelInfo = '';
   let heatSelDate = '';
   if (ui.heatSel) {
@@ -799,6 +807,27 @@ export function selectStats(
       .map(({ sec, ...rest }) => rest);
     const tot = Object.values(perHabit).reduce((a, x) => a + x, 0);
     heatSelInfo = tot > 0 ? fmtHM(Math.floor(tot)) + ' total' : 'No time logged';
+    const hm = (ms: number) => {
+      const t = new Date(ms);
+      return pad(t.getHours()) + ':' + pad(t.getMinutes());
+    };
+    heatSelSessions = data.sessions
+      .filter((s) => dkey(new Date(s.start)) === ui.heatSel)
+      .sort((a, b) => a.start - b.start)
+      .map((s) => {
+        const h = data.habits.find((x) => x.id === s.habitId);
+        return h
+          ? {
+              id: s.id,
+              iconPath: iconPath(h.icon),
+              tile: h.tile,
+              name: h.name,
+              sub: hm(s.start) + '–' + hm(s.end) + (s.notes ? ' · ' + s.notes : ''),
+              timeLabel: fmtHM(s.duration),
+            }
+          : null;
+      })
+      .filter((x): x is HeatSelSession => !!x);
   }
 
   // longest streak across all history
@@ -912,9 +941,6 @@ export function selectStats(
           (s.manual ? ' · logged manually' : '') +
           (s.notes ? ' · ' + s.notes : ''),
         timeLabel: fmtHM(s.duration),
-        editMinutes: Math.max(1, Math.round(s.duration / 60)),
-        editNote: s.notes || '',
-        editMeta: h.name + ' · ' + dateLabel,
       };
     })
     .filter((x): x is HistoryRow => !!x);
@@ -976,6 +1002,7 @@ export function selectStats(
     heatSelDate,
     heatSelInfo,
     heatSelRows,
+    heatSelSessions,
     historyRows,
     historyHasRows: historyRows.length > 0,
   };

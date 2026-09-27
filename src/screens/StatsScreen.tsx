@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { selectStats } from '../domain/engine';
+import { MAX_REMINDER_HOURS } from '../domain/reminder';
 import { useStreak } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
 import { colors, radius, shadowCard } from '../theme/tokens';
@@ -282,14 +283,7 @@ export function StatsScreen() {
         {model.historyRows.map((hr) => (
           <Pressable
             key={hr.id}
-            onPress={() =>
-              actions.openSessionSheet({
-                id: hr.id,
-                minutes: hr.editMinutes,
-                note: hr.editNote,
-                meta: hr.editMeta,
-              })
-            }
+            onPress={() => actions.openSessionSheet(hr.id)}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -312,8 +306,67 @@ export function StatsScreen() {
         <View style={{ height: 8 }} />
       </View>
 
+      <ReminderCard />
       <AccountCard />
     </ScrollView>
+  );
+}
+
+function ReminderCard() {
+  const { settings, actions } = useStreak();
+  const hours = settings.reminderHours;
+  const step = (delta: number) => actions.setReminderHours(Math.min(MAX_REMINDER_HOURS, Math.max(0, hours + delta)));
+
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: 14,
+          paddingHorizontal: 16,
+          marginTop: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        },
+        shadowCard,
+      ]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>Long-timer reminder</Text>
+        <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>
+          {hours > 0 ? `Ask if a timer is still running after ${hours}h` : 'Off'}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <StepPill label="−" disabled={hours <= 0} onPress={() => step(-1)} />
+        <Text style={{ width: 34, textAlign: 'center', fontSize: 14, fontWeight: '700', color: colors.ink }}>
+          {hours > 0 ? `${hours}h` : 'Off'}
+        </Text>
+        <StepPill label="+" disabled={hours >= MAX_REMINDER_HOURS} onPress={() => step(1)} />
+      </View>
+    </View>
+  );
+}
+
+function StepPill({ label, disabled, onPress }: { label: string; disabled: boolean; onPress(): void }) {
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 11,
+        backgroundColor: colors.screen,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <Text style={{ fontSize: 18, fontWeight: '600', color: colors.ink }}>{label}</Text>
+    </Pressable>
   );
 }
 

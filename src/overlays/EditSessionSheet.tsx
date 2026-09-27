@@ -1,64 +1,81 @@
 import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
+import { DateTimeField } from '../components/DateTimeField';
 import { Sheet } from '../components/Sheet';
-import { fmtMin, stepFor } from '../domain/time';
+import { checkSessionTimes } from '../domain/sessions';
+import { fmtHM } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
 
 export function EditSessionSheet() {
-  const { ui, actions } = useStreak();
+  const { data, ui, now, actions } = useStreak();
   const sheet = ui.sessionSheet;
-  const durPct = sheet
-    ? Math.min(100, Math.round((sheet.minutes / 240) * 100))
-    : 0;
+  // Validate live so problems show while picking, not only on save.
+  const check = sheet ? checkSessionTimes(sheet.start, sheet.end, now, { existing: true }) : null;
+  const error = sheet?.error ?? (check && !check.ok ? check.error : null);
+  const confirming = !!(sheet?.confirmLong && check?.ok);
+  // Picker cap: end of today, stable all day (a per-second value would re-render
+  // the open native picker). checkSessionTimes rejects the rest of today's future.
+  const today = new Date(now);
+  const pickerMax = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime() - 1;
 
   return (
-    <Sheet visible={!!sheet} onClose={actions.closeSessionSheet} maxHeightPct={0.72}>
+    <Sheet visible={!!sheet} onClose={actions.closeSessionSheet} maxHeightPct={0.86}>
       {sheet && (
         <View style={{ gap: 15, paddingTop: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Edit session</Text>
-              <Text style={{ fontSize: 13, color: colors.subtext, marginTop: 2 }}>{sheet.meta}</Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Edit session</Text>
             <CloseButton onPress={actions.closeSessionSheet} />
           </View>
 
-          {/* Duration */}
+          {/* Habit */}
           <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>Duration</Text>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>
-                {fmtMin(sheet.minutes)}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <StepButton
-                label="−"
-                onPress={() =>
-                  actions.patchSessionSheet({
-                    minutes: Math.max(1, sheet.minutes - stepFor(sheet.minutes)),
-                  })
-                }
-              />
-              <View style={{ flex: 1, height: 6, borderRadius: radius.pill, backgroundColor: colors.track, overflow: 'hidden' }}>
-                <View style={{ width: `${durPct}%`, height: '100%', borderRadius: radius.pill, backgroundColor: colors.ink }} />
-              </View>
-              <StepButton
-                label="+"
-                onPress={() =>
-                  actions.patchSessionSheet({
-                    minutes: Math.min(480, sheet.minutes + stepFor(sheet.minutes)),
-                  })
-                }
-              />
+            <Label>Habit</Label>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {data.habits.map((h) => (
+                <Chip
+                  key={h.id}
+                  label={h.name}
+                  on={sheet.habitId === h.id}
+                  onPress={() => actions.patchSessionSheet({ habitId: h.id })}
+                />
+              ))}
             </View>
           </View>
 
+          {/* Times */}
+          <View style={{ gap: 10 }}>
+            <DateTimeField
+              label="Start"
+              value={sheet.start}
+              max={pickerMax}
+              onChange={(start) => actions.patchSessionSheet({ start })}
+            />
+            <DateTimeField
+              label="End"
+              value={sheet.end}
+              max={pickerMax}
+              onChange={(end) => actions.patchSessionSheet({ end })}
+            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Label noMargin>Duration</Label>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>
+                {check?.ok ? fmtHM(check.duration) : '—'}
+              </Text>
+            </View>
+          </View>
+
+          {error && <Text style={{ fontSize: 13, fontWeight: '600', color: colors.danger }}>{error}</Text>}
+          {confirming && check?.ok && (
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
+              {`That's ${fmtHM(check.duration)}, longer than 8 hours. Save it anyway?`}
+            </Text>
+          )}
+
           {/* Note */}
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext, marginBottom: 8 }}>Note</Text>
+            <Label>Note</Label>
             <TextInput
               value={sheet.note}
               onChangeText={(t) => actions.patchSessionSheet({ note: t })}
@@ -70,15 +87,19 @@ export function EditSessionSheet() {
 
           {/* Save */}
           <Pressable
+            disabled={!!error}
             onPress={actions.saveSessionSheet}
             style={{
               borderRadius: radius.lg,
               padding: 16,
               alignItems: 'center',
               backgroundColor: colors.ink,
+              opacity: error ? 0.4 : 1,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Save changes</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
+              {confirming && check?.ok ? `Yes, save ${fmtHM(check.duration)}` : 'Save changes'}
+            </Text>
           </Pressable>
 
           <Pressable onPress={() => actions.deleteSession(sheet.id)} style={{ padding: 4, alignItems: 'center' }}>
@@ -90,21 +111,27 @@ export function EditSessionSheet() {
   );
 }
 
-function StepButton({ label, onPress }: { label: string; onPress(): void }) {
+function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): void }) {
   return (
     <Pressable
       onPress={onPress}
       style={{
-        width: 40,
-        height: 40,
-        borderRadius: 13,
-        backgroundColor: colors.screen,
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: radius.pill,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        backgroundColor: on ? colors.ink : colors.screen,
       }}
     >
-      <Text style={{ fontSize: 20, fontWeight: '600', color: colors.ink }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: on ? '#FFFFFF' : colors.ink }}>{label}</Text>
     </Pressable>
+  );
+}
+
+function Label({ children, noMargin }: { children: React.ReactNode; noMargin?: boolean }) {
+  return (
+    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext, marginBottom: noMargin ? 0 : 8 }}>
+      {children}
+    </Text>
   );
 }
 

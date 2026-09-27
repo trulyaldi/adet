@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { seed } from './seed';
+import { restoreSession } from './sessions';
 import {
   ACTIVE_ID,
   Change,
@@ -212,6 +213,44 @@ test('confirmPushed keeps entries replaced while the push was in flight', () => 
 });
 
 // --- first sign-in -----------------------------------------------------------
+
+test('delete then undo before a push leaves a single upsert in the outbox', () => {
+  const s1 = session('s1', 'h1', 100);
+  const before = state({ habits: [habit('h1', 100)], sessions: [s1] });
+
+  const del = stampLocalChanges(before, { ...before, sessions: [] }, NOW);
+  let outbox = enqueue({}, del.changes);
+  assert.equal(outbox['sessions:s1'].deletedAt, NOW);
+
+  const undone = stampLocalChanges(del.data, restoreSession(del.data, s1), NOW + 3000);
+  outbox = enqueue(outbox, undone.changes);
+  assert.deepEqual(Object.keys(outbox), ['sessions:s1']);
+  assert.equal(outbox['sessions:s1'].deletedAt, null);
+  assert.equal(outbox['sessions:s1'].record.updatedAt, NOW + 3000);
+  assert.equal(undone.data.sessions[0].updatedAt, NOW + 3000);
+});
+
+test('delete, push, then undo: a second device ends up with the session restored', () => {
+  const s1 = session('s1', 'h1', 100, 'kept note');
+  const deviceB = state({ habits: [habit('h1', 100)], sessions: [s1] });
+  const a0 = state({ habits: [habit('h1', 100)], sessions: [s1] });
+
+  // Device A deletes; the delete is pushed and device B pulls it.
+  const del = stampLocalChanges(a0, { ...a0, sessions: [] }, NOW);
+  const b1 = mergeRemote(deviceB, {}, del.changes, NOW + 1000);
+  assert.deepEqual(b1.data.sessions, []);
+
+  // Device A undoes; the restore is pushed and device B pulls it.
+  const undo = stampLocalChanges(del.data, restoreSession(del.data, s1), NOW + 3000);
+  const b2 = mergeRemote(b1.data, b1.outbox, undo.changes, NOW + 4000);
+  assert.equal(b2.data.sessions.length, 1);
+  assert.equal(b2.data.sessions[0].notes, 'kept note');
+  assert.equal(b2.data.sessions[0].updatedAt, NOW + 3000);
+
+  // A device that only pulls after the undo sees the restore win over the delete.
+  const late = mergeRemote(deviceB, {}, [...del.changes, ...undo.changes], NOW + 5000);
+  assert.equal(late.data.sessions.length, 1);
+});
 
 test('isUntouchedSeed matches the seed from another day but not edited data', () => {
   const installed = seed(NOW - 5 * 86_400_000);

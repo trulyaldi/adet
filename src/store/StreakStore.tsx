@@ -12,9 +12,16 @@ import { AppState } from 'react-native';
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
+import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
+import {
+  applySessionEdit,
+  checkSessionTimes,
+  defaultManualStart,
+  manualSession,
+  restoreSession,
+} from '../domain/sessions';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
-import { addDays } from '../domain/time';
 import {
   ActiveTimer,
   CURRENT_SCHEMA_VERSION,
@@ -23,7 +30,9 @@ import {
   PersistedState,
   Session,
 } from '../domain/types';
+import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
+import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
 export type Screen = 'today' | 'projects' | 'stats';
@@ -43,17 +52,37 @@ export interface ProjectSheetState {
 }
 export interface LogSheetState {
   habitId: string | null;
+  /** Epoch ms. */
+  start: number;
+  /** Whether the length is entered as a duration or as an end time. */
+  mode: 'duration' | 'end';
+  /** Duration in minutes (mode 'duration'). */
   minutes: number;
-  /** 0 = today, 1 = yesterday, 2 = two days ago. */
-  dayOffset: number;
+  /** Epoch ms (mode 'end'). */
+  end: number;
   note: string;
+  /** Validation message from the last save attempt. */
+  error: string | null;
+  /** True once the user was asked to confirm a long (>8h) session. */
+  confirmLong: boolean;
+}
+
+/** The end time a log sheet currently describes, whichever way it's entered. */
+export function logSheetEnd(sh: LogSheetState): number {
+  return sh.mode === 'duration' ? sh.start + sh.minutes * 60000 : sh.end;
 }
 export interface SessionSheetState {
   id: string;
-  minutes: number;
+  habitId: string;
+  /** Epoch ms. */
+  start: number;
+  /** Epoch ms. */
+  end: number;
   note: string;
-  /** Read-only context label, e.g. "LeetCode · Tue, Jul 8". */
-  meta: string;
+  /** Validation message from the last save attempt. */
+  error: string | null;
+  /** True once the user was asked to confirm a long (>8h) session. */
+  confirmLong: boolean;
 }
 
 export interface UIState {
@@ -67,6 +96,8 @@ export interface UIState {
   stageSheet: string | null; // projectId
   logSheet: LogSheetState | null;
   sessionSheet: SessionSheetState | null;
+  /** The last deleted session, offered for undo until the toast expires. */
+  undo: Session | null;
 }
 
 const INITIAL_UI: UIState = {
@@ -80,7 +111,14 @@ const INITIAL_UI: UIState = {
   stageSheet: null,
   logSheet: null,
   sessionSheet: null,
+  undo: null,
 };
+
+/** Time for a full-screen modal to finish its dismiss animation. */
+const MODAL_DISMISS_MS = 450;
+
+/** How long the "Session deleted · Undo" toast stays up. */
+export const UNDO_MS = 5000;
 
 export interface StreakActions {
   // navigation
@@ -90,7 +128,8 @@ export interface StreakActions {
   openTimer(): void;
   closeTimer(): void;
   togglePause(): void;
-  stopTimer(): void;
+  /** Save the running timer as a session; `editAfter` then opens it in the edit sheet. */
+  stopTimer(opts?: { editAfter?: boolean }): void;
   // heatmap
   openHeatSheet(): void;
   closeHeatSheet(): void;
@@ -124,11 +163,14 @@ export interface StreakActions {
   patchLogSheet(patch: Partial<LogSheetState>): void;
   saveLogSheet(): void;
   // edit-session sheet
-  openSessionSheet(sheet: SessionSheetState): void;
+  openSessionSheet(sessionId: string): void;
   closeSessionSheet(): void;
   patchSessionSheet(patch: Partial<SessionSheetState>): void;
   saveSessionSheet(): void;
   deleteSession(id: string): void;
+  undoDelete(): void;
+  // device settings
+  setReminderHours(hours: number): void;
 }
 
 interface StreakContextValue {
@@ -137,6 +179,8 @@ interface StreakContextValue {
   ui: UIState;
   now: number;
   config: AppConfig;
+  /** Device-only preferences (not synced). */
+  settings: AppSettings;
   actions: StreakActions;
   sync: SyncStatus;
   /** Stop syncing and erase this device's data and sync state (before sign-out). */
@@ -208,6 +252,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   const data = store.data;
   const [ui, setUi] = useState<UIState>(INITIAL_UI);
   const [now, setNow] = useState(() => Date.now());
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  /** Bumped when notification permission is granted, so the reminder reschedules. */
+  const [permRev, setPermRev] = useState(0);
 
   const storeRef = useRef(store);
   storeRef.current = store;
@@ -216,10 +265,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   // Load persisted state once.
   useEffect(() => {
     let mounted = true;
-    Promise.all([loadState(), loadSyncMeta()]).then(([loaded, meta]) => {
+    Promise.all([loadState(), loadSyncMeta(), loadSettings()]).then(([loaded, meta, prefs]) => {
       if (!mounted) return;
       const next = forUser(loaded, meta, userId, Date.now());
       setStore(next);
+      setSettings(prefs);
       if (next.sync !== meta) saveState(next.data, next.sync);
       setReady(true);
     });
@@ -289,11 +339,32 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     await clearState();
   }, []);
 
+  // The long-timer reminder follows the timer state, whichever device changed
+  // it (remote merges update data.active too). Cancelled once data is wiped.
+  const reminderHabit = data.active
+    ? data.habits.find((h) => h.id === data.active!.habitId)?.name ?? 'your habit'
+    : '';
+  const reminderAt = wiped ? null : reminderFireAt(data.active, settings.reminderHours);
+  useEffect(() => {
+    if (!ready) return;
+    syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
+  }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
+
+  // The undo toast expires on its own; a newer delete restarts the clock.
+  useEffect(() => {
+    if (!ui.undo) return;
+    const t = setTimeout(() => setUi((p) => (p.undo === ui.undo ? { ...p, undo: null } : p)), UNDO_MS);
+    return () => clearTimeout(t);
+  }, [ui.undo]);
+
   // 1s tick drives the running timer + "Start" button clocks.
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  /** Latest actions, for calls deferred past a render (stopTimer's editAfter). */
+  const actionsRef = useRef<StreakActions | null>(null);
 
   const actions = useMemo<StreakActions>(() => {
     const patchUi = (patch: Partial<UIState>) =>
@@ -314,6 +385,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           };
         });
         patchUi({ timerOpen: true });
+        // Reminder permission is asked on timer start; iOS only prompts the first time.
+        if (settingsRef.current.reminderHours > 0) {
+          requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
+        }
       },
       openTimer: () => patchUi({ timerOpen: true }),
       closeTimer: () => patchUi({ timerOpen: false }),
@@ -333,16 +408,24 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           }
           return { ...d, active: { ...a, startedAt: Date.now() } };
         }),
-      stopTimer: () => {
+      stopTimer: (opts) => {
+        const end = Date.now();
+        const a = storeRef.current.data.active;
         setData((d) => {
           if (!d.active) return d;
           return {
             ...d,
-            sessions: [...d.sessions, sessionFromActive(d.active, Date.now())],
+            sessions: [...d.sessions, sessionFromActive(d.active, end)],
             active: null,
           };
         });
         patchUi({ timerOpen: false });
+        if (opts?.editAfter && a) {
+          const id = sessionFromActive(a, end).id;
+          // Wait for the timer modal to finish dismissing: iOS won't present the
+          // edit sheet while another modal is animating out.
+          setTimeout(() => actionsRef.current?.openSessionSheet(id), MODAL_DISMISS_MS);
+        }
       },
 
       openHeatSheet: () => patchUi({ heatSheet: true }),
@@ -532,90 +615,135 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         const def =
           recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ??
           (data.habits[0] ? data.habits[0].id : null);
+        const start = defaultManualStart(Date.now(), 30);
         patchUi({
-          logSheet: { habitId: def, minutes: 30, dayOffset: 0, note: '' },
+          logSheet: {
+            habitId: def,
+            start,
+            mode: 'duration',
+            minutes: 30,
+            end: start + 30 * 60000,
+            note: '',
+            error: null,
+            confirmLong: false,
+          },
         });
       },
       closeLogSheet: () => patchUi({ logSheet: null }),
       patchLogSheet: (patch) =>
         setUi((p) =>
-          p.logSheet ? { ...p, logSheet: { ...p.logSheet, ...patch } } : p
+          p.logSheet
+            ? {
+                ...p,
+                // Any field change invalidates the last error and confirmation.
+                logSheet: { ...p.logSheet, error: null, confirmLong: false, ...patch },
+              }
+            : p
         ),
       saveLogSheet: () => {
         setUi((prevUi) => {
           const sh = prevUi.logSheet;
-          if (!sh || !sh.habitId || !sh.minutes) return prevUi;
+          if (!sh || !sh.habitId) return prevUi;
+          const habitId = sh.habitId;
+          const end = logSheetEnd(sh);
+          const check = checkSessionTimes(sh.start, end, Date.now());
+          if (!check.ok) return { ...prevUi, logSheet: { ...sh, error: check.error } };
+          if (check.needsConfirm && !sh.confirmLong) {
+            return { ...prevUi, logSheet: { ...sh, error: null, confirmLong: true } };
+          }
           setData((d) => {
-            const base = addDays(new Date(), -sh.dayOffset);
-            const start = new Date(
-              base.getFullYear(),
-              base.getMonth(),
-              base.getDate(),
-              12,
-              0
-            ).getTime();
-            const note = sh.note.trim();
-            const session: Session = {
-              id: 's' + Date.now(),
-              habitId: sh.habitId!,
-              start,
-              end: start + sh.minutes * 60000,
-              duration: sh.minutes * 60,
-              manual: true,
-              ...(note ? { notes: note } : {}),
-            };
+            if (!d.habits.some((h) => h.id === habitId)) return d;
+            const session = manualSession('s' + Date.now(), { habitId, start: sh.start, end, note: sh.note });
             return { ...d, sessions: [...d.sessions, session] };
           });
           return { ...prevUi, logSheet: null };
         });
       },
 
-      openSessionSheet: (sheet) => patchUi({ sessionSheet: sheet }),
+      openSessionSheet: (sessionId) => {
+        // Latest data, so a session saved moments ago (stopTimer) is found.
+        const s = storeRef.current.data.sessions.find((x) => x.id === sessionId);
+        if (!s) return;
+        patchUi({
+          sessionSheet: {
+            id: s.id,
+            habitId: s.habitId,
+            start: s.start,
+            end: s.end,
+            note: s.notes ?? '',
+            error: null,
+            confirmLong: false,
+          },
+        });
+      },
       closeSessionSheet: () => patchUi({ sessionSheet: null }),
       patchSessionSheet: (patch) =>
         setUi((p) =>
           p.sessionSheet
-            ? { ...p, sessionSheet: { ...p.sessionSheet, ...patch } }
+            ? {
+                ...p,
+                // Any field change invalidates the last error and confirmation.
+                sessionSheet: { ...p.sessionSheet, error: null, confirmLong: false, ...patch },
+              }
             : p
         ),
       saveSessionSheet: () => {
         setUi((prevUi) => {
           const sh = prevUi.sessionSheet;
-          if (!sh || !sh.minutes) return prevUi;
-          setData((d) => ({
-            ...d,
-            sessions: d.sessions.map((s) => {
-              if (s.id !== sh.id) return s;
-              const note = sh.note.trim();
-              const next: Session = {
-                ...s,
-                duration: sh.minutes * 60,
-                end: s.start + sh.minutes * 60000,
-              };
-              if (note) next.notes = note;
-              else delete next.notes;
-              return next;
-            }),
-          }));
+          if (!sh) return prevUi;
+          const check = checkSessionTimes(sh.start, sh.end, Date.now(), { existing: true });
+          if (!check.ok) return { ...prevUi, sessionSheet: { ...sh, error: check.error } };
+          if (check.needsConfirm && !sh.confirmLong) {
+            return { ...prevUi, sessionSheet: { ...sh, error: null, confirmLong: true } };
+          }
+          setData((d) => {
+            if (!d.habits.some((h) => h.id === sh.habitId)) return d;
+            return {
+              ...d,
+              sessions: d.sessions.map((s) =>
+                s.id === sh.id
+                  ? applySessionEdit(s, { habitId: sh.habitId, start: sh.start, end: sh.end, note: sh.note })
+                  : s
+              ),
+            };
+          });
           return { ...prevUi, sessionSheet: null };
         });
       },
       deleteSession: (id) => {
+        const deleted = data.sessions.find((s) => s.id === id) ?? null;
         setData((d) => ({
           ...d,
           sessions: d.sessions.filter((s) => s.id !== id),
         }));
-        patchUi({ sessionSheet: null });
+        patchUi({ sessionSheet: null, undo: deleted });
+      },
+      undoDelete: () => {
+        setUi((prevUi) => {
+          const s = prevUi.undo;
+          if (s) setData((d) => restoreSession(d, s));
+          return { ...prevUi, undo: null };
+        });
+      },
+
+      setReminderHours: (hours) => {
+        const next = { ...settingsRef.current, reminderHours: clampReminderHours(hours) };
+        setSettings(next);
+        saveSettings(next);
+        if (next.reminderHours > 0) {
+          requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
+        }
       },
     };
-    // `data` referenced only inside deleteHabit's timerOpen decision; actions
-    // otherwise use functional updates. Recreate when data identity changes so
-    // that read is fresh.
+    // A few actions read `data` directly (deleteHabit's timerOpen decision,
+    // openLogSheet, deleteSession's undo copy); the rest use
+    // functional updates. Recreate when data identity changes so reads are fresh.
   }, [data, setData]);
+  actionsRef.current = actions;
 
   const value = useMemo<StreakContextValue>(
-    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, actions, sync, clearLocalData }),
-    [ready, data, ui, now, actions, sync, clearLocalData]
+    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, settings, actions, sync, clearLocalData }),
+    [ready, data, ui, now, settings, actions, sync, clearLocalData]
   );
 
   return <StreakContext.Provider value={value}>{children}</StreakContext.Provider>;

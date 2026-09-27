@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { TabBar } from './src/components/TabBar';
+import { UndoToast } from './src/components/UndoToast';
 import { ActivityDaySheet } from './src/overlays/ActivityDaySheet';
 import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
 import { EditSessionSheet } from './src/overlays/EditSessionSheet';
@@ -37,6 +38,12 @@ function Root() {
         {ui.screen === 'today' && <TodayScreen />}
         {ui.screen === 'projects' && <ProjectsScreen />}
         {ui.screen === 'stats' && <StatsScreen />}
+        {/* The day sheet is a modal over this view, so it shows its own copy. */}
+        {ui.heatSel == null && (
+          <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12 }}>
+            <UndoToast />
+          </View>
+        )}
       </View>
 
       <TabBar active={ui.screen} onChange={actions.setScreen} />
