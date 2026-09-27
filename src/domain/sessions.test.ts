@@ -4,6 +4,8 @@ import { test } from 'node:test';
 import {
   applySessionEdit,
   checkSessionTimes,
+  defaultManualStart,
+  fitManualStart,
   manualSession,
   restoreSession,
   SESSION_CONFIRM_SEC,
@@ -162,4 +164,22 @@ test('restoreSession is a no-op if the session exists or its habit is gone', () 
   assert.equal(restoreSession(present, base), present);
   const noHabit = withSessions([], ['h2']);
   assert.equal(restoreSession(noHabit, base), noHabit);
+});
+
+test('defaultManualStart ends the session at now rounded down to 5 minutes', () => {
+  const now = new Date(2026, 6, 10, 14, 37, 42).getTime();
+  assert.equal(defaultManualStart(now, 30), new Date(2026, 6, 10, 14, 5).getTime());
+  const exact = new Date(2026, 6, 10, 14, 35).getTime();
+  assert.equal(defaultManualStart(exact, 45), new Date(2026, 6, 10, 13, 50).getTime());
+  // The default is always a valid session.
+  assert.equal(checkSessionTimes(defaultManualStart(now, 30), defaultManualStart(now, 30) + 30 * MIN, now).ok, true);
+});
+
+test('fitManualStart keeps the start unless the session would end in the future', () => {
+  const now = new Date(2026, 6, 10, 14, 37).getTime();
+  const nine = new Date(2026, 6, 10, 9, 0).getTime();
+  assert.equal(fitManualStart(nine, 60, now), nine);
+  // 14:05 + 60m would end at 15:05, so it becomes 13:35–14:35.
+  const late = new Date(2026, 6, 10, 14, 5).getTime();
+  assert.equal(fitManualStart(late, 60, now), new Date(2026, 6, 10, 13, 35).getTime());
 });

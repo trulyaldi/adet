@@ -101,3 +101,22 @@ export function restoreSession(data: PersistedState, session: Session): Persiste
   if (!data.habits.some((h) => h.id === session.habitId)) return data;
   return { ...data, sessions: [...data.sessions, { ...session }] };
 }
+
+const FIVE_MIN_MS = 5 * 60 * 1000;
+
+/**
+ * Default start for a manual log of `minutes`: so that it ends at `now`
+ * rounded down to 5 minutes (picker-friendly times, never in the future).
+ */
+export function defaultManualStart(now: number, minutes: number): number {
+  return Math.floor(now / FIVE_MIN_MS) * FIVE_MIN_MS - minutes * 60 * 1000;
+}
+
+/**
+ * Start for a manual log after its duration changes: kept as is unless the
+ * session would then end in the future, in which case it's moved earlier so
+ * the session ends at `now` (rounded down to 5 minutes).
+ */
+export function fitManualStart(start: number, minutes: number, now: number): number {
+  return start + minutes * 60 * 1000 > now ? defaultManualStart(now, minutes) : start;
+}

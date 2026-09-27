@@ -13,9 +13,14 @@ import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
 import { seed } from '../domain/seed';
-import { applySessionEdit, checkSessionTimes, restoreSession } from '../domain/sessions';
+import {
+  applySessionEdit,
+  checkSessionTimes,
+  defaultManualStart,
+  manualSession,
+  restoreSession,
+} from '../domain/sessions';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
-import { addDays } from '../domain/time';
 import {
   ActiveTimer,
   CURRENT_SCHEMA_VERSION,
@@ -44,10 +49,24 @@ export interface ProjectSheetState {
 }
 export interface LogSheetState {
   habitId: string | null;
+  /** Epoch ms. */
+  start: number;
+  /** Whether the length is entered as a duration or as an end time. */
+  mode: 'duration' | 'end';
+  /** Duration in minutes (mode 'duration'). */
   minutes: number;
-  /** 0 = today, 1 = yesterday, 2 = two days ago. */
-  dayOffset: number;
+  /** Epoch ms (mode 'end'). */
+  end: number;
   note: string;
+  /** Validation message from the last save attempt. */
+  error: string | null;
+  /** True once the user was asked to confirm a long (>8h) session. */
+  confirmLong: boolean;
+}
+
+/** The end time a log sheet currently describes, whichever way it's entered. */
+export function logSheetEnd(sh: LogSheetState): number {
+  return sh.mode === 'duration' ? sh.start + sh.minutes * 60000 : sh.end;
 }
 export interface SessionSheetState {
   id: string;
@@ -553,38 +572,45 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         const def =
           recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ??
           (data.habits[0] ? data.habits[0].id : null);
+        const start = defaultManualStart(Date.now(), 30);
         patchUi({
-          logSheet: { habitId: def, minutes: 30, dayOffset: 0, note: '' },
+          logSheet: {
+            habitId: def,
+            start,
+            mode: 'duration',
+            minutes: 30,
+            end: start + 30 * 60000,
+            note: '',
+            error: null,
+            confirmLong: false,
+          },
         });
       },
       closeLogSheet: () => patchUi({ logSheet: null }),
       patchLogSheet: (patch) =>
         setUi((p) =>
-          p.logSheet ? { ...p, logSheet: { ...p.logSheet, ...patch } } : p
+          p.logSheet
+            ? {
+                ...p,
+                // Any field change invalidates the last error and confirmation.
+                logSheet: { ...p.logSheet, error: null, confirmLong: false, ...patch },
+              }
+            : p
         ),
       saveLogSheet: () => {
         setUi((prevUi) => {
           const sh = prevUi.logSheet;
-          if (!sh || !sh.habitId || !sh.minutes) return prevUi;
+          if (!sh || !sh.habitId) return prevUi;
+          const habitId = sh.habitId;
+          const end = logSheetEnd(sh);
+          const check = checkSessionTimes(sh.start, end, Date.now());
+          if (!check.ok) return { ...prevUi, logSheet: { ...sh, error: check.error } };
+          if (check.needsConfirm && !sh.confirmLong) {
+            return { ...prevUi, logSheet: { ...sh, error: null, confirmLong: true } };
+          }
           setData((d) => {
-            const base = addDays(new Date(), -sh.dayOffset);
-            const start = new Date(
-              base.getFullYear(),
-              base.getMonth(),
-              base.getDate(),
-              12,
-              0
-            ).getTime();
-            const note = sh.note.trim();
-            const session: Session = {
-              id: 's' + Date.now(),
-              habitId: sh.habitId!,
-              start,
-              end: start + sh.minutes * 60000,
-              duration: sh.minutes * 60,
-              manual: true,
-              ...(note ? { notes: note } : {}),
-            };
+            if (!d.habits.some((h) => h.id === habitId)) return d;
+            const session = manualSession('s' + Date.now(), { habitId, start: sh.start, end, note: sh.note });
             return { ...d, sessions: [...d.sessions, session] };
           });
           return { ...prevUi, logSheet: null };
