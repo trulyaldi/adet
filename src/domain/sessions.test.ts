@@ -34,7 +34,16 @@ test('end must be after start', () => {
 test('sessions shorter than a minute are rejected', () => {
   const r = checkSessionTimes(NOW - 59 * 1000, NOW, NOW);
   assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.error, 'A session must be at least 1 minute long.');
   assert.equal(checkSessionTimes(NOW - MIN, NOW, NOW).ok, true);
+});
+
+test('editing an existing session under a minute suggests deleting it', () => {
+  const r = checkSessionTimes(NOW - 30 * 1000, NOW, NOW, { existing: true });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.error, 'Sessions must be at least 1 minute. Delete this one instead?');
+  const other = checkSessionTimes(NOW - HOUR, NOW - 2 * HOUR, NOW, { existing: true });
+  if (!other.ok) assert.match(other.error, /after the start/, 'other errors are unchanged');
 });
 
 test('sessions ending in the future are rejected, with a minute of slack', () => {

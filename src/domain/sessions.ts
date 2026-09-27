@@ -17,15 +17,31 @@ export type SessionCheck =
   | { ok: true; duration: number; needsConfirm: boolean }
   | { ok: false; error: string };
 
-/** Validate a start/end pair (epoch ms) against `now`; duration is in seconds. */
-export function checkSessionTimes(start: number, end: number, now: number): SessionCheck {
+/**
+ * Validate a start/end pair (epoch ms) against `now`; duration is in seconds.
+ * `existing` marks an edit of a saved session, whose too-short error suggests
+ * deleting it instead.
+ */
+export function checkSessionTimes(
+  start: number,
+  end: number,
+  now: number,
+  opts: { existing?: boolean } = {}
+): SessionCheck {
   if (!Number.isFinite(start) || !Number.isFinite(end)) {
     return { ok: false, error: 'Pick a start and end time.' };
   }
   if (end <= start) return { ok: false, error: 'End time must be after the start time.' };
   if (end > now + FUTURE_SLACK_MS) return { ok: false, error: "A session can't end in the future." };
   const duration = Math.round((end - start) / 1000);
-  if (duration < SESSION_MIN_SEC) return { ok: false, error: 'A session must be at least 1 minute long.' };
+  if (duration < SESSION_MIN_SEC) {
+    return {
+      ok: false,
+      error: opts.existing
+        ? 'Sessions must be at least 1 minute. Delete this one instead?'
+        : 'A session must be at least 1 minute long.',
+    };
+  }
   if (duration > SESSION_MAX_SEC) {
     return {
       ok: false,

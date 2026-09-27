@@ -12,7 +12,7 @@ export function EditSessionSheet() {
   const { data, ui, now, actions } = useStreak();
   const sheet = ui.sessionSheet;
   // Validate live so problems show while picking, not only on save.
-  const check = sheet ? checkSessionTimes(sheet.start, sheet.end, now) : null;
+  const check = sheet ? checkSessionTimes(sheet.start, sheet.end, now, { existing: true }) : null;
   const error = sheet?.error ?? (check && !check.ok ? check.error : null);
   const confirming = !!(sheet?.confirmLong && check?.ok);
   // Picker cap: end of today, stable all day (a per-second value would re-render

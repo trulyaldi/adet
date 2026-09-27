@@ -621,7 +621,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setUi((prevUi) => {
           const sh = prevUi.sessionSheet;
           if (!sh) return prevUi;
-          const check = checkSessionTimes(sh.start, sh.end, Date.now());
+          const check = checkSessionTimes(sh.start, sh.end, Date.now(), { existing: true });
           if (!check.ok) return { ...prevUi, sessionSheet: { ...sh, error: check.error } };
           if (check.needsConfirm && !sh.confirmLong) {
             return { ...prevUi, sessionSheet: { ...sh, error: null, confirmLong: true } };
