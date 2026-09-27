@@ -4,6 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
+import { RecapCard } from '../components/RecapCard';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { selectToday } from '../domain/engine';
 import { fmtClock } from '../domain/time';
@@ -55,6 +56,9 @@ export function TodayScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Last week's recap, once per week */}
+      <RecapCard />
 
       {/* Focus summary */}
       {model.hasHabits && (
@@ -160,7 +164,10 @@ export function TodayScreen() {
             <View style={{ marginTop: 12 }}>
               <ProgressBar pct={g.weekPct} color={g.barColor} />
             </View>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 9 }}>
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink, marginTop: 9 }}>
+              {g.paceLabel}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
               {g.consistencyLabel}
             </Text>
           </View>

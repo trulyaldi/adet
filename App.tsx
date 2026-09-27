@@ -11,6 +11,7 @@ import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
+import { RecapSheet } from './src/overlays/RecapSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { TimerOverlay } from './src/overlays/TimerOverlay';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
@@ -57,6 +58,7 @@ function Root() {
       <EditSessionSheet />
       <ActivityHistorySheet />
       <ActivityDaySheet />
+      <RecapSheet />
     </View>
   );
 }

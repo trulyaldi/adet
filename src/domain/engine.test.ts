@@ -277,3 +277,34 @@ test('stats insights surface a weekly leader and an ahead/behind-pace note', () 
   assert.ok(model.insights.some((i) => i.text.includes('Reading is leading this week')));
   assert.ok(model.insights.some((i) => i.text.includes('ahead of last week')));
 });
+
+test('project pace uses local Monday-start weeks across the New York DST switch', () => {
+  const prev = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    const at = (m: number, d: number, h: number, min: number) => new Date(2026, m, d, h, min).getTime();
+    const data: PersistedState = {
+      schemaVersion: 3,
+      projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(2, 1, 0, 0) }],
+      habits: [
+        { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+      ],
+      sessions: [
+        // Sun Mar 8, the spring-forward day: last week.
+        { id: 'a', habitId: 'h1', start: at(2, 8, 23, 30), end: at(2, 9, 0, 0), duration: 1800 },
+        // Mon Mar 9 just after midnight: this week.
+        { id: 'b', habitId: 'h1', start: at(2, 9, 0, 15), end: at(2, 9, 2, 15), duration: 7200 },
+      ],
+      active: null,
+      historyClearedAt: 0,
+    };
+    const wed = at(2, 11, 12, 0);
+    const group = selectToday(data, DEFAULT_CONFIG, wed).groups[0];
+    assert.equal(group.paceLabel, '6h left · ~1.2h/day for 5 days');
+    assert.equal(group.paceMet, false);
+    assert.equal(selectProjects(data, DEFAULT_CONFIG, wed).cards[0].paceLabel, '6h left · ~1.2h/day for 5 days');
+  } finally {
+    if (prev === undefined) delete process.env.TZ;
+    else process.env.TZ = prev;
+  }
+});

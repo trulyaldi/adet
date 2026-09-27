@@ -7,7 +7,9 @@ import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { selectStats } from '../domain/engine';
+import { lastCompletedWeekStart, pastRecaps } from '../domain/recap';
 import { MAX_REMINDER_HOURS } from '../domain/reminder';
+import { fmtH } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
 import { colors, radius, shadowCard } from '../theme/tokens';
@@ -306,9 +308,49 @@ export function StatsScreen() {
         <View style={{ height: 8 }} />
       </View>
 
+      <PastWeeksCard />
       <ReminderCard />
       <AccountCard />
     </ScrollView>
+  );
+}
+
+/** Recent finished weeks with tracked time; each opens its recap. */
+function PastWeeksCard() {
+  const { data, now, actions } = useStreak();
+  const lastWeek = lastCompletedWeekStart(now);
+  // Recompute when data or the week changes, not every tick.
+  const recaps = React.useMemo(() => pastRecaps(data, now, 4), [data, lastWeek]);
+  if (!recaps.length) return null;
+
+  return (
+    <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, paddingHorizontal: 18, marginTop: 10 }, shadowCard]}>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink, paddingTop: 14, paddingBottom: 4 }}>Past weeks</Text>
+      {recaps.map((r, i) => (
+        <Pressable
+          key={r.weekStart}
+          onPress={() => actions.openRecap(r.weekStart)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingVertical: 12,
+            borderBottomWidth: i === recaps.length - 1 ? 0 : 1,
+            borderBottomColor: colors.hairline,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{r.rangeLabel}</Text>
+            <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>
+              {r.targetCount > 0 ? `${r.hitCount} of ${r.targetCount} targets hit · ` : ''}
+              {r.sessions} {r.sessions === 1 ? 'session' : 'sessions'}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{fmtH(r.totalSec)}</Text>
+          <Text style={{ fontSize: 16, color: colors.muted }}>›</Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
