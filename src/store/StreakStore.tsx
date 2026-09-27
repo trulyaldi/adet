@@ -12,6 +12,7 @@ import { AppState } from 'react-native';
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
+import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
 import {
   applySessionEdit,
@@ -29,7 +30,9 @@ import {
   PersistedState,
   Session,
 } from '../domain/types';
+import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
+import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
 export type Screen = 'today' | 'projects' | 'stats';
@@ -162,6 +165,8 @@ export interface StreakActions {
   saveSessionSheet(): void;
   deleteSession(id: string): void;
   undoDelete(): void;
+  // device settings
+  setReminderHours(hours: number): void;
 }
 
 interface StreakContextValue {
@@ -170,6 +175,8 @@ interface StreakContextValue {
   ui: UIState;
   now: number;
   config: AppConfig;
+  /** Device-only preferences (not synced). */
+  settings: AppSettings;
   actions: StreakActions;
   sync: SyncStatus;
   /** Stop syncing and erase this device's data and sync state (before sign-out). */
@@ -241,6 +248,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   const data = store.data;
   const [ui, setUi] = useState<UIState>(INITIAL_UI);
   const [now, setNow] = useState(() => Date.now());
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  /** Bumped when notification permission is granted, so the reminder reschedules. */
+  const [permRev, setPermRev] = useState(0);
 
   const storeRef = useRef(store);
   storeRef.current = store;
@@ -249,10 +261,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   // Load persisted state once.
   useEffect(() => {
     let mounted = true;
-    Promise.all([loadState(), loadSyncMeta()]).then(([loaded, meta]) => {
+    Promise.all([loadState(), loadSyncMeta(), loadSettings()]).then(([loaded, meta, prefs]) => {
       if (!mounted) return;
       const next = forUser(loaded, meta, userId, Date.now());
       setStore(next);
+      setSettings(prefs);
       if (next.sync !== meta) saveState(next.data, next.sync);
       setReady(true);
     });
@@ -322,6 +335,17 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     await clearState();
   }, []);
 
+  // The long-timer reminder follows the timer state, whichever device changed
+  // it (remote merges update data.active too). Cancelled once data is wiped.
+  const reminderHabit = data.active
+    ? data.habits.find((h) => h.id === data.active!.habitId)?.name ?? 'your habit'
+    : '';
+  const reminderAt = wiped ? null : reminderFireAt(data.active, settings.reminderHours);
+  useEffect(() => {
+    if (!ready) return;
+    syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
+  }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
+
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
     if (!ui.undo) return;
@@ -354,6 +378,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           };
         });
         patchUi({ timerOpen: true });
+        // Reminder permission is asked on timer start; iOS only prompts the first time.
+        if (settingsRef.current.reminderHours > 0) {
+          requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
+        }
       },
       openTimer: () => patchUi({ timerOpen: true }),
       closeTimer: () => patchUi({ timerOpen: false }),
@@ -681,6 +709,15 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           return { ...prevUi, undo: null };
         });
       },
+
+      setReminderHours: (hours) => {
+        const next = { ...settingsRef.current, reminderHours: clampReminderHours(hours) };
+        setSettings(next);
+        saveSettings(next);
+        if (next.reminderHours > 0) {
+          requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
+        }
+      },
     };
     // A few actions read `data` directly (deleteHabit's timerOpen decision,
     // openLogSheet, openSessionSheet, deleteSession's undo copy); the rest use
@@ -688,8 +725,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   }, [data, setData]);
 
   const value = useMemo<StreakContextValue>(
-    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, actions, sync, clearLocalData }),
-    [ready, data, ui, now, actions, sync, clearLocalData]
+    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, settings, actions, sync, clearLocalData }),
+    [ready, data, ui, now, settings, actions, sync, clearLocalData]
   );
 
   return <StreakContext.Provider value={value}>{children}</StreakContext.Provider>;
