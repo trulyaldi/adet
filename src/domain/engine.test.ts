@@ -13,7 +13,6 @@ import {
   selectToday,
   stageOf,
   stagesFor,
-  streakOf,
 } from './engine';
 import { seed } from './seed';
 import { addDays, dkey } from './time';
@@ -28,17 +27,6 @@ test('stageOf maps lifetime hours to the right stage', () => {
   assert.equal(stageOf(10 * 3600, stages)[0], 'Learner');
   assert.equal(stageOf(80 * 3600, stages)[0], 'Practitioner');
   assert.equal(stageOf(1000 * 3600, stages)[0], 'Master');
-});
-
-test('streakOf counts consecutive days ending today/yesterday', () => {
-  const t = new Date();
-  const map: Record<string, number> = {};
-  map[dkey(t)] = 100;
-  map[dkey(addDays(t, -1))] = 100;
-  map[dkey(addDays(t, -2))] = 100;
-  // gap at -3
-  map[dkey(addDays(t, -4))] = 100;
-  assert.equal(streakOf(map), 3);
 });
 
 test('activeSec accumulates base + running segment', () => {
@@ -307,4 +295,24 @@ test('project pace uses local Monday-start weeks across the New York DST switch'
     if (prev === undefined) delete process.env.TZ;
     else process.env.TZ = prev;
   }
+});
+
+test('streaks on Today, Projects and Stats use freezes and the given now', () => {
+  const day = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
+  const s = (id: string, d: number) => ({ id, habitId: 'h1', start: day(d), end: day(d) + 1800_000, duration: 1800 });
+  const data: PersistedState = {
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: day(1) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    // Sep 10 ✓, 11 ✓, 12 ✗ (frozen), 13 ✓, 14 ✓; today is Sep 15, untracked.
+    sessions: [s('a', 10), s('b', 11), s('c', 13), s('d', 14)],
+    active: null,
+    historyClearedAt: 0,
+  };
+  const now = new Date(2026, 8, 15, 9, 0).getTime();
+  assert.equal(selectToday(data, DEFAULT_CONFIG, now).streakLabel, '4 days');
+  assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d');
+  assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
 });

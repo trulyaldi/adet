@@ -4,6 +4,7 @@
 import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
 import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
+import { dailyStreak } from './streaks';
 import { weekPace } from './weeks';
 import {
   ActiveTimer,
@@ -81,17 +82,6 @@ export function daySecMap(
   return map;
 }
 
-export function streakOf(dayMap: Record<string, number>): number {
-  const todayD = new Date();
-  let streak = 0;
-  let sd = new Date(todayD.getFullYear(), todayD.getMonth(), todayD.getDate());
-  if (!dayMap[dkey(sd)]) sd = addDays(sd, -1);
-  while (dayMap[dkey(sd)] > 0) {
-    streak++;
-    sd = addDays(sd, -1);
-  }
-  return streak;
-}
 
 // ---------- shared stat tables ----------
 interface HabitStat {
@@ -287,7 +277,7 @@ export function selectToday(
 ): TodayModel {
   const ctx = buildContext(data, now);
   const stages = stagesFor(config);
-  const globalStreak = streakOf(daySecMap(data, now));
+  const globalStreak = dailyStreak(daySecMap(data, now), now).current;
   const todayD = ctx.todayD;
   const dayGoalSec = data.habits.reduce(
     (total, h) => total + (h.dailyTargetMin || 30) * 60,
@@ -308,9 +298,10 @@ export function selectToday(
       const ps = ctx.projStats[p.id];
       const target = (p.weeklyTarget || 8) * 3600;
       const pct = Math.min(100, Math.round((ps.week / target) * 100));
-      const pStreak = streakOf(
-        daySecMap(data, now, ps.habits.map((h) => h.id))
-      );
+      const pStreak = dailyStreak(
+        daySecMap(data, now, ps.habits.map((h) => h.id)),
+        now
+      ).current;
       const trend = trendOf(ps);
       const pace = weekPace(ps.week, p.weeklyTarget, now);
       return {
@@ -468,7 +459,7 @@ export function selectProjects(
         ' ' +
         started.getFullYear()
       : '';
-    const pStreak = streakOf(daySecMap(data, now, ps.habits.map((x) => x.id)));
+    const pStreak = dailyStreak(daySecMap(data, now, ps.habits.map((x) => x.id)), now).current;
     const trend = trendOf(ps);
     const pace = weekPace(ps.week, p.weeklyTarget, now);
     const maxLife = Math.max(1, ...ps.habits.map((x) => ctx.habitStats[x.id].life));
@@ -843,18 +834,8 @@ export function selectStats(
       .filter((x): x is HeatSelSession => !!x);
   }
 
-  // longest streak across all history
-  let recStreak = 0;
-  let cur = 0;
-  if (allKeys.length) {
-    let prev: string | null = null;
-    for (const k of allKeys) {
-      if (prev && dkey(addDays(pkey(prev), 1)) === k) cur++;
-      else cur = 1;
-      recStreak = Math.max(recStreak, cur);
-      prev = k;
-    }
-  }
+  // longest streak across all history (freezes included, see dailyStreak)
+  const recStreak = dailyStreak(dayMap, now).longest;
 
   const topHabit =
     data.habits
