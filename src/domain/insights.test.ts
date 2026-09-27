@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   addToGrid,
+  heatLevel,
   hourColumns,
   INSIGHT_WEEKS,
   MIN_HEAT_SESSIONS,
@@ -244,4 +245,9 @@ test('insights stay fast with 5,000 sessions', () => {
   weeklyTrends(d, 'p1', now);
   const ms = performance.now() - t;
   assert.ok(ms < 250, `took ${ms.toFixed(1)}ms`);
+});
+
+test('heatLevel maps a cell to 0–4 relative to the busiest cell', () => {
+  assert.deepEqual([0, 1, 25, 26, 50, 75, 100].map((v) => heatLevel(v, 100)), [0, 1, 1, 2, 2, 3, 4]);
+  assert.equal(heatLevel(5, 0), 0);
 });

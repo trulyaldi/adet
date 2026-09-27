@@ -4,6 +4,7 @@ import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
+import { PatternsCard } from '../components/PatternsCard';
 import { ProgressBar } from '../components/ProgressBar';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { selectStats } from '../domain/engine';
@@ -249,6 +250,8 @@ export function StatsScreen() {
           </Pressable>
         )}
       </View>
+
+      <PatternsCard />
 
       {/* Recent sessions */}
       <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, paddingHorizontal: 18, marginTop: 10 }, shadowCard]}>

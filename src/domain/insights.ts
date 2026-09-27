@@ -216,3 +216,9 @@ export function weeklyTrends(data: PersistedState, projectId: string | null, now
     enough: weeksWithData >= MIN_TREND_WEEKS,
   };
 }
+
+/** Shade level 0 (none) … 4 (busiest) for a heatmap cell, relative to the busiest cell. */
+export function heatLevel(sec: number, max: number): number {
+  if (sec <= 0 || max <= 0) return 0;
+  return Math.min(4, Math.max(1, Math.ceil((sec / max) * 4)));
+}
