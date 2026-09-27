@@ -98,6 +98,9 @@ export function ProjectsScreen() {
             <StatCell value={pc.weekShort} label="This week" />
             <StatCell value={pc.trendLabel} label="vs last week" valueColor={pc.trendColor} />
           </View>
+          <Text style={{ fontSize: 12.5, fontWeight: '600', color: pc.paceMet ? '#1F8A3B' : colors.ink, marginTop: 8, paddingHorizontal: 2 }}>
+            {pc.paceLabel}
+          </Text>
 
           {/* Contribution ranking */}
           <View style={{ marginTop: 6 }}>

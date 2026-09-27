@@ -160,7 +160,10 @@ export function TodayScreen() {
             <View style={{ marginTop: 12 }}>
               <ProgressBar pct={g.weekPct} color={g.barColor} />
             </View>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 9 }}>
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink, marginTop: 9 }}>
+              {g.paceLabel}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
               {g.consistencyLabel}
             </Text>
           </View>

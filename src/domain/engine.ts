@@ -4,6 +4,7 @@
 import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
 import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
+import { weekPace } from './weeks';
 import {
   ActiveTimer,
   Habit,
@@ -249,6 +250,9 @@ export interface TodayGroup {
   weekLabel: string;
   weekPct: number;
   barColor: string;
+  /** e.g. "5.5h left · ~1.1h/day for 5 days" (see weekPace). */
+  paceLabel: string;
+  paceMet: boolean;
   consistencyLabel: string;
   rows: TodayRow[];
 }
@@ -308,6 +312,7 @@ export function selectToday(
         daySecMap(data, now, ps.habits.map((h) => h.id))
       );
       const trend = trendOf(ps);
+      const pace = weekPace(ps.week, p.weeklyTarget, now);
       return {
         projectId: p.id,
         name: p.name,
@@ -319,6 +324,8 @@ export function selectToday(
           'h this week',
         weekPct: pct,
         barColor: pct >= 100 ? '#34C759' : '#17181A',
+        paceLabel: pace.label,
+        paceMet: pace.kind === 'met',
         consistencyLabel:
           pStreak + '-day streak · ' + trend.label + ' vs last week',
         rows: ps.habits.map((h) => {
@@ -426,6 +433,9 @@ export interface ProjectCard {
   stagePct: number;
   streakLabel: string;
   weekShort: string;
+  /** Pace toward this week's target (see weekPace). */
+  paceLabel: string;
+  paceMet: boolean;
   trendLabel: string;
   trendColor: string;
   habits: ProjectHabitRow[];
@@ -460,6 +470,7 @@ export function selectProjects(
       : '';
     const pStreak = streakOf(daySecMap(data, now, ps.habits.map((x) => x.id)));
     const trend = trendOf(ps);
+    const pace = weekPace(ps.week, p.weeklyTarget, now);
     const maxLife = Math.max(1, ...ps.habits.map((x) => ctx.habitStats[x.id].life));
     return {
       projectId: p.id,
@@ -476,6 +487,8 @@ export function selectProjects(
       stagePct,
       streakLabel: pStreak + 'd',
       weekShort: fmtH(ps.week),
+      paceLabel: pace.label,
+      paceMet: pace.kind === 'met',
       trendLabel: trend.label,
       trendColor: trend.color,
       habits: ps.habits
