@@ -18,8 +18,14 @@ const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 export function PatternsCard() {
   const { data, now } = useStreak();
   const [projectId, setProjectId] = useState<string | null>(null);
-  // A project deleted (here or via sync) falls back to all projects.
-  const scope = projectId !== null && data.projects.some((p) => p.id === projectId) ? projectId : null;
+  // A single project is always the scope (so its target shows); a selected
+  // project deleted here or via sync falls back to all projects.
+  const scope =
+    data.projects.length === 1
+      ? data.projects[0].id
+      : projectId !== null && data.projects.some((p) => p.id === projectId)
+      ? projectId
+      : null;
   const week = dkey(monday(new Date(now)));
   const tod = useMemo(() => timeOfDay(data, scope, now), [data, scope, week]);
   const trends = useMemo(() => weeklyTrends(data, scope, now), [data, scope, week]);
