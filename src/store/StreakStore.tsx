@@ -14,6 +14,7 @@ import { activeSec, recommendedHabitId } from '../domain/engine';
 import { addDays } from '../domain/time';
 import {
   ActiveTimer,
+  CURRENT_SCHEMA_VERSION,
   Habit,
   IconKey,
   PersistedState,
@@ -138,6 +139,7 @@ interface StreakContextValue {
 const StreakContext = createContext<StreakContextValue | null>(null);
 
 const EMPTY_DATA: PersistedState = {
+  schemaVersion: CURRENT_SCHEMA_VERSION,
   projects: [],
   habits: [],
   sessions: [],

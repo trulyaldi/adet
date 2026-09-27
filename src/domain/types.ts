@@ -1,5 +1,11 @@
 // Core data model — ported 1:1 from the Streak v2 design (DCLogic state shape).
 
+/**
+ * v1: legacy goals/goalId shape; v2: projects/projectId without required targets;
+ * v3: habits have daily and weekly targets.
+ */
+export const CURRENT_SCHEMA_VERSION = 3;
+
 export type IconKey =
   | 'code'
   | 'target'
@@ -56,6 +62,7 @@ export interface ActiveTimer {
 
 /** The slice of state that is persisted to device storage. */
 export interface PersistedState {
+  schemaVersion: number;
   projects: Project[];
   habits: Habit[];
   sessions: Session[];
