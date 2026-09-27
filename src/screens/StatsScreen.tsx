@@ -4,6 +4,7 @@ import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
+import { PatternsCard } from '../components/PatternsCard';
 import { ProgressBar } from '../components/ProgressBar';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { selectStats } from '../domain/engine';
@@ -250,6 +251,8 @@ export function StatsScreen() {
         )}
       </View>
 
+      <PatternsCard />
+
       {/* Recent sessions */}
       <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, paddingHorizontal: 18, marginTop: 10 }, shadowCard]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingBottom: 4 }}>
@@ -301,6 +304,9 @@ export function StatsScreen() {
             <View style={{ flex: 1 }}>
               <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hr.name}</Text>
               <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>{hr.sub}</Text>
+              {hr.note ? (
+                <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{hr.note}</Text>
+              ) : null}
             </View>
             <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hr.timeLabel}</Text>
           </Pressable>

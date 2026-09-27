@@ -175,7 +175,8 @@ test('manual sessions show a "logged manually" marker and their note in history'
   const row = model.historyRows.find((r) => r.id === 'm1');
   assert.ok(row);
   assert.ok(row!.sub.includes('logged manually'));
-  assert.ok(row!.sub.includes('chapter 3'));
+  assert.equal(row!.note, 'chapter 3');
+  assert.ok(!row!.sub.includes('chapter 3'), 'the note has its own line');
 });
 
 test('selected heatmap day lists each session in time order with its range and note', () => {
@@ -205,10 +206,10 @@ test('selected heatmap day lists each session in time order with its range and n
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: '2026-07-08' });
   assert.deepEqual(
-    model.heatSelSessions.map((s) => [s.id, s.name, s.sub, s.timeLabel]),
+    model.heatSelSessions.map((s) => [s.id, s.name, s.sub, s.note, s.timeLabel]),
     [
-      ['early', 'Writing', '09:05–10:10', '1h 05m'],
-      ['late', 'Reading', '20:00–20:30 · chapter 3', '30m'],
+      ['early', 'Writing', '09:05–10:10', '', '1h 05m'],
+      ['late', 'Reading', '20:00–20:30', 'chapter 3', '30m'],
     ]
   );
   assert.deepEqual(selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null }).heatSelSessions, []);

@@ -85,6 +85,9 @@ export function ActivityDaySheet() {
                 <View style={{ flex: 1 }}>
                   <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>{s.name}</Text>
                   <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>{s.sub}</Text>
+                  {s.note ? (
+                    <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{s.note}</Text>
+                  ) : null}
                 </View>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{s.timeLabel}</Text>
               </Pressable>
