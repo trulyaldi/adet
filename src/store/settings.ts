@@ -8,16 +8,24 @@ const KEY = 'streak-settings-v1';
 export interface AppSettings {
   /** Hours of tracked time before the "Still working?" reminder; 0 = off. */
   reminderHours: number;
+  /** Monday dkey of the last weekly recap seen or dismissed on this device. */
+  recapSeenWeek: string | null;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = { reminderHours: DEFAULT_REMINDER_HOURS };
+export const DEFAULT_SETTINGS: AppSettings = { reminderHours: DEFAULT_REMINDER_HOURS, recapSeenWeek: null };
 
 export async function loadSettings(): Promise<AppSettings> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     const saved = raw ? JSON.parse(raw) : null;
     if (!saved || typeof saved !== 'object') return DEFAULT_SETTINGS;
-    return { reminderHours: clampReminderHours(saved.reminderHours) };
+    return {
+      reminderHours: clampReminderHours(saved.reminderHours),
+      recapSeenWeek:
+        typeof saved.recapSeenWeek === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.recapSeenWeek)
+          ? saved.recapSeenWeek
+          : null,
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }

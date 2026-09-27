@@ -98,6 +98,8 @@ export interface UIState {
   sessionSheet: SessionSheetState | null;
   /** The last deleted session, offered for undo until the toast expires. */
   undo: Session | null;
+  /** Monday dkey of the weekly recap shown in the recap sheet. */
+  recapSheet: string | null;
 }
 
 const INITIAL_UI: UIState = {
@@ -112,6 +114,7 @@ const INITIAL_UI: UIState = {
   logSheet: null,
   sessionSheet: null,
   undo: null,
+  recapSheet: null,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -169,6 +172,11 @@ export interface StreakActions {
   saveSessionSheet(): void;
   deleteSession(id: string): void;
   undoDelete(): void;
+  // weekly recap
+  openRecap(weekStart: string): void;
+  closeRecap(): void;
+  /** Hide the launch recap card for this week on this device. */
+  markRecapSeen(weekStart: string): void;
   // device settings
   setReminderHours(hours: number): void;
 }
@@ -361,6 +369,14 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  const updateSettings = useCallback((patch: Partial<AppSettings>): AppSettings => {
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    setSettings(next);
+    saveSettings(next);
+    return next;
   }, []);
 
   /** Latest actions, for calls deferred past a render (stopTimer's editAfter). */
@@ -726,10 +742,12 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         });
       },
 
+      openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
+      closeRecap: () => patchUi({ recapSheet: null }),
+      markRecapSeen: (weekStart) => updateSettings({ recapSeenWeek: weekStart }),
+
       setReminderHours: (hours) => {
-        const next = { ...settingsRef.current, reminderHours: clampReminderHours(hours) };
-        setSettings(next);
-        saveSettings(next);
+        const next = updateSettings({ reminderHours: clampReminderHours(hours) });
         if (next.reminderHours > 0) {
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
         }
@@ -738,7 +756,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     // A few actions read `data` directly (deleteHabit's timerOpen decision,
     // openLogSheet, deleteSession's undo copy); the rest use
     // functional updates. Recreate when data identity changes so reads are fresh.
-  }, [data, setData]);
+  }, [data, setData, updateSettings]);
   actionsRef.current = actions;
 
   const value = useMemo<StreakContextValue>(

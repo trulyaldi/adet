@@ -3,7 +3,7 @@
 // from local data on demand; judged against each project's current target.
 
 import { DOWFULL, MONTHS } from './constants';
-import { addDays, dkey, monday, pkey } from './time';
+import { addDays, dkey, fmtH, monday, pkey } from './time';
 import { PersistedState } from './types';
 
 export interface ProjectRecap {
@@ -136,4 +136,22 @@ export function pastRecaps(data: PersistedState, now: number, count: number): We
     start = addDays(start, -7);
   }
   return out;
+}
+
+/** "up 2h on the week before" / "down 30m …" / "same as the week before" (under a minute counts as same). */
+export function changeLabel(sec: number, prevSec: number): string {
+  const d = sec - prevSec;
+  if (Math.abs(d) < 60) return 'same as the week before';
+  return (d > 0 ? 'up ' : 'down ') + fmtH(Math.abs(d)) + ' on the week before';
+}
+
+/** One-line summary, e.g. "Hit 2 of 3 targets · 14.5h tracked · up 2h on the week before". */
+export function recapSummary(r: WeekRecap): string {
+  const parts: string[] = [];
+  if (r.targetCount > 0) {
+    parts.push(`Hit ${r.hitCount} of ${r.targetCount} target${r.targetCount === 1 ? '' : 's'}`);
+  }
+  parts.push(fmtH(r.totalSec) + ' tracked');
+  parts.push(changeLabel(r.totalSec, r.prevTotalSec));
+  return parts.join(' · ');
 }

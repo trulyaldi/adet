@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { lastCompletedWeekStart, pastRecaps, recapToShow, weekRecap } from './recap';
+import { changeLabel, lastCompletedWeekStart, pastRecaps, recapSummary, recapToShow, weekRecap } from './recap';
 import { Habit, PersistedState, Session } from './types';
 
 const H = 3600;
@@ -161,5 +161,20 @@ test('pastRecaps lists recent finished weeks with data, newest first', () => {
       pastRecaps(d, at(8, 30), 4).map((r) => r.weekStart),
       ['2026-09-21', '2026-09-07']
     );
+  });
+});
+
+test('changeLabel says up, down, or same compared with the week before', () => {
+  assert.equal(changeLabel(5 * H, 3 * H), 'up 2h on the week before');
+  assert.equal(changeLabel(1 * H, 1.5 * H), 'down 30m on the week before');
+  assert.equal(changeLabel(H, H + 30), 'same as the week before');
+});
+
+test('recapSummary counts targets hit and total time', () => {
+  inTZ('Asia/Almaty', () => {
+    const d = data([sess('h1', at(8, 22), 5 * H), sess('h2', at(8, 23), 1 * H), sess('h1', at(8, 15), 4 * H)]);
+    assert.equal(recapSummary(weekRecap(d, '2026-09-21')), 'Hit 1 of 2 targets · 6h tracked · up 2h on the week before');
+    const noTargets = data([sess('h1', at(8, 22), H)], { p1: 0, p2: 0 });
+    assert.equal(recapSummary(weekRecap(noTargets, '2026-09-21')), '1h tracked · up 1h on the week before');
   });
 });
