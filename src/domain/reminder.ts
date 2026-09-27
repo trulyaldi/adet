@@ -23,3 +23,11 @@ export function clampReminderHours(hours: unknown): number {
   const n = typeof hours === 'number' && Number.isFinite(hours) ? Math.round(hours) : DEFAULT_REMINDER_HOURS;
   return Math.min(MAX_REMINDER_HOURS, Math.max(0, n));
 }
+
+/**
+ * Stopping a timer that ran longer than this offers to trim it: the reminder
+ * delay N, or the default when reminders are off.
+ */
+export function longSessionSec(reminderHours: number): number {
+  return (reminderHours > 0 ? reminderHours : DEFAULT_REMINDER_HOURS) * 3600;
+}

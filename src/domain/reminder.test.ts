@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { clampReminderHours, DEFAULT_REMINDER_HOURS, MAX_REMINDER_HOURS, reminderFireAt } from './reminder';
+import {
+  clampReminderHours,
+  DEFAULT_REMINDER_HOURS,
+  longSessionSec,
+  MAX_REMINDER_HOURS,
+  reminderFireAt,
+} from './reminder';
 
 const T0 = new Date(2026, 6, 10, 9, 0, 0).getTime();
 const HOUR = 3600 * 1000;
@@ -33,4 +39,9 @@ test('clampReminderHours keeps whole hours in 0..max and defaults bad input', ()
   assert.equal(clampReminderHours(99), MAX_REMINDER_HOURS);
   assert.equal(clampReminderHours(undefined), DEFAULT_REMINDER_HOURS);
   assert.equal(clampReminderHours('4'), DEFAULT_REMINDER_HOURS);
+});
+
+test('the trim threshold is the reminder delay, or the default when reminders are off', () => {
+  assert.equal(longSessionSec(5), 5 * 3600);
+  assert.equal(longSessionSec(0), DEFAULT_REMINDER_HOURS * 3600);
 });

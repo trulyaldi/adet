@@ -114,6 +114,9 @@ const INITIAL_UI: UIState = {
   undo: null,
 };
 
+/** Time for a full-screen modal to finish its dismiss animation. */
+const MODAL_DISMISS_MS = 450;
+
 /** How long the "Session deleted · Undo" toast stays up. */
 export const UNDO_MS = 5000;
 
@@ -125,7 +128,8 @@ export interface StreakActions {
   openTimer(): void;
   closeTimer(): void;
   togglePause(): void;
-  stopTimer(): void;
+  /** Save the running timer as a session; `editAfter` then opens it in the edit sheet. */
+  stopTimer(opts?: { editAfter?: boolean }): void;
   // heatmap
   openHeatSheet(): void;
   closeHeatSheet(): void;
@@ -359,6 +363,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     return () => clearInterval(t);
   }, []);
 
+  /** Latest actions, for calls deferred past a render (stopTimer's editAfter). */
+  const actionsRef = useRef<StreakActions | null>(null);
+
   const actions = useMemo<StreakActions>(() => {
     const patchUi = (patch: Partial<UIState>) =>
       setUi((prev) => ({ ...prev, ...patch }));
@@ -401,16 +408,24 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           }
           return { ...d, active: { ...a, startedAt: Date.now() } };
         }),
-      stopTimer: () => {
+      stopTimer: (opts) => {
+        const end = Date.now();
+        const a = storeRef.current.data.active;
         setData((d) => {
           if (!d.active) return d;
           return {
             ...d,
-            sessions: [...d.sessions, sessionFromActive(d.active, Date.now())],
+            sessions: [...d.sessions, sessionFromActive(d.active, end)],
             active: null,
           };
         });
         patchUi({ timerOpen: false });
+        if (opts?.editAfter && a) {
+          const id = sessionFromActive(a, end).id;
+          // Wait for the timer modal to finish dismissing: iOS won't present the
+          // edit sheet while another modal is animating out.
+          setTimeout(() => actionsRef.current?.openSessionSheet(id), MODAL_DISMISS_MS);
+        }
       },
 
       openHeatSheet: () => patchUi({ heatSheet: true }),
@@ -646,7 +661,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       },
 
       openSessionSheet: (sessionId) => {
-        const s = data.sessions.find((x) => x.id === sessionId);
+        // Latest data, so a session saved moments ago (stopTimer) is found.
+        const s = storeRef.current.data.sessions.find((x) => x.id === sessionId);
         if (!s) return;
         patchUi({
           sessionSheet: {
@@ -720,9 +736,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       },
     };
     // A few actions read `data` directly (deleteHabit's timerOpen decision,
-    // openLogSheet, openSessionSheet, deleteSession's undo copy); the rest use
+    // openLogSheet, deleteSession's undo copy); the rest use
     // functional updates. Recreate when data identity changes so reads are fresh.
   }, [data, setData]);
+  actionsRef.current = actions;
 
   const value = useMemo<StreakContextValue>(
     () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, settings, actions, sync, clearLocalData }),
