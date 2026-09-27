@@ -94,7 +94,12 @@ export function ProjectsScreen() {
 
           {/* Consistency grid */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <StatCell value={pc.streakLabel} label="Streak" />
+            <StatCell
+              value={pc.streakLabel}
+              label={pc.streakAtRisk ? 'Track today' : 'Streak'}
+              labelColor={pc.streakAtRisk ? colors.warn : undefined}
+            />
+            <StatCell value={pc.weekStreakLabel} label="Target wks" />
             <StatCell value={pc.weekShort} label="This week" />
             <StatCell value={pc.trendLabel} label="vs last week" valueColor={pc.trendColor} />
           </View>
@@ -160,15 +165,17 @@ function StatCell({
   value,
   label,
   valueColor = colors.ink,
+  labelColor = colors.subtext,
 }: {
   value: string;
   label: string;
   valueColor?: string;
+  labelColor?: string;
 }) {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.soft, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 12 }}>
-      <Text style={{ fontSize: 15, fontWeight: '800', color: valueColor }}>{value}</Text>
-      <Text style={{ fontSize: 11, color: colors.subtext, marginTop: 2 }}>{label}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.soft, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 10 }}>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, fontWeight: '800', color: valueColor }}>{value}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 11, color: labelColor, marginTop: 2 }}>{label}</Text>
     </View>
   );
 }

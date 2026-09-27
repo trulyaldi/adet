@@ -51,8 +51,13 @@ export function TodayScreen() {
           }}
         >
           <Icon path={FLAME} size={14} color={colors.ink} strokeWidth={2} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
+          <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
             {model.streakLabel}
+            {model.streakNote ? (
+              <Text style={{ color: model.streakAtRisk ? colors.warn : colors.subtext }}>
+                {' · ' + model.streakNote}
+              </Text>
+            ) : null}
           </Text>
         </View>
       </View>
@@ -167,7 +172,10 @@ export function TodayScreen() {
             <Text style={{ fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink, marginTop: 9 }}>
               {g.paceLabel}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+            <Text
+              numberOfLines={1}
+              style={{ fontSize: 12, color: g.streakAtRisk ? colors.warn : colors.muted, fontWeight: g.streakAtRisk ? '600' : '400', marginTop: 4 }}
+            >
               {g.consistencyLabel}
             </Text>
           </View>

@@ -13,7 +13,6 @@ import {
   selectToday,
   stageOf,
   stagesFor,
-  streakOf,
 } from './engine';
 import { seed } from './seed';
 import { addDays, dkey } from './time';
@@ -28,17 +27,6 @@ test('stageOf maps lifetime hours to the right stage', () => {
   assert.equal(stageOf(10 * 3600, stages)[0], 'Learner');
   assert.equal(stageOf(80 * 3600, stages)[0], 'Practitioner');
   assert.equal(stageOf(1000 * 3600, stages)[0], 'Master');
-});
-
-test('streakOf counts consecutive days ending today/yesterday', () => {
-  const t = new Date();
-  const map: Record<string, number> = {};
-  map[dkey(t)] = 100;
-  map[dkey(addDays(t, -1))] = 100;
-  map[dkey(addDays(t, -2))] = 100;
-  // gap at -3
-  map[dkey(addDays(t, -4))] = 100;
-  assert.equal(streakOf(map), 3);
 });
 
 test('activeSec accumulates base + running segment', () => {
@@ -307,4 +295,88 @@ test('project pace uses local Monday-start weeks across the New York DST switch'
     if (prev === undefined) delete process.env.TZ;
     else process.env.TZ = prev;
   }
+});
+
+test('streaks on Today, Projects and Stats use freezes and the given now', () => {
+  const day = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
+  const s = (id: string, d: number) => ({ id, habitId: 'h1', start: day(d), end: day(d) + 1800_000, duration: 1800 });
+  const data: PersistedState = {
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: day(1) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    // Sep 10 ✓, 11 ✓, 12 ✗ (frozen), 13 ✓, 14 ✓; today is Sep 15, untracked.
+    sessions: [s('a', 10), s('b', 11), s('c', 13), s('d', 14)],
+    active: null,
+    historyClearedAt: 0,
+  };
+  const now = new Date(2026, 8, 15, 9, 0).getTime();
+  assert.equal(selectToday(data, DEFAULT_CONFIG, now).streakLabel, '4 days');
+  assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d');
+  assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
+});
+
+test('Today project line: compact streaks, weekly part hidden at 0, at-risk nudge', () => {
+  const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
+  const s = (id: string, d: number, sec = 1800) => ({ id, habitId: 'h1', start: at(d), end: at(d) + sec * 1000, duration: sec });
+  const base = (sessions: ReturnType<typeof s>[], weeklyTarget = 8): PersistedState => ({
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget, started: at(1) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions,
+    active: null,
+    historyClearedAt: 0,
+  });
+  const wed = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16
+
+  // Weeks of Sep 7 and Sep 14 both reach 1h against a 1h target; Sep 14–16 tracked.
+  const met = base([s('a', 8, 3600), s('b', 14, 1800), s('c', 15, 1800), s('d', 16, 600)], 1);
+  const g = selectToday(met, DEFAULT_CONFIG, wed).groups[0];
+  assert.match(g.consistencyLabel, /^3d streak · 2w target · [↑↓] /);
+  assert.equal(g.streakAtRisk, false);
+  const card = selectProjects(met, DEFAULT_CONFIG, wed).cards[0];
+  assert.equal(card.weekStreakLabel, '2w');
+  assert.equal(card.streakAtRisk, false);
+
+  // No week met: the weekly part is hidden.
+  const none = selectToday(base([s('a', 15), s('b', 16)]), DEFAULT_CONFIG, wed).groups[0];
+  assert.match(none.consistencyLabel, /^2d streak · [↑↓] /);
+
+  // Sep 13–14 tracked, Sep 15 (yesterday) missed, today untracked: at risk.
+  const risky = selectToday(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).groups[0];
+  assert.equal(risky.consistencyLabel, '2d streak · track today to keep it');
+  assert.equal(risky.streakAtRisk, true);
+  assert.equal(selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0].streakAtRisk, true);
+});
+
+test('Today header chip shows freezes left, or a nudge when the streak is at risk', () => {
+  const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
+  const s = (id: string, d: number) => ({ id, habitId: 'h1', start: at(d), end: at(d) + 1800_000, duration: 1800 });
+  const data = (sessions: ReturnType<typeof s>[]): PersistedState => ({
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(1) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions,
+    active: null,
+    historyClearedAt: 0,
+  });
+  const now = new Date(2026, 8, 16, 12, 0).getTime(); // Sep 16
+
+  // Sep 12 frozen: one of September's two freezes used.
+  const alive = selectToday(data([s('a', 11), s('b', 13), s('c', 14), s('d', 15)]), DEFAULT_CONFIG, now);
+  assert.equal(alive.streakLabel, '4 days');
+  assert.equal(alive.streakNote, '❄ 1');
+  assert.equal(alive.streakAtRisk, false);
+
+  const risky = selectToday(data([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, now);
+  assert.equal(risky.streakLabel, '2 days');
+  assert.equal(risky.streakNote, 'track today');
+  assert.equal(risky.streakAtRisk, true);
+
+  assert.equal(selectToday(data([]), DEFAULT_CONFIG, now).streakNote, '', 'no streak: no freeze count');
 });
