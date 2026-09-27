@@ -131,3 +131,15 @@ test('migrate treats versions below 1 as legacy v1', () => {
   assert.equal(result.schemaVersion, CURRENT_SCHEMA_VERSION);
   assert.equal(result.projects[0].id, 'g1');
 });
+
+test('a stamped empty state stays empty instead of re-seeding', () => {
+  const empty = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    projects: [],
+    habits: [],
+    sessions: [],
+    active: null,
+    historyClearedAt: 0,
+  };
+  assert.deepEqual(hydrate({ v3: JSON.stringify(empty), v2: null }, NOW), empty);
+});

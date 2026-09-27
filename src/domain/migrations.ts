@@ -53,7 +53,10 @@ export function hydrate(
   }
 
   const list = saved && (saved.projects || saved.goals);
-  if (!saved || !Array.isArray(list) || !list.length) return seed(now);
+  // A stamped state with no projects is a deliberately empty account (e.g. the
+  // seed was discarded on first sign-in); only unstamped/legacy empties re-seed.
+  const emptyLegacy = Array.isArray(list) && !list.length && typeof saved.schemaVersion !== 'number';
+  if (!saved || !Array.isArray(list) || emptyLegacy) return seed(now);
 
   const sourceVersion =
     typeof saved.schemaVersion === 'number'

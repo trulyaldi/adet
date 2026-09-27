@@ -4,6 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
+import { SyncIndicator } from '../components/SyncIndicator';
 import { selectToday } from '../domain/engine';
 import { fmtClock } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
@@ -33,6 +34,9 @@ export function TodayScreen() {
           <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>
             {model.todayDateLabel}
           </Text>
+          <View style={{ marginTop: 6 }}>
+            <SyncIndicator />
+          </View>
         </View>
         <View
           style={{
