@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
+import { UndoToast } from '../components/UndoToast';
 import { selectStats } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
@@ -17,6 +18,7 @@ export function ActivityDaySheet() {
     <Sheet visible={visible} onClose={actions.closeHeatSel} maxHeightPct={0.72}>
       {model && (
       <View style={{ gap: 14, paddingTop: 12 }}>
+        <UndoToast />
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5 }}>

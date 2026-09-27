@@ -5,10 +5,11 @@ import {
   applySessionEdit,
   checkSessionTimes,
   manualSession,
+  restoreSession,
   SESSION_CONFIRM_SEC,
   SESSION_MAX_SEC,
 } from './sessions';
-import { Session } from './types';
+import { CURRENT_SCHEMA_VERSION, PersistedState, Session } from './types';
 
 const NOW = new Date(2026, 6, 10, 12, 0, 0).getTime(); // 2026-07-10 12:00
 const MIN = 60 * 1000;
@@ -120,4 +121,36 @@ test('manualSession builds a manual session with derived duration', () => {
     notes: 'reading',
   });
   assert.equal('notes' in manualSession('s9', { habitId: 'h1', start: NOW - MIN, end: NOW, note: '' }), false);
+});
+
+const withSessions = (sessions: Session[], habitIds = ['h1']): PersistedState => ({
+  schemaVersion: CURRENT_SCHEMA_VERSION,
+  projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8 }],
+  habits: habitIds.map((id) => ({
+    id,
+    projectId: 'p1',
+    name: id,
+    icon: 'code' as const,
+    tile: '#fff',
+    dailyTargetMin: 30,
+    weeklyTargetMin: 150,
+  })),
+  sessions,
+  active: null,
+  historyClearedAt: 0,
+});
+
+test('restoreSession puts a deleted session back as a new object', () => {
+  const data = withSessions([]);
+  const next = restoreSession(data, base);
+  assert.equal(next.sessions.length, 1);
+  assert.deepEqual(next.sessions[0], base);
+  assert.notEqual(next.sessions[0], base, 'fresh identity so sync stamps it');
+});
+
+test('restoreSession is a no-op if the session exists or its habit is gone', () => {
+  const present = withSessions([base]);
+  assert.equal(restoreSession(present, base), present);
+  const noHabit = withSessions([], ['h2']);
+  assert.equal(restoreSession(noHabit, base), noHabit);
 });

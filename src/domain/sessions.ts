@@ -2,7 +2,7 @@
 // a start/end pair and building the resulting Session record.
 
 import { fmtHM } from './time';
-import { Session } from './types';
+import { PersistedState, Session } from './types';
 
 /** Durations above this need an explicit confirmation. */
 export const SESSION_CONFIRM_SEC = 8 * 3600;
@@ -73,4 +73,15 @@ export function manualSession(id: string, fields: SessionFields): Session {
     manual: true,
     ...(note ? { notes: note } : {}),
   };
+}
+
+/**
+ * Undo a session delete: put the session back as a fresh object, so sync
+ * change detection stamps it newer than the delete and it wins everywhere.
+ * No-op if it's already present or its habit no longer exists.
+ */
+export function restoreSession(data: PersistedState, session: Session): PersistedState {
+  if (data.sessions.some((s) => s.id === session.id)) return data;
+  if (!data.habits.some((h) => h.id === session.habitId)) return data;
+  return { ...data, sessions: [...data.sessions, { ...session }] };
 }

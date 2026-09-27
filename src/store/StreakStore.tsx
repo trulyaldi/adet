@@ -13,7 +13,7 @@ import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
 import { seed } from '../domain/seed';
-import { applySessionEdit, checkSessionTimes } from '../domain/sessions';
+import { applySessionEdit, checkSessionTimes, restoreSession } from '../domain/sessions';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import { addDays } from '../domain/time';
 import {
@@ -74,6 +74,8 @@ export interface UIState {
   stageSheet: string | null; // projectId
   logSheet: LogSheetState | null;
   sessionSheet: SessionSheetState | null;
+  /** The last deleted session, offered for undo until the toast expires. */
+  undo: Session | null;
 }
 
 const INITIAL_UI: UIState = {
@@ -87,7 +89,11 @@ const INITIAL_UI: UIState = {
   stageSheet: null,
   logSheet: null,
   sessionSheet: null,
+  undo: null,
 };
+
+/** How long the "Session deleted · Undo" toast stays up. */
+export const UNDO_MS = 5000;
 
 export interface StreakActions {
   // navigation
@@ -136,6 +142,7 @@ export interface StreakActions {
   patchSessionSheet(patch: Partial<SessionSheetState>): void;
   saveSessionSheet(): void;
   deleteSession(id: string): void;
+  undoDelete(): void;
 }
 
 interface StreakContextValue {
@@ -295,6 +302,13 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     saveTimer.current = null;
     await clearState();
   }, []);
+
+  // The undo toast expires on its own; a newer delete restarts the clock.
+  useEffect(() => {
+    if (!ui.undo) return;
+    const t = setTimeout(() => setUi((p) => (p.undo === ui.undo ? { ...p, undo: null } : p)), UNDO_MS);
+    return () => clearTimeout(t);
+  }, [ui.undo]);
 
   // 1s tick drives the running timer + "Start" button clocks.
   useEffect(() => {
@@ -627,16 +641,24 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         });
       },
       deleteSession: (id) => {
+        const deleted = data.sessions.find((s) => s.id === id) ?? null;
         setData((d) => ({
           ...d,
           sessions: d.sessions.filter((s) => s.id !== id),
         }));
-        patchUi({ sessionSheet: null });
+        patchUi({ sessionSheet: null, undo: deleted });
+      },
+      undoDelete: () => {
+        setUi((prevUi) => {
+          const s = prevUi.undo;
+          if (s) setData((d) => restoreSession(d, s));
+          return { ...prevUi, undo: null };
+        });
       },
     };
-    // `data` referenced only inside deleteHabit's timerOpen decision; actions
-    // otherwise use functional updates. Recreate when data identity changes so
-    // that read is fresh.
+    // A few actions read `data` directly (deleteHabit's timerOpen decision,
+    // openLogSheet, openSessionSheet, deleteSession's undo copy); the rest use
+    // functional updates. Recreate when data identity changes so reads are fresh.
   }, [data, setData]);
 
   const value = useMemo<StreakContextValue>(
