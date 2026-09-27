@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import Svg, { Line, Rect } from 'react-native-svg';
 
 import { HEAT_SCALE } from '../domain/constants';
-import { heatLevel, timeOfDay } from '../domain/insights';
-import { dkey, monday } from '../domain/time';
+import { heatLevel, timeOfDay, Trends, weeklyTrends } from '../domain/insights';
+import { dkey, fmtH, monday } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
@@ -21,6 +22,7 @@ export function PatternsCard() {
   const scope = projectId !== null && data.projects.some((p) => p.id === projectId) ? projectId : null;
   const week = dkey(monday(new Date(now)));
   const tod = useMemo(() => timeOfDay(data, scope, now), [data, scope, week]);
+  const trends = useMemo(() => weeklyTrends(data, scope, now), [data, scope, week]);
 
   return (
     <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, padding: 18, marginTop: 10 }, shadowCard]}>
@@ -36,6 +38,10 @@ export function PatternsCard() {
           ))}
         </ScrollView>
       )}
+
+      {/* Weekly trend */}
+      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 16 }}>Weekly hours</Text>
+      {trends.enough ? <TrendChart trends={trends} /> : <Empty text="Trends appear after two weeks of tracking." />}
 
       {/* Time of day */}
       <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 16 }}>Time of day</Text>
@@ -70,6 +76,67 @@ export function PatternsCard() {
       ) : (
         <Empty text="Track a few more sessions to see your patterns." />
       )}
+    </View>
+  );
+}
+
+const CHART_H = 120;
+const MET = '#34C759';
+
+/** 12 weekly bars, oldest first; the current week is faded. With a target: a dashed line, and met weeks in green. */
+function TrendChart({ trends }: { trends: Trends }) {
+  const [width, setWidth] = useState(0);
+  const n = trends.bars.length;
+  const gap = 4;
+  const barW = width > 0 ? (width - gap * (n - 1)) / n : 0;
+  const y = (sec: number) => CHART_H - (trends.max > 0 ? (sec / trends.max) * (CHART_H - 4) : 0);
+  const last = trends.bars[n - 1];
+  const mid = trends.bars[Math.floor((n - 1) / 2)];
+
+  return (
+    <View style={{ marginTop: 10 }}>
+      <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>
+        {fmtH(trends.max)} peak{trends.targetSec !== null ? ' · dashed line is the ' + fmtH(trends.targetSec) + ' target' : ''}
+      </Text>
+      <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height: CHART_H }}>
+        {width > 0 && (
+          <Svg width={width} height={CHART_H}>
+            {trends.bars.map((b, i) => {
+              const top = y(b.sec);
+              const h = Math.max(b.sec > 0 ? 2 : 0, CHART_H - top);
+              return (
+                <Rect
+                  key={b.weekStart}
+                  x={i * (barW + gap)}
+                  y={CHART_H - h}
+                  width={barW}
+                  height={h}
+                  rx={3}
+                  fill={b.met ? MET : colors.ink}
+                  opacity={b.current ? 0.4 : 1}
+                />
+              );
+            })}
+            {trends.targetSec !== null && (
+              <Line
+                x1={0}
+                x2={width}
+                y1={y(trends.targetSec)}
+                y2={y(trends.targetSec)}
+                stroke={colors.subtext}
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+            )}
+            <Line x1={0} x2={width} y1={CHART_H - 0.5} y2={CHART_H - 0.5} stroke={colors.border} strokeWidth={1} />
+          </Svg>
+        )}
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+        <Text style={{ fontSize: 10, color: colors.muted }}>{trends.bars[0].label}</Text>
+        <Text style={{ fontSize: 10, color: colors.muted }}>{mid.label}</Text>
+        <Text style={{ fontSize: 10, color: colors.muted }}>This week{last.sec > 0 ? ' · ' + fmtH(last.sec) : ''}</Text>
+      </View>
     </View>
   );
 }
