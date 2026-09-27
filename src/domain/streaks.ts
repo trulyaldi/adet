@@ -35,18 +35,26 @@ export function dailyStreak(dayMap: Record<string, number>, now: number): DailyS
 
   const used: Record<string, number> = {};
   const canFreeze = (k: string) => (used[monthOf(k)] || 0) < FREEZES_PER_MONTH;
+  // Every day key from the first tracked day to today, built with one Date.
+  const all: string[] = [];
+  for (const d = pkey(keys[0]); ; d.setDate(d.getDate() + 1)) {
+    const k = dkey(d);
+    all.push(k);
+    if (k >= today) break;
+  }
+
   let run = 0;
   let longest = 0;
   let atRisk = false;
-  for (let d = pkey(keys[0]); dkey(d) <= today; d = addDays(d, 1)) {
-    const k = dkey(d);
+  for (let i = 0; i < all.length; i++) {
+    const k = all[i];
     if (tracked(k)) {
       run++;
       longest = Math.max(longest, run);
       continue;
     }
     if (k === today) break; // today is still in progress
-    const next = dkey(addDays(d, 1));
+    const next = all[i + 1];
     if (run > 0 && canFreeze(k)) {
       if (tracked(next)) {
         used[monthOf(k)] = (used[monthOf(k)] || 0) + 1;
@@ -77,12 +85,13 @@ export function dailyStreak(dayMap: Record<string, number>, now: number): DailyS
 export function weeklyTargetStreak(dayMap: Record<string, number>, targetHours: number, now: number): number {
   if (!Number.isFinite(targetHours) || targetHours <= 0) return 0;
   const targetSec = targetHours * 3600;
-  const weekSec: Record<string, number> = {};
-  for (const k of Object.keys(dayMap)) {
-    const w = dkey(monday(pkey(k)));
-    weekSec[w] = (weekSec[w] || 0) + dayMap[k];
-  }
-  const met = (w: Date) => (weekSec[dkey(w)] || 0) >= targetSec;
+  // Sum a week's seven days on demand: the walk stops at the first missed week,
+  // so this stays cheap however long the history is.
+  const met = (w: Date) => {
+    let sec = 0;
+    for (let i = 0; i < 7; i++) sec += dayMap[dkey(addDays(w, i))] || 0;
+    return sec >= targetSec;
+  };
 
   let w = monday(new Date(now));
   let streak = 0;
