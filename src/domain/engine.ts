@@ -634,8 +634,10 @@ export interface HeatSelSession {
   iconPath: string;
   tile: string;
   name: string;
-  /** e.g. "14:05–15:10 · chapter 3" */
+  /** e.g. "14:05–15:10" */
   sub: string;
+  /** The session note, shown on its own line; "" when none. */
+  note: string;
   timeLabel: string;
 }
 export interface DistRow {
@@ -649,6 +651,8 @@ export interface HistoryRow {
   tile: string;
   name: string;
   sub: string;
+  /** The session note, shown on its own line; "" when none. */
+  note: string;
   timeLabel: string;
 }
 export interface Insight {
@@ -844,7 +848,8 @@ export function selectStats(
               iconPath: iconPath(h.icon),
               tile: h.tile,
               name: h.name,
-              sub: hm(s.start) + '–' + hm(s.end) + (s.notes ? ' · ' + s.notes : ''),
+              sub: hm(s.start) + '–' + hm(s.end),
+              note: s.notes ?? '',
               timeLabel: fmtHM(s.duration),
             }
           : null;
@@ -948,10 +953,8 @@ export function selectStats(
         iconPath: iconPath(h.icon),
         tile: h.tile,
         name: h.name,
-        sub:
-          dateLabel +
-          (s.manual ? ' · logged manually' : '') +
-          (s.notes ? ' · ' + s.notes : ''),
+        sub: dateLabel + (s.manual ? ' · logged manually' : ''),
+        note: s.notes ?? '',
         timeLabel: fmtHM(s.duration),
       };
     })
