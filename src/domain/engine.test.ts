@@ -316,3 +316,38 @@ test('streaks on Today, Projects and Stats use freezes and the given now', () =>
   assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d');
   assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
 });
+
+test('Today project line: compact streaks, weekly part hidden at 0, at-risk nudge', () => {
+  const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
+  const s = (id: string, d: number, sec = 1800) => ({ id, habitId: 'h1', start: at(d), end: at(d) + sec * 1000, duration: sec });
+  const base = (sessions: ReturnType<typeof s>[], weeklyTarget = 8): PersistedState => ({
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget, started: at(1) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions,
+    active: null,
+    historyClearedAt: 0,
+  });
+  const wed = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16
+
+  // Weeks of Sep 7 and Sep 14 both reach 1h against a 1h target; Sep 14–16 tracked.
+  const met = base([s('a', 8, 3600), s('b', 14, 1800), s('c', 15, 1800), s('d', 16, 600)], 1);
+  const g = selectToday(met, DEFAULT_CONFIG, wed).groups[0];
+  assert.match(g.consistencyLabel, /^3d streak · 2w target · [↑↓] /);
+  assert.equal(g.streakAtRisk, false);
+  const card = selectProjects(met, DEFAULT_CONFIG, wed).cards[0];
+  assert.equal(card.weekStreakLabel, '2w');
+  assert.equal(card.streakAtRisk, false);
+
+  // No week met: the weekly part is hidden.
+  const none = selectToday(base([s('a', 15), s('b', 16)]), DEFAULT_CONFIG, wed).groups[0];
+  assert.match(none.consistencyLabel, /^2d streak · [↑↓] /);
+
+  // Sep 13–14 tracked, Sep 15 (yesterday) missed, today untracked: at risk.
+  const risky = selectToday(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).groups[0];
+  assert.equal(risky.consistencyLabel, '2d streak · track today to keep it');
+  assert.equal(risky.streakAtRisk, true);
+  assert.equal(selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0].streakAtRisk, true);
+});

@@ -4,7 +4,7 @@
 import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
 import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
-import { dailyStreak } from './streaks';
+import { dailyStreak, weeklyTargetStreak } from './streaks';
 import { weekPace } from './weeks';
 import {
   ActiveTimer,
@@ -243,7 +243,10 @@ export interface TodayGroup {
   /** e.g. "5.5h left · ~1.1h/day for 5 days" (see weekPace). */
   paceLabel: string;
   paceMet: boolean;
+  /** e.g. "5d streak · 3w target · ↑ 1h", or the at-risk nudge. */
   consistencyLabel: string;
+  /** The project's daily streak survives only if something is tracked today. */
+  streakAtRisk: boolean;
   rows: TodayRow[];
 }
 export interface TodayModel {
@@ -298,10 +301,9 @@ export function selectToday(
       const ps = ctx.projStats[p.id];
       const target = (p.weeklyTarget || 8) * 3600;
       const pct = Math.min(100, Math.round((ps.week / target) * 100));
-      const pStreak = dailyStreak(
-        daySecMap(data, now, ps.habits.map((h) => h.id)),
-        now
-      ).current;
+      const pDays = daySecMap(data, now, ps.habits.map((h) => h.id));
+      const streak = dailyStreak(pDays, now);
+      const weeks = weeklyTargetStreak(pDays, p.weeklyTarget, now);
       const trend = trendOf(ps);
       const pace = weekPace(ps.week, p.weeklyTarget, now);
       return {
@@ -317,8 +319,12 @@ export function selectToday(
         barColor: pct >= 100 ? '#34C759' : '#17181A',
         paceLabel: pace.label,
         paceMet: pace.kind === 'met',
-        consistencyLabel:
-          pStreak + '-day streak · ' + trend.label + ' vs last week',
+        consistencyLabel: streak.atRisk
+          ? streak.current + 'd streak · track today to keep it'
+          : [streak.current + 'd streak', weeks > 0 ? weeks + 'w target' : '', trend.label]
+              .filter(Boolean)
+              .join(' · '),
+        streakAtRisk: streak.atRisk,
         rows: ps.habits.map((h) => {
           const stt = ctx.habitStats[h.id];
           const active = data.active;
@@ -423,6 +429,9 @@ export interface ProjectCard {
   stageHoursLabel: string;
   stagePct: number;
   streakLabel: string;
+  streakAtRisk: boolean;
+  /** Consecutive weeks meeting the weekly target, e.g. "3w". */
+  weekStreakLabel: string;
   weekShort: string;
   /** Pace toward this week's target (see weekPace). */
   paceLabel: string;
@@ -459,7 +468,8 @@ export function selectProjects(
         ' ' +
         started.getFullYear()
       : '';
-    const pStreak = dailyStreak(daySecMap(data, now, ps.habits.map((x) => x.id)), now).current;
+    const pDays = daySecMap(data, now, ps.habits.map((x) => x.id));
+    const streak = dailyStreak(pDays, now);
     const trend = trendOf(ps);
     const pace = weekPace(ps.week, p.weeklyTarget, now);
     const maxLife = Math.max(1, ...ps.habits.map((x) => ctx.habitStats[x.id].life));
@@ -476,7 +486,9 @@ export function selectProjects(
         : 'Highest stage',
       stageHoursLabel: h.toFixed(1) + 'h',
       stagePct,
-      streakLabel: pStreak + 'd',
+      streakLabel: streak.current + 'd',
+      streakAtRisk: streak.atRisk,
+      weekStreakLabel: weeklyTargetStreak(pDays, p.weeklyTarget, now) + 'w',
       weekShort: fmtH(ps.week),
       paceLabel: pace.label,
       paceMet: pace.kind === 'met',
