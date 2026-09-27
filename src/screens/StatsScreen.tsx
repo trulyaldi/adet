@@ -282,14 +282,7 @@ export function StatsScreen() {
         {model.historyRows.map((hr) => (
           <Pressable
             key={hr.id}
-            onPress={() =>
-              actions.openSessionSheet({
-                id: hr.id,
-                minutes: hr.editMinutes,
-                note: hr.editNote,
-                meta: hr.editMeta,
-              })
-            }
+            onPress={() => actions.openSessionSheet(hr.id)}
             style={{
               flexDirection: 'row',
               alignItems: 'center',

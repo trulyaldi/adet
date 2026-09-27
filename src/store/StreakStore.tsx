@@ -13,6 +13,7 @@ import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
 import { seed } from '../domain/seed';
+import { applySessionEdit, checkSessionTimes } from '../domain/sessions';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import { addDays } from '../domain/time';
 import {
@@ -50,10 +51,16 @@ export interface LogSheetState {
 }
 export interface SessionSheetState {
   id: string;
-  minutes: number;
+  habitId: string;
+  /** Epoch ms. */
+  start: number;
+  /** Epoch ms. */
+  end: number;
   note: string;
-  /** Read-only context label, e.g. "LeetCode · Tue, Jul 8". */
-  meta: string;
+  /** Validation message from the last save attempt. */
+  error: string | null;
+  /** True once the user was asked to confirm a long (>8h) session. */
+  confirmLong: boolean;
 }
 
 export interface UIState {
@@ -124,7 +131,7 @@ export interface StreakActions {
   patchLogSheet(patch: Partial<LogSheetState>): void;
   saveLogSheet(): void;
   // edit-session sheet
-  openSessionSheet(sheet: SessionSheetState): void;
+  openSessionSheet(sessionId: string): void;
   closeSessionSheet(): void;
   patchSessionSheet(patch: Partial<SessionSheetState>): void;
   saveSessionSheet(): void;
@@ -570,33 +577,52 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         });
       },
 
-      openSessionSheet: (sheet) => patchUi({ sessionSheet: sheet }),
+      openSessionSheet: (sessionId) => {
+        const s = data.sessions.find((x) => x.id === sessionId);
+        if (!s) return;
+        patchUi({
+          sessionSheet: {
+            id: s.id,
+            habitId: s.habitId,
+            start: s.start,
+            end: s.end,
+            note: s.notes ?? '',
+            error: null,
+            confirmLong: false,
+          },
+        });
+      },
       closeSessionSheet: () => patchUi({ sessionSheet: null }),
       patchSessionSheet: (patch) =>
         setUi((p) =>
           p.sessionSheet
-            ? { ...p, sessionSheet: { ...p.sessionSheet, ...patch } }
+            ? {
+                ...p,
+                // Any field change invalidates the last error and confirmation.
+                sessionSheet: { ...p.sessionSheet, error: null, confirmLong: false, ...patch },
+              }
             : p
         ),
       saveSessionSheet: () => {
         setUi((prevUi) => {
           const sh = prevUi.sessionSheet;
-          if (!sh || !sh.minutes) return prevUi;
-          setData((d) => ({
-            ...d,
-            sessions: d.sessions.map((s) => {
-              if (s.id !== sh.id) return s;
-              const note = sh.note.trim();
-              const next: Session = {
-                ...s,
-                duration: sh.minutes * 60,
-                end: s.start + sh.minutes * 60000,
-              };
-              if (note) next.notes = note;
-              else delete next.notes;
-              return next;
-            }),
-          }));
+          if (!sh) return prevUi;
+          const check = checkSessionTimes(sh.start, sh.end, Date.now());
+          if (!check.ok) return { ...prevUi, sessionSheet: { ...sh, error: check.error } };
+          if (check.needsConfirm && !sh.confirmLong) {
+            return { ...prevUi, sessionSheet: { ...sh, error: null, confirmLong: true } };
+          }
+          setData((d) => {
+            if (!d.habits.some((h) => h.id === sh.habitId)) return d;
+            return {
+              ...d,
+              sessions: d.sessions.map((s) =>
+                s.id === sh.id
+                  ? applySessionEdit(s, { habitId: sh.habitId, start: sh.start, end: sh.end, note: sh.note })
+                  : s
+              ),
+            };
+          });
           return { ...prevUi, sessionSheet: null };
         });
       },

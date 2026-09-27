@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
@@ -55,6 +55,37 @@ export function ActivityDaySheet() {
                 </Text>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hs.timeLabel}</Text>
               </View>
+            ))}
+          </View>
+        )}
+
+        {model.heatSelSessions.length > 0 && (
+          <View>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5, marginBottom: 2 }}>
+              SESSIONS
+            </Text>
+            {model.heatSelSessions.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => actions.openSessionSheet(s.id)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 11,
+                  paddingVertical: 10,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.hairline,
+                }}
+              >
+                <View style={{ width: 34, height: 34, borderRadius: radius.sm, backgroundColor: s.tile, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon path={s.iconPath} size={17} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>{s.name}</Text>
+                  <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>{s.sub}</Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{s.timeLabel}</Text>
+              </Pressable>
             ))}
           </View>
         )}
