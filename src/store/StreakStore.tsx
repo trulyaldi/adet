@@ -12,6 +12,7 @@ import { AppState } from 'react-native';
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
+import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
 import {
@@ -100,6 +101,8 @@ export interface UIState {
   undo: Session | null;
   /** Monday dkey of the weekly recap shown in the recap sheet. */
   recapSheet: string | null;
+  /** Monday dkey of the recap card on Today; stays up for this app session until dismissed. */
+  recapCard: string | null;
 }
 
 const INITIAL_UI: UIState = {
@@ -115,6 +118,7 @@ const INITIAL_UI: UIState = {
   sessionSheet: null,
   undo: null,
   recapSheet: null,
+  recapCard: null,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -175,8 +179,7 @@ export interface StreakActions {
   // weekly recap
   openRecap(weekStart: string): void;
   closeRecap(): void;
-  /** Hide the launch recap card for this week on this device. */
-  markRecapSeen(weekStart: string): void;
+  dismissRecapCard(): void;
   // device settings
   setReminderHours(hours: number): void;
 }
@@ -265,6 +268,14 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   settingsRef.current = settings;
   /** Bumped when notification permission is granted, so the reminder reschedules. */
   const [permRev, setPermRev] = useState(0);
+  /** Merge into device settings and persist them. */
+  const updateSettings = useCallback((patch: Partial<AppSettings>): AppSettings => {
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    setSettings(next);
+    saveSettings(next);
+    return next;
+  }, []);
 
   const storeRef = useRef(store);
   storeRef.current = store;
@@ -358,6 +369,18 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
   }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
 
+  // Last week's recap card: the first time it's offered it is recorded as seen
+  // on this device, so it appears once per week; it stays up for this session
+  // until dismissed. Re-checked when data changes, e.g. last week arriving via sync.
+  const lastWeek = lastCompletedWeekStart(now);
+  useEffect(() => {
+    if (!ready || wiped) return;
+    const recap = recapToShow(store.data, Date.now(), settings.recapSeenWeek);
+    if (!recap) return;
+    setUi((p) => ({ ...p, recapCard: recap.weekStart }));
+    updateSettings({ recapSeenWeek: recap.weekStart });
+  }, [ready, wiped, lastWeek, store.data, settings.recapSeenWeek, updateSettings]);
+
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
     if (!ui.undo) return;
@@ -369,14 +392,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, []);
-
-  const updateSettings = useCallback((patch: Partial<AppSettings>): AppSettings => {
-    const next = { ...settingsRef.current, ...patch };
-    settingsRef.current = next;
-    setSettings(next);
-    saveSettings(next);
-    return next;
   }, []);
 
   /** Latest actions, for calls deferred past a render (stopTimer's editAfter). */
@@ -744,7 +759,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
       openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
       closeRecap: () => patchUi({ recapSheet: null }),
-      markRecapSeen: (weekStart) => updateSettings({ recapSeenWeek: weekStart }),
+      dismissRecapCard: () => patchUi({ recapCard: null }),
 
       setReminderHours: (hours) => {
         const next = updateSettings({ reminderHours: clampReminderHours(hours) });

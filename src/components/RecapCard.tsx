@@ -1,27 +1,22 @@
 import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { lastCompletedWeekStart, recapSummary, recapToShow } from '../domain/recap';
+import { recapSummary, weekRecap } from '../domain/recap';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
 /**
- * Last week's recap, offered once per week on this device (see recapToShow).
- * Opening the details or dismissing marks the week as seen.
+ * Last week's recap. The store puts it up once per week on this device (see
+ * ui.recapCard); it stays for the app session until dismissed or opened.
  */
 export function RecapCard() {
-  const { data, now, settings, actions } = useStreak();
-  const lastWeek = lastCompletedWeekStart(now);
-  // Recompute only when data, the week, or the seen state changes, not every
-  // tick (recapToShow only uses `now` to find last week).
-  const recap = useMemo(
-    () => recapToShow(data, now, settings.recapSeenWeek),
-    [data, lastWeek, settings.recapSeenWeek]
-  );
+  const { data, ui, actions } = useStreak();
+  const weekStart = ui.recapCard;
+  const recap = useMemo(() => (weekStart ? weekRecap(data, weekStart) : null), [data, weekStart]);
   if (!recap) return null;
 
   const openDetails = () => {
-    actions.markRecapSeen(recap.weekStart);
+    actions.dismissRecapCard();
     actions.openRecap(recap.weekStart);
   };
 
@@ -37,7 +32,7 @@ export function RecapCard() {
           </Text>
         </View>
         <Pressable
-          onPress={() => actions.markRecapSeen(recap.weekStart)}
+          onPress={actions.dismissRecapCard}
           hitSlop={8}
           style={{ width: 28, height: 28, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
         >
