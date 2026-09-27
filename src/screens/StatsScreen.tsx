@@ -5,6 +5,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-nativ
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
+import { SyncIndicator } from '../components/SyncIndicator';
 import { selectStats } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
@@ -318,25 +319,34 @@ export function StatsScreen() {
 
 function AccountCard() {
   const { session, signOut } = useAuth();
+  const { sync, clearLocalData } = useStreak();
   const [busy, setBusy] = React.useState(false);
 
   const confirmSignOut = () => {
-    Alert.alert('Sign out?', "You'll need to sign in again. Your data stays on this device.", [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await signOut();
-          } catch (e) {
-            setBusy(false);
-            Alert.alert('Could not sign out', e instanceof Error ? e.message : String(e));
-          }
+    const unsynced = sync.pending;
+    Alert.alert(
+      'Sign out?',
+      unsynced
+        ? `${unsynced} change${unsynced === 1 ? " hasn't" : "s haven't"} synced yet and will be lost. Your data will be removed from this device.`
+        : "Your data is synced and will be removed from this device. You'll need to sign in again to see it.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: unsynced ? 'Sign out anyway' : 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await clearLocalData();
+              await signOut();
+            } catch (e) {
+              setBusy(false);
+              Alert.alert('Could not sign out', e instanceof Error ? e.message : String(e));
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
@@ -360,6 +370,9 @@ function AccountCard() {
         <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink, marginTop: 2 }}>
           {session?.user.email ?? 'Unknown account'}
         </Text>
+        <View style={{ marginTop: 4 }}>
+          <SyncIndicator />
+        </View>
       </View>
       <Pressable disabled={busy} onPress={confirmSignOut} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.dangerSoft, opacity: busy ? 0.5 : 1 }}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: colors.danger }}>Sign out</Text>

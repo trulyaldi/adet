@@ -7,10 +7,13 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { AppState } from 'react-native';
 
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
+import { seed } from '../domain/seed';
+import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import { addDays } from '../domain/time';
 import {
   ActiveTimer,
@@ -20,7 +23,8 @@ import {
   PersistedState,
   Session,
 } from '../domain/types';
-import { loadState, saveState } from './storage';
+import { SyncStatus, useSync } from '../sync/useSync';
+import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
 export type Screen = 'today' | 'projects' | 'stats';
 
@@ -134,6 +138,9 @@ interface StreakContextValue {
   now: number;
   config: AppConfig;
   actions: StreakActions;
+  sync: SyncStatus;
+  /** Stop syncing and erase this device's data and sync state (before sign-out). */
+  clearLocalData(): Promise<void>;
 }
 
 const StreakContext = createContext<StreakContextValue | null>(null);
@@ -162,36 +169,125 @@ function sessionFromActive(active: ActiveTimer, end: number): Session {
   };
 }
 
-export function StreakProvider({ children }: { children: React.ReactNode }) {
+interface StoreState {
+  data: PersistedState;
+  sync: SyncMeta;
+  /** Bumped on every local data change (drives the debounced sync). */
+  localRev: number;
+  /** Bumped when a local change touches the active timer (syncs immediately). */
+  activeRev: number;
+}
+
+const SAVE_DEBOUNCE_MS = 500;
+
+/**
+ * Prepare freshly loaded data for `userId`. On this device's first sign-in to
+ * that account, untouched seed data is dropped (the server is the source of
+ * truth) and anything else is queued so it's pushed before the first pull.
+ */
+function forUser(data: PersistedState, meta: SyncMeta, userId: string, now: number): StoreState {
+  const base = { localRev: 0, activeRev: 0 };
+  if (meta.ownerId === userId) return { ...base, data, sync: meta };
+  const fresh: SyncMeta = { ...EMPTY_SYNC_META, ownerId: userId };
+  // Data owned by a different account is never uploaded into this one.
+  if (meta.ownerId !== null || isUntouchedSeed(data, seed(now))) {
+    return { ...base, data: EMPTY_DATA, sync: fresh };
+  }
+  return { ...base, data, sync: { ...fresh, outbox: enqueue({}, allAsChanges(data)) } };
+}
+
+export function StreakProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [data, setData] = useState<PersistedState>(EMPTY_DATA);
+  const [wiped, setWiped] = useState(false);
+  const [store, setStore] = useState<StoreState>({
+    data: EMPTY_DATA,
+    sync: EMPTY_SYNC_META,
+    localRev: 0,
+    activeRev: 0,
+  });
+  const data = store.data;
   const [ui, setUi] = useState<UIState>(INITIAL_UI);
   const [now, setNow] = useState(() => Date.now());
+
+  const storeRef = useRef(store);
+  storeRef.current = store;
+  const wipedRef = useRef(false);
 
   // Load persisted state once.
   useEffect(() => {
     let mounted = true;
-    loadState().then((loaded) => {
+    Promise.all([loadState(), loadSyncMeta()]).then(([loaded, meta]) => {
       if (!mounted) return;
-      setData(loaded);
+      const next = forUser(loaded, meta, userId, Date.now());
+      setStore(next);
+      if (next.sync !== meta) saveState(next.data, next.sync);
       setReady(true);
     });
     return () => {
       mounted = false;
     };
+  }, [userId]);
+
+  /**
+   * Every local mutation goes through here: records the action touched are
+   * stamped and queued for push. Remote merges bypass this (see useSync).
+   */
+  const setData = useCallback((fn: (d: PersistedState) => PersistedState) => {
+    setStore((s) => {
+      const next = fn(s.data);
+      if (next === s.data) return s;
+      const { data: stamped, changes } = stampLocalChanges(s.data, next, Date.now());
+      if (!changes.length) return { ...s, data: stamped };
+      return {
+        ...s,
+        data: stamped,
+        sync: { ...s.sync, outbox: enqueue(s.sync.outbox, changes) },
+        localRev: s.localRev + 1,
+        activeRev: changes.some((c) => c.table === 'active_timers') ? s.activeRev + 1 : s.activeRev,
+      };
+    });
   }, []);
 
-  // Persist durable slice whenever it changes (after initial load).
-  const readyRef = useRef(false);
+  // Persist data + sync state, debounced; flushed when the app backgrounds or
+  // the provider unmounts so a quick close doesn't lose the last change.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushSave = useCallback(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    if (wipedRef.current) return;
+    saveState(storeRef.current.data, storeRef.current.sync);
+  }, []);
   useEffect(() => {
-    if (!ready) return;
-    if (!readyRef.current) {
-      readyRef.current = true;
-      // Skip persisting the freshly-loaded value back immediately, but do
-      // persist the seed on a genuine first run so it survives restarts.
-    }
-    saveState(data);
-  }, [data, ready]);
+    if (!ready || wipedRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+  }, [store.data, store.sync, ready, flushSave]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' && saveTimer.current) flushSave();
+    });
+    return () => {
+      sub.remove();
+      if (saveTimer.current) flushSave();
+    };
+  }, [flushSave]);
+
+  const sync = useSync({
+    enabled: ready && !wiped,
+    userId,
+    storeRef,
+    setStore,
+    localRev: store.localRev,
+    activeRev: store.activeRev,
+  });
+
+  const clearLocalData = useCallback(async () => {
+    wipedRef.current = true;
+    setWiped(true);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    await clearState();
+  }, []);
 
   // 1s tick drives the running timer + "Start" button clocks.
   useEffect(() => {
@@ -515,11 +611,11 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
     // `data` referenced only inside deleteHabit's timerOpen decision; actions
     // otherwise use functional updates. Recreate when data identity changes so
     // that read is fresh.
-  }, [data]);
+  }, [data, setData]);
 
   const value = useMemo<StreakContextValue>(
-    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, actions }),
-    [ready, data, ui, now, actions]
+    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, actions, sync, clearLocalData }),
+    [ready, data, ui, now, actions, sync, clearLocalData]
   );
 
   return <StreakContext.Provider value={value}>{children}</StreakContext.Provider>;
