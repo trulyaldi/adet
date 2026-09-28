@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { recapSummary, weekRecap } from '../domain/recap';
+import { CloseButton, IconButton } from './Glyph';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
@@ -31,17 +32,11 @@ export function RecapCard() {
             {recapSummary(recap)}
           </Text>
         </View>
-        <Pressable
-          onPress={actions.dismissRecapCard}
-          hitSlop={8}
-          style={{ width: 28, height: 28, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text style={{ fontSize: 13, color: colors.subtext }}>✕</Text>
-        </Pressable>
+        <CloseButton label="Dismiss" onPress={actions.dismissRecapCard} />
       </View>
-      <Pressable onPress={openDetails} style={{ marginTop: 12, alignSelf: 'flex-start' }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0A84FF' }}>See recap</Text>
-      </Pressable>
+      <View style={{ marginTop: 10, alignItems: 'flex-start' }}>
+        <IconButton label="See recap" name="chevronRight" size={18} color="#0A84FF" bg={colors.track} diameter={32} onPress={openDetails} />
+      </View>
     </View>
   );
 }

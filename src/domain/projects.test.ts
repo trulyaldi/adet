@@ -74,8 +74,8 @@ test('Projects lists archived projects separately; header counts active ones', (
   assert.deepEqual(
     m.archived.map((a) => [a.projectId, a.sub]),
     [
-      ['p2', '2h lifetime · archived Sep 2026'],
-      ['p4', '0m lifetime · archived Sep 2026'],
+      ['p2', '2h · Sep 2026'],
+      ['p4', '0m · Sep 2026'],
     ]
   );
 });

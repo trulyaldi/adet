@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
+import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { activeHabits } from '../domain/projects';
 import { checkSessionTimes } from '../domain/sessions';
@@ -138,16 +139,6 @@ function Label({ children, noMargin }: { children: React.ReactNode; noMargin?: b
   );
 }
 
-function CloseButton({ onPress }: { onPress(): void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Text style={{ fontSize: 14, color: colors.subtext }}>✕</Text>
-    </Pressable>
-  );
-}
 
 const inputStyle = {
   width: '100%' as const,

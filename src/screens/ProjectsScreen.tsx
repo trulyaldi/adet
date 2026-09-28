@@ -1,15 +1,12 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
 import { ArchivedCard, ProjectCard, selectProjects } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
-
-const PENCIL = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z';
-const CHEVRON_DOWN = 'M6 9l6 6 6-6';
-const CHEVRON_UP = 'M6 15l6-6 6 6';
 
 export function ProjectsScreen() {
   const { data, now, config, actions } = useStreak();
@@ -30,27 +27,11 @@ export function ProjectsScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
-            Projects
-          </Text>
-          <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>{model.sub}</Text>
-        </View>
-        <Pressable
-          onPress={actions.openNewProject}
-          style={[
-            {
-              backgroundColor: colors.card,
-              borderRadius: radius.pill,
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-            },
-            shadowCard,
-          ]}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>+ Project</Text>
-        </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ flex: 1, fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
+          Projects
+        </Text>
+        <IconButton label="New project" name="plus" onPress={actions.openNewProject} bg={colors.card} diameter={36} size={18} />
       </View>
 
       {model.cards.map((pc) => (
@@ -63,9 +44,9 @@ export function ProjectsScreen() {
       ))}
 
       {model.cards.length === 0 && (
-        <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 14, paddingVertical: 36 }}>
-          {model.archived.length ? 'No active projects' : 'No projects yet'}
-        </Text>
+        <View style={{ alignItems: 'center', paddingVertical: 36 }}>
+          <Glyph name="target" size={30} color={colors.faint} label="No active projects" />
+        </View>
       )}
 
       {model.archived.length > 0 && <ArchivedSection items={model.archived} />}
@@ -83,40 +64,26 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
         {/* Title row */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
           <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: colors.ink }}>{pc.name}</Text>
-          <Pressable
+          <IconButton
+            label="Edit project"
+            name="pencil"
+            size={16}
+            color={colors.faint}
             onPress={() => actions.openEditProject({ id: pc.projectId, name: pc.name, weeklyTarget: pc.weeklyTarget })}
-            hitSlop={10}
-            accessibilityLabel="Edit project"
             style={{ marginTop: 3 }}
-          >
-            <Icon path={PENCIL} size={16} color={colors.faint} strokeWidth={2} />
-          </Pressable>
+          />
         </View>
 
-        <View
-          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', columnGap: 10, rowGap: 2, marginTop: 8 }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.subtext }}>{pc.weekLabel}</Text>
-          {!!pc.streakLabel && (
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: pc.streakAtRisk ? '600' : '500',
-                color: pc.streakAtRisk ? colors.warn : colors.muted,
-              }}
-            >
-              {pc.streakLabel}
-            </Text>
-          )}
+        {/* This week: time against the target, then weeks in a row the target was met. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
+          <Stat glyph="clock" value={pc.weekLabel} label="This week" />
+          {pc.paceMet && <Glyph name="done" size={15} color="#1F8A3B" label="Weekly target met" />}
+          <View style={{ flex: 1 }} />
+          {pc.weekStreak > 0 && <Stat glyph="chain" value={String(pc.weekStreak)} label="Weeks in a row on target" />}
+          <Glyph name={expanded ? 'chevronUp' : 'chevronDown'} size={16} color={colors.muted} />
         </View>
         <View style={{ marginTop: 9 }}>
           <ProgressBar pct={pc.weekPct} color={pc.barColor} />
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '600', color: pc.paceMet ? '#1F8A3B' : colors.ink }}>
-            {pc.paceLabel}
-          </Text>
-          <Icon path={expanded ? CHEVRON_UP : CHEVRON_DOWN} size={16} color={colors.muted} strokeWidth={2} />
         </View>
       </Pressable>
 
@@ -136,13 +103,11 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
                 style={{
                   width: 18,
                   height: 18,
-                  borderRadius: radius.pill,
-                  backgroundColor: '#E7E8EC',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 11, fontWeight: '800', color: colors.subtext, fontStyle: 'italic' }}>i</Text>
+                <Glyph name="info" size={14} color={colors.subtext} />
               </View>
             </View>
             <View style={{ marginTop: 9 }}>
@@ -152,13 +117,16 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
 
           {/* Lifetime and consistency */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <StatCell value={pc.lifetimeLabel} label="Lifetime" />
-            <StatCell value={pc.sessionsLabel} label="Sessions" />
-            <StatCell value={pc.weekStreakLabel} label="Target wks" />
-            <StatCell value={pc.trendLabel} label="vs last week" valueColor={pc.trendColor} />
+            <StatCell value={pc.lifetimeLabel} glyph="clock" label="Lifetime" />
+            <StatCell value={pc.sessionsLabel} glyph="list" label="Sessions" />
+            <StatCell value={pc.weekStreakLabel} glyph="chain" label="Weeks in a row on target" />
+            <StatCell value={pc.trendLabel} glyph="bars" label="Versus last week" valueColor={pc.trendColor} />
           </View>
           {!!pc.startedLabel && (
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8, paddingHorizontal: 2 }}>{pc.startedLabel}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingHorizontal: 2 }}>
+              <Glyph name="calendar" size={13} color={colors.muted} label="Started" />
+              <Text style={{ fontSize: 12, color: colors.muted }}>{pc.startedLabel}</Text>
+            </View>
           )}
 
           {/* Habits */}
@@ -200,7 +168,7 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
                       <View style={{ marginTop: 6 }}>
                         <ProgressBar pct={Math.max(2, gh.shareBarW)} color={gh.tile} height={5} />
                       </View>
-                      <Text style={{ fontSize: 11.5, color: colors.subtext, marginTop: 5 }}>
+                      <Text style={{ fontSize: 11.5, color: colors.subtext, marginTop: 5, fontVariant: ['tabular-nums'] }}>
                         {gh.shareLabel + ' · ' + gh.sub}
                       </Text>
                     </>
@@ -208,9 +176,17 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
                 </View>
               </Pressable>
             ))}
-            <Pressable onPress={() => actions.openNewHabit(pc.projectId)} style={{ paddingTop: 12, paddingBottom: 4 }}>
-              <Text style={{ fontSize: 13.5, fontWeight: '700', color: config.accent }}>+ Add habit</Text>
-            </Pressable>
+            <View style={{ paddingTop: 12, paddingBottom: 4, alignItems: 'flex-start' }}>
+              <IconButton
+                label="Add habit"
+                name="plus"
+                size={16}
+                color={config.accent}
+                bg={colors.track}
+                diameter={32}
+                onPress={() => actions.openNewHabit(pc.projectId)}
+              />
+            </View>
           </View>
         </View>
       )}
@@ -227,11 +203,14 @@ function ArchivedSection({ items }: { items: ArchivedCard[] }) {
     <View style={{ marginTop: 22 }}>
       <Pressable
         onPress={() => setOpen((o) => !o)}
+        accessibilityRole="button"
+        accessibilityLabel="Archived projects"
         accessibilityState={{ expanded: open }}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}
       >
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>Archived ({items.length})</Text>
-        <Icon path={open ? CHEVRON_UP : CHEVRON_DOWN} size={15} color={colors.subtext} strokeWidth={2} />
+        <Glyph name="archive" size={17} color={colors.subtext} />
+        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>{items.length}</Text>
+        <Glyph name={open ? 'chevronUp' : 'chevronDown'} size={15} color={colors.subtext} />
       </Pressable>
       {open && (
         <View style={[{ backgroundColor: colors.card, borderRadius: radius.xl, paddingHorizontal: 16, marginTop: 6 }, shadowCard]}>
@@ -251,13 +230,15 @@ function ArchivedSection({ items }: { items: ArchivedCard[] }) {
                 <Text numberOfLines={2} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>{a.name}</Text>
                 <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{a.sub}</Text>
               </View>
-              <Pressable
+              <IconButton
+                label="Unarchive"
+                name="unarchive"
+                size={18}
+                color={config.accent}
+                bg={colors.track}
+                diameter={36}
                 onPress={() => actions.unarchiveProject(a.projectId)}
-                hitSlop={6}
-                style={{ borderRadius: radius.pill, paddingVertical: 8, paddingHorizontal: 13, backgroundColor: colors.track }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: config.accent }}>Unarchive</Text>
-              </Pressable>
+              />
             </View>
           ))}
         </View>
@@ -266,21 +247,36 @@ function ArchivedSection({ items }: { items: ArchivedCard[] }) {
   );
 }
 
+/** A glyph and a number; the label is spoken, not shown. */
+function Stat({ glyph, value, label }: { glyph: GlyphName; value: string; label: string }) {
+  return (
+    <View accessible accessibilityLabel={label + ', ' + value} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+      <Glyph name={glyph} size={14} color={colors.subtext} />
+      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.subtext, fontVariant: ['tabular-nums'] }}>{value}</Text>
+    </View>
+  );
+}
+
 function StatCell({
   value,
+  glyph,
   label,
   valueColor = colors.ink,
-  labelColor = colors.subtext,
 }: {
   value: string;
+  glyph: GlyphName;
+  /** Spoken only; the glyph stands in for it on screen. */
   label: string;
   valueColor?: string;
-  labelColor?: string;
 }) {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.soft, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 10 }}>
+    <View
+      accessible
+      accessibilityLabel={label + ', ' + value}
+      style={{ flex: 1, backgroundColor: colors.soft, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 10, gap: 5 }}
+    >
+      <Glyph name={glyph} size={14} color={colors.subtext} />
       <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, fontWeight: '800', color: valueColor }}>{value}</Text>
-      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 11, color: labelColor, marginTop: 2 }}>{label}</Text>
     </View>
   );
 }

@@ -178,27 +178,27 @@ function buildContext(data: PersistedState, now: number): StatContext {
 
 /**
  * This week vs last week. Non-punitive: gains read as progress, shortfalls as
- * a plain amount, and a change under a minute is neutral ("—"), never an arrow.
+ * a plain amount in neutral gray (never red), and a change under a minute is
+ * neutral ("—"), never an arrow.
  */
 export function trendOf(ps: { week: number; lastWeek: number }) {
   const d = ps.week - ps.lastWeek;
   if (Math.abs(d) < 60) return { label: '—', sub: 'same as last week', color: '#8A8D93' };
   if (d > 0) return { label: '↑ ' + fmtH(d), sub: 'vs last week', color: '#1F8A3B' };
-  return { label: '↓ ' + fmtH(-d), sub: 'vs last week', color: '#FF3B30' };
+  return { label: '↓ ' + fmtH(-d), sub: 'vs last week', color: '#8A8D93' };
 }
 
 function iconPath(icon: IconKey): string {
   return ICONS[icon] || ICONS.code;
 }
 
-/** A project's week against its target, as shown on Today and Projects. */
+/** A project's week against its target, as shown on Projects. */
 function weekProgress(weekSec: number, targetHours: number, now: number) {
   const pace = weekPace(weekSec, targetHours, now);
   const pct = pace.targetSec ? Math.min(100, Math.round((weekSec / pace.targetSec) * 100)) : 0;
   return {
-    weekLabel: pace.targetSec
-      ? fmtH(weekSec) + ' / ' + fmtH(pace.targetSec) + ' this week'
-      : fmtH(weekSec) + ' this week',
+    /** Numbers only, e.g. "3.5h / 8h" (the card's clock glyph says "this week"). */
+    weekLabel: pace.targetSec ? fmtH(weekSec) + ' / ' + fmtH(pace.targetSec) : fmtH(weekSec),
     weekPct: pct,
     barColor: pct >= 100 ? '#34C759' : '#17181A',
     // Without a target the pace label would just repeat the week's time.
@@ -227,9 +227,9 @@ export function dayLabel(key: string, now: number): string {
   return DOWFULL[d.getDay()].slice(0, 3) + ', ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate();
 }
 
-/** "5d streak", "5d streak · track today" when at risk, "" with no streak. */
+/** "5d streak", "" with no streak. Never a nudge when it's at risk. */
 function streakText(streak: { current: number; atRisk: boolean }): string {
-  return streak.current > 0 ? streak.current + 'd streak' + (streak.atRisk ? ' · track today' : '') : '';
+  return streak.current > 0 ? streak.current + 'd streak' : '';
 }
 
 // ---------- TODAY ----------
@@ -417,11 +417,11 @@ export interface ProjectHabitRow {
   iconPath: string;
   tile: string;
   name: string;
-  /** "40% of project time"; "" when the project has a single habit. */
+  /** "40%" of the project's time; "" when the project has a single habit. */
   shareLabel: string;
   /** Share of the project's lifetime time, 0..100. */
   shareBarW: number;
-  /** Lifetime, this week and sessions; "" for a single habit (the project's numbers already say it). */
+  /** Lifetime time, e.g. "12h"; "" for a single habit (the project's numbers already say it). */
   sub: string;
 }
 export interface ProjectCard {
@@ -449,9 +449,11 @@ export interface ProjectCard {
   sessionsLabel: string;
   /** Consecutive weeks meeting the weekly target, e.g. "3w". */
   weekStreakLabel: string;
+  /** Consecutive weeks meeting the weekly target (shown with the chain glyph). */
+  weekStreak: number;
   trendLabel: string;
   trendColor: string;
-  /** e.g. "Started Jul 2026"; "" when unknown. */
+  /** e.g. "Jul 2026" (shown with the calendar glyph); "" when unknown. */
   startedLabel: string;
   habits: ProjectHabitRow[];
 }
@@ -459,7 +461,7 @@ export interface ProjectCard {
 export interface ArchivedCard {
   projectId: string;
   name: string;
-  /** e.g. "12.5h lifetime · archived Sep 2026". */
+  /** e.g. "12.5h · Sep 2026" (lifetime, then when it was archived). */
   sub: string;
 }
 export interface ProjectsModel {
@@ -493,6 +495,7 @@ export function selectProjects(
     const streak = dailyStreak(pDays, now);
     const trend = trendOf(ps);
     const several = ps.habits.length >= 2;
+    const weekStreak = weeklyTargetStreak(pDays, p.weeklyTarget, now);
     return {
       projectId: p.id,
       name: p.name,
@@ -505,12 +508,11 @@ export function selectProjects(
       stagePct,
       lifetimeLabel: fmtH(ps.life),
       sessionsLabel: String(ps.count),
-      weekStreakLabel: weeklyTargetStreak(pDays, p.weeklyTarget, now) + 'w',
+      weekStreakLabel: weekStreak + 'w',
+      weekStreak,
       trendLabel: trend.label,
       trendColor: trend.color,
-      startedLabel: started
-        ? 'Started ' + MONTHS[started.getMonth()].slice(0, 3) + ' ' + started.getFullYear()
-        : '',
+      startedLabel: started ? MONTHS[started.getMonth()].slice(0, 3) + ' ' + started.getFullYear() : '',
       habits: ps.habits
         .slice()
         .sort((a, b) => ctx.habitStats[b.id].life - ctx.habitStats[a.id].life)
@@ -522,16 +524,9 @@ export function selectProjects(
             iconPath: iconPath(x.icon),
             tile: x.tile,
             name: x.name,
-            shareLabel: several ? share + '% of project time' : '',
+            shareLabel: several ? share + '%' : '',
             shareBarW: share,
-            sub: several
-              ? fmtH(stt.life) +
-                ' lifetime · ' +
-                fmtH(stt.week) +
-                ' this week · ' +
-                stt.count +
-                (stt.count === 1 ? ' session' : ' sessions')
-              : '',
+            sub: several ? fmtH(stt.life) : '',
           };
         }),
     };
@@ -542,12 +537,7 @@ export function selectProjects(
     return {
       projectId: p.id,
       name: p.name,
-      sub:
-        fmtH(ctx.projStats[p.id].life) +
-        ' lifetime · archived ' +
-        MONTHS[at.getMonth()].slice(0, 3) +
-        ' ' +
-        at.getFullYear(),
+      sub: fmtH(ctx.projStats[p.id].life) + ' · ' + MONTHS[at.getMonth()].slice(0, 3) + ' ' + at.getFullYear(),
     };
   });
 
@@ -720,14 +710,15 @@ export interface StatsModel {
 
 /**
  * The vs-last-week insight (this week so far against last week in full), or
- * null when last week had nothing to compare with.
+ * null when last week had nothing to compare with or this week is behind it.
  */
 export function weekVsLastWeek(weekSec: number, lastWeekSec: number, iconPath = ''): Insight | null {
   if (lastWeekSec <= 0) return null;
   const d = weekSec - lastWeekSec;
   if (Math.abs(d) < 60) return { iconPath, bg: '#D9F2E3', text: 'You’ve matched last week’s total.' };
   if (d > 0) return { iconPath, bg: '#D9F2E3', text: 'You’re ' + fmtH(d) + ' past last week’s total.' };
-  return { iconPath, bg: '#D8EAF9', text: fmtH(-d) + ' more to match last week.' };
+  // Behind last week is never framed as a shortfall to make up.
+  return null;
 }
 
 export function selectStats(
@@ -975,8 +966,7 @@ export function selectStats(
     hasInsights: insights.length > 0,
     lifetimeLabel: (lifeAll / 3600).toFixed(1) + ' hours',
     // The average per day has its own tile, so it isn't repeated here.
-    lifetimeSub:
-      'Since ' + MONTHS[firstDay.getMonth()].slice(0, 3) + ' ' + firstDay.getDate(),
+    lifetimeSub: MONTHS[firstDay.getMonth()].slice(0, 3) + ' ' + firstDay.getDate(),
     weekHours: fmtH(weekAll),
     monthHours: fmtH(monthAll),
     avgDaily: fmtHM(Math.floor(avgSec)),

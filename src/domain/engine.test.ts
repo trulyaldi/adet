@@ -154,7 +154,7 @@ test('Today rows show time tracked today; recommendation is deterministic', () =
   assert.deepEqual(rows.map((r) => r.btnLabel), ['Continue', 'Continue']);
   // One project: no separate summary card (the project card says the same).
   assert.equal(model.summary, null);
-  assert.equal(model.groups[0].weekLabel, '40m / 8h this week');
+  assert.equal(model.groups[0].weekLabel, '40m / 8h');
 });
 
 test('manual sessions show a "logged manually" marker and their note in history', () => {
@@ -309,7 +309,7 @@ test('stats insights: one card, each fact once', () => {
 
 test('stats lifetime line does not repeat the average-per-day tile', () => {
   const m = selectStats(seed(NOW), DEFAULT_CONFIG, NOW, { heatSel: null });
-  assert.match(m.lifetimeSub, /^Since [A-Z][a-z]{2} \d+$/);
+  assert.match(m.lifetimeSub, /^[A-Z][a-z]{2} \d+$/);
   assert.ok(!m.lifetimeSub.includes(m.avgDaily));
 });
 
@@ -398,7 +398,7 @@ test('Today project line: compact streak only, at-risk nudge, hidden with a sing
 
   // Sep 13–14 tracked, Sep 15 (yesterday) missed, today untracked: at risk.
   const risky = selectToday(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).groups[0];
-  assert.equal(risky.streakLabel, '2d streak · track today');
+  assert.equal(risky.streakLabel, '2d streak', 'never a nudge');
   assert.equal(risky.streakAtRisk, true);
   assert.equal(selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0].streakAtRisk, true);
 
@@ -530,18 +530,18 @@ test('Projects card: each number once; habit share only with two or more habits'
   const wed = new Date(2026, 8, 16, 12, 0).getTime();
   const [two, one] = selectProjects(data, DEFAULT_CONFIG, wed).cards;
 
-  assert.equal(two.weekLabel, '4h / 8h this week');
+  assert.equal(two.weekLabel, '4h / 8h');
   assert.equal(two.lifetimeLabel, '4h');
   assert.equal(two.sessionsLabel, '2');
-  assert.equal(two.startedLabel, 'Started Sep 2026');
+  assert.equal(two.startedLabel, 'Sep 2026');
   // The level panel names stages only; lifetime hours appear once, in the tile.
   assert.equal(two.nextStageLabel, '→ Learner at 10h');
   assert.ok(!('stageHoursLabel' in two) && !('weekShort' in two) && !('sub' in two));
   assert.deepEqual(
     two.habits.map((h) => [h.shareLabel, h.sub]),
     [
-      ['75% of project time', '3h lifetime · 3h this week · 1 session'],
-      ['25% of project time', '1h lifetime · 1h this week · 1 session'],
+      ['75%', '3h'],
+      ['25%', '1h'],
     ]
   );
 
@@ -587,10 +587,11 @@ test('week-over-week copy: neutral under a minute, natural sentences otherwise',
   assert.equal(trendOf({ week: 3541, lastWeek: 3600 }).label, '—', 'never a red arrow with 0m');
   assert.equal(trendOf({ week: 7200, lastWeek: 3600 }).label, '↑ 1h');
   assert.equal(trendOf({ week: 0, lastWeek: 1080 }).label, '↓ 18m');
+  assert.equal(trendOf({ week: 0, lastWeek: 1080 }).color, '#8A8D93', 'a shortfall is neutral gray, never red');
 
   const text = (w: number, l: number) => weekVsLastWeek(w, l)?.text ?? null;
-  assert.equal(text(3600, 3600 + 18 * 60), '18m more to match last week.');
-  assert.equal(text(0, 5400), '1.5h more to match last week.');
+  assert.equal(text(3600, 3600 + 18 * 60), null, 'behind is never framed as a shortfall');
+  assert.equal(text(0, 5400), null);
   assert.equal(text(7200, 3600), 'You’re 1h past last week’s total.');
   assert.equal(text(3630, 3600), 'You’ve matched last week’s total.');
   assert.equal(text(3600, 0), null, 'nothing to compare with');

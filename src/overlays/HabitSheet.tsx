@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
+import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { ICONS, ICON_KEYS } from '../domain/constants';
 import { activeHabits, isArchived } from '../domain/projects';
@@ -223,16 +224,6 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CloseButton({ onPress }: { onPress(): void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Text style={{ fontSize: 14, color: colors.subtext }}>✕</Text>
-    </Pressable>
-  );
-}
 
 const inputStyle = {
   width: '100%' as const,

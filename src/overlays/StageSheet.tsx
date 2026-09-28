@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
+import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { selectStageSheet } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
@@ -31,12 +32,7 @@ export function StageSheet() {
                 {model.currentStage}
               </Text>
             </View>
-            <Pressable
-              onPress={actions.closeStageSheet}
-              style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{ fontSize: 14, color: colors.subtext }}>✕</Text>
-            </Pressable>
+            <CloseButton onPress={actions.closeStageSheet} />
           </View>
 
           {/* Next stage progress */}
@@ -58,7 +54,6 @@ export function StageSheet() {
 
           {/* Ladder */}
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.subtext, marginBottom: 10 }}>All stages</Text>
             {model.ladder.map((lv) => (
               <View
                 key={lv.name}
@@ -89,10 +84,6 @@ export function StageSheet() {
             ))}
           </View>
 
-          <Text style={{ fontSize: 12.5, color: colors.muted, lineHeight: 19, textAlign: 'center', paddingHorizontal: 8 }}>
-            Every logged session moves you forward. Higher stages take more hours — the more consistent effort you put
-            in, the sooner you rank up.
-          </Text>
         </View>
       )}
     </Sheet>

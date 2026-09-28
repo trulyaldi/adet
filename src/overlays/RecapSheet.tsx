@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { CloseButton, Glyph } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { changeLabel, recapSummary, weekRecap } from '../domain/recap';
 import { fmtH } from '../domain/time';
@@ -24,12 +25,7 @@ export function RecapSheet() {
               <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5 }}>WEEKLY RECAP</Text>
               <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink, marginTop: 2 }}>{recap.rangeLabel}</Text>
             </View>
-            <Pressable
-              onPress={actions.closeRecap}
-              style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{ fontSize: 14, color: colors.subtext }}>✕</Text>
-            </Pressable>
+            <CloseButton onPress={actions.closeRecap} />
           </View>
 
           {/* The Tracked tile shows the total, so the summary leaves it out. */}
@@ -57,21 +53,11 @@ export function RecapSheet() {
                       ? 'Target ' + fmtH(p.targetSec!)
                       : fmtH(p.doneSec) + (p.targetSec !== null ? ' / ' + fmtH(p.targetSec) : '')}
                   </Text>
-                  {p.hit !== null && (
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: '800',
-                        color: p.hit ? '#1F8A3B' : colors.subtext,
-                        backgroundColor: p.hit ? '#E3F5E8' : colors.track,
-                        borderRadius: radius.pill,
-                        paddingVertical: 3,
-                        paddingHorizontal: 8,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {p.hit ? 'HIT' : 'MISSED'}
-                    </Text>
+                  {/* A met target gets a check; one that wasn't met gets nothing, never a "missed" badge. */}
+                  {p.hit === true && (
+                    <View style={{ width: 24, height: 24, borderRadius: radius.pill, backgroundColor: '#E3F5E8', alignItems: 'center', justifyContent: 'center' }}>
+                      <Glyph name="done" size={14} color="#1F8A3B" bg="#E3F5E8" label="Target met" />
+                    </View>
                   )}
                 </View>
                 {!single && <Text style={{ fontSize: 12, color: colors.subtext }}>{changeLabel(p.doneSec, p.prevSec)}</Text>}
