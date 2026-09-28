@@ -320,7 +320,7 @@ test('streaks on Today, Projects and Stats use freezes and the given now', () =>
   };
   const now = new Date(2026, 8, 15, 9, 0).getTime();
   assert.equal(selectToday(data, DEFAULT_CONFIG, now).streakLabel, '4 days');
-  assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d');
+  assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d streak');
   assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
 });
 
@@ -458,4 +458,53 @@ test('Today week summary: two or more projects with targets, pace summed per pro
   assert.equal(m.summary!.todayLabel, '1.1h more today to stay on pace');
   // No level badge on Today.
   assert.ok(!('stageLabel' in m.groups[0]));
+});
+
+test('Projects card: each number once; habit share only with two or more habits', () => {
+  const at = (d: number, h = 10) => new Date(2026, 8, d, h, 0).getTime();
+  const habit = (id: string, projectId: string) => ({
+    id,
+    projectId,
+    name: id,
+    icon: 'book' as const,
+    tile: '#fff',
+    dailyTargetMin: 30,
+    weeklyTargetMin: 150,
+  });
+  const sess = (id: string, habitId: string, start: number, sec: number) => ({ id, habitId, start, end: start + sec * 1000, duration: sec });
+  const data: PersistedState = {
+    schemaVersion: 3,
+    projects: [
+      { id: 'p1', name: 'Two habits', weeklyTarget: 8, started: at(1) },
+      { id: 'p2', name: 'One habit', weeklyTarget: 2, started: at(1) },
+    ],
+    habits: [habit('h1', 'p1'), habit('h2', 'p1'), habit('h3', 'p2')],
+    sessions: [
+      sess('a', 'h1', at(14), 3 * 3600),
+      sess('b', 'h2', at(15), 3600),
+      sess('c', 'h3', at(15), 1800),
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+  const wed = new Date(2026, 8, 16, 12, 0).getTime();
+  const [two, one] = selectProjects(data, DEFAULT_CONFIG, wed).cards;
+
+  assert.equal(two.weekLabel, '4h / 8h this week');
+  assert.equal(two.lifetimeLabel, '4h');
+  assert.equal(two.sessionsLabel, '2');
+  assert.equal(two.startedLabel, 'Started Sep 2026');
+  // The level panel names stages only; lifetime hours appear once, in the tile.
+  assert.equal(two.nextStageLabel, '→ Learner at 10h');
+  assert.ok(!('stageHoursLabel' in two) && !('weekShort' in two) && !('sub' in two));
+  assert.deepEqual(
+    two.habits.map((h) => [h.shareLabel, h.sub]),
+    [
+      ['75% of project time', '3h lifetime · 3h this week · 1 session'],
+      ['25% of project time', '1h lifetime · 1h this week · 1 session'],
+    ]
+  );
+
+  // A single habit's numbers are the project's: no share, no stats.
+  assert.deepEqual(one.habits.map((h) => [h.shareLabel, h.sub]), [['', '']]);
 });

@@ -187,6 +187,27 @@ function iconPath(icon: IconKey): string {
   return ICONS[icon] || ICONS.code;
 }
 
+/** A project's week against its target, as shown on Today and Projects. */
+function weekProgress(weekSec: number, targetHours: number, now: number) {
+  const pace = weekPace(weekSec, targetHours, now);
+  const pct = pace.targetSec ? Math.min(100, Math.round((weekSec / pace.targetSec) * 100)) : 0;
+  return {
+    weekLabel: pace.targetSec
+      ? fmtH(weekSec) + ' / ' + fmtH(pace.targetSec) + ' this week'
+      : fmtH(weekSec) + ' this week',
+    weekPct: pct,
+    barColor: pct >= 100 ? '#34C759' : '#17181A',
+    // Without a target the pace label would just repeat the week's time.
+    paceLabel: pace.kind === 'noTarget' ? '' : pace.label,
+    paceMet: pace.kind === 'met',
+  };
+}
+
+/** "5d streak", "5d streak · track today" when at risk, "" with no streak. */
+function streakText(streak: { current: number; atRisk: boolean }): string {
+  return streak.current > 0 ? streak.current + 'd streak' + (streak.atRisk ? ' · track today' : '') : '';
+}
+
 // ---------- TODAY ----------
 function recommendedIdFrom(
   ctx: StatContext,
@@ -289,20 +310,11 @@ export function selectToday(
   const groups: TodayGroup[] = shown.map((p) => {
     const ps = ctx.projStats[p.id];
     const streak = dailyStreak(daySecMap(data, now, ps.habits.map((h) => h.id)), now);
-    const pace = weekPace(ps.week, p.weeklyTarget, now);
-    const pct = pace.targetSec ? Math.min(100, Math.round((ps.week / pace.targetSec) * 100)) : 0;
     return {
       projectId: p.id,
       name: p.name,
-      weekLabel: pace.targetSec
-        ? fmtH(ps.week) + ' / ' + fmtH(pace.targetSec) + ' this week'
-        : fmtH(ps.week) + ' this week',
-      weekPct: pct,
-      barColor: pct >= 100 ? '#34C759' : '#17181A',
-      paceLabel: pace.kind === 'noTarget' ? '' : pace.label,
-      paceMet: pace.kind === 'met',
-      streakLabel:
-        streak.current > 0 ? streak.current + 'd streak' + (streak.atRisk ? ' · track today' : '') : '',
+      ...weekProgress(ps.week, p.weeklyTarget, now),
+      streakLabel: streakText(streak),
       streakAtRisk: streak.atRisk,
       rows: ps.habits.map((h) => {
         const stt = ctx.habitStats[h.id];
@@ -374,29 +386,42 @@ export interface ProjectHabitRow {
   iconPath: string;
   tile: string;
   name: string;
-  sharePct: string;
-  shareBarW: number; // 0..100
+  /** "40% of project time"; "" when the project has a single habit. */
+  shareLabel: string;
+  /** Share of the project's lifetime time, 0..100. */
+  shareBarW: number;
+  /** Lifetime, this week and sessions; "" for a single habit (the project's numbers already say it). */
   sub: string;
 }
 export interface ProjectCard {
   projectId: string;
   name: string;
   weeklyTarget: number;
-  sub: string;
-  stageLabel: string;
-  nextStageLabel: string;
-  stageHoursLabel: string;
-  stagePct: number;
-  streakLabel: string;
-  streakAtRisk: boolean;
-  /** Consecutive weeks meeting the weekly target, e.g. "3w". */
-  weekStreakLabel: string;
-  weekShort: string;
-  /** Pace toward this week's target (see weekPace). */
+  // Collapsed
+  /** e.g. "3.5h / 8h this week". */
+  weekLabel: string;
+  weekPct: number;
+  barColor: string;
+  /** Pace toward this week's target (see weekPace); "" without a target. */
   paceLabel: string;
   paceMet: boolean;
+  /** e.g. "5d streak"; "" with no streak. */
+  streakLabel: string;
+  streakAtRisk: boolean;
+  // Expanded
+  stageLabel: string;
+  /** e.g. "→ Builder at 25h" or "Highest stage". */
+  nextStageLabel: string;
+  stagePct: number;
+  /** Lifetime hours, e.g. "12.5h". */
+  lifetimeLabel: string;
+  sessionsLabel: string;
+  /** Consecutive weeks meeting the weekly target, e.g. "3w". */
+  weekStreakLabel: string;
   trendLabel: string;
   trendColor: string;
+  /** e.g. "Started Jul 2026"; "" when unknown. */
+  startedLabel: string;
   habits: ProjectHabitRow[];
 }
 export interface ProjectsModel {
@@ -421,38 +446,28 @@ export function selectProjects(
       ? Math.min(100, Math.round(((h - stage[1]) / (next[1] - stage[1])) * 100))
       : 100;
     const started = p.started ? new Date(p.started) : null;
-    const startedLabel = started
-      ? 'Started ' +
-        MONTHS[started.getMonth()].slice(0, 3) +
-        ' ' +
-        started.getFullYear()
-      : '';
     const pDays = daySecMap(data, now, ps.habits.map((x) => x.id));
     const streak = dailyStreak(pDays, now);
     const trend = trendOf(ps);
-    const pace = weekPace(ps.week, p.weeklyTarget, now);
-    const maxLife = Math.max(1, ...ps.habits.map((x) => ctx.habitStats[x.id].life));
+    const several = ps.habits.length >= 2;
     return {
       projectId: p.id,
       name: p.name,
       weeklyTarget: p.weeklyTarget || 8,
-      sub: [startedLabel, fmtH(ps.life) + ' total', ps.count + ' sessions']
-        .filter(Boolean)
-        .join(' · '),
-      stageLabel: stage[0],
-      nextStageLabel: next
-        ? '→ ' + next[0] + ' at ' + next[1] + 'h'
-        : 'Highest stage',
-      stageHoursLabel: h.toFixed(1) + 'h',
-      stagePct,
-      streakLabel: streak.current + 'd',
+      ...weekProgress(ps.week, p.weeklyTarget, now),
+      streakLabel: streakText(streak),
       streakAtRisk: streak.atRisk,
+      stageLabel: stage[0],
+      nextStageLabel: next ? '→ ' + next[0] + ' at ' + next[1] + 'h' : 'Highest stage',
+      stagePct,
+      lifetimeLabel: fmtH(ps.life),
+      sessionsLabel: String(ps.count),
       weekStreakLabel: weeklyTargetStreak(pDays, p.weeklyTarget, now) + 'w',
-      weekShort: fmtH(ps.week),
-      paceLabel: pace.label,
-      paceMet: pace.kind === 'met',
       trendLabel: trend.label,
       trendColor: trend.color,
+      startedLabel: started
+        ? 'Started ' + MONTHS[started.getMonth()].slice(0, 3) + ' ' + started.getFullYear()
+        : '',
       habits: ps.habits
         .slice()
         .sort((a, b) => ctx.habitStats[b.id].life - ctx.habitStats[a.id].life)
@@ -464,15 +479,16 @@ export function selectProjects(
             iconPath: iconPath(x.icon),
             tile: x.tile,
             name: x.name,
-            sharePct: share + '%',
-            shareBarW: Math.max(2, Math.round((stt.life / maxLife) * 100)),
-            sub:
-              fmtH(stt.life) +
-              ' lifetime · ' +
-              fmtHM(Math.floor(stt.week)) +
-              ' this week · ' +
-              stt.count +
-              ' sessions',
+            shareLabel: several ? share + '% of project time' : '',
+            shareBarW: share,
+            sub: several
+              ? fmtH(stt.life) +
+                ' lifetime · ' +
+                fmtH(stt.week) +
+                ' this week · ' +
+                stt.count +
+                (stt.count === 1 ? ' session' : ' sessions')
+              : '',
           };
         }),
     };
@@ -483,7 +499,7 @@ export function selectProjects(
       data.projects.length +
       (data.projects.length === 1 ? ' project · ' : ' projects · ') +
       data.habits.length +
-      ' habits',
+      (data.habits.length === 1 ? ' habit' : ' habits'),
     cards,
   };
 }
