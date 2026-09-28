@@ -7,11 +7,12 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { feedback } from '../../feedback/feedback';
-import { springs } from '../../theme/motion';
+import { press, springs } from '../../theme/motion';
 
 interface SortableListProps<T> {
   items: T[];
@@ -142,7 +143,7 @@ function SortableRow({
     right: 0,
     top: top.value,
     zIndex: dragging.value ? 10 : 0,
-    transform: [{ scale: withSpring(dragging.value ? 1.03 : 1, springs.press) }],
+    transform: [{ scale: dragging.value ? withTiming(1.03, press.in) : withSpring(1, press.out) }],
     shadowOpacity: withSpring(dragging.value ? 0.18 : 0),
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },

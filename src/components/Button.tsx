@@ -1,13 +1,13 @@
 import React from 'react';
 import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { feedback } from '../feedback/feedback';
-import { springs } from '../theme/motion';
 import { Swatch } from '../theme/palette';
 import { useTheme } from '../theme/ThemeProvider';
 import { EDGE } from '../theme/theme';
 import { Glyph, GlyphName } from './Glyph';
+import { usePressMotion } from './motion/Press';
 
 interface ButtonProps {
   onPress(): void;
@@ -28,18 +28,18 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   /** Skip the tap sound/haptic (the action plays its own). */
   quiet?: boolean;
+  /** False for plain navigation (e.g. "Next"): the tap sound plays, no haptic. */
+  haptic?: boolean;
 }
 
 /**
  * The chunky Adet button: rounded, bold, with a darker bottom edge that the
- * face presses down into with a spring. Physical enough to feel without
- * looking.
+ * face sinks into on press (the shared press motion, no scale).
  */
-export function Button({ onPress, title, label, icon, variant = 'primary', swatch, size = 'lg', disabled, style, quiet }: ButtonProps) {
+export function Button({ onPress, title, label, icon, variant = 'primary', swatch, size = 'lg', disabled, style, quiet, haptic = true }: ButtonProps) {
   const t = useTheme();
   const { colors, radius } = t;
-  const press = useSharedValue(0);
-  const faceStyle = useAnimatedStyle(() => ({ transform: [{ translateY: press.value * EDGE }] }));
+  const press = usePressMotion('button', { disabled, edge: true });
   const s = swatch ?? t.brand;
   const primary = variant === 'primary';
   const face = disabled ? colors.track : primary ? s.base : colors.card;
@@ -50,11 +50,11 @@ export function Button({ onPress, title, label, icon, variant = 'primary', swatc
   return (
     <Pressable
       onPress={() => {
-        if (!quiet) feedback('tap');
+        if (!quiet) feedback('tap', { haptic });
         onPress();
       }}
-      onPressIn={() => (press.value = withSpring(1, springs.press))}
-      onPressOut={() => (press.value = withSpring(0, springs.press))}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label ?? title}
@@ -76,7 +76,7 @@ export function Button({ onPress, title, label, icon, variant = 'primary', swatc
             gap: 8,
             paddingHorizontal: 18,
           },
-          faceStyle,
+          press.style,
         ]}
       >
         {icon && <Glyph name={icon} size={size === 'lg' ? 24 : 20} color={ink} bg={face} />}

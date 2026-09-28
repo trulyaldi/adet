@@ -1,9 +1,10 @@
 import React from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
+import { Press } from '../components/motion/Press';
 import { ScenePreview } from '../components/ScenePreview';
 import { Sheet } from '../components/Sheet';
 import { ICONS } from '../domain/constants';
@@ -74,7 +75,8 @@ export function ProjectSheet() {
                 const on = sheet.color === c;
                 const s = t.swatch(c);
                 return (
-                  <Pressable
+                  <Press
+                    kind="icon"
                     key={c}
                     onPress={() => actions.patchProjectSheet({ color: c })}
                     accessibilityRole="button"
@@ -83,7 +85,7 @@ export function ProjectSheet() {
                     style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: s.base, alignItems: 'center', justifyContent: 'center', borderWidth: on ? 3 : 0, borderColor: colors.ink }}
                   >
                     {on && <Glyph name="done" size={16} color={s.on} bg={s.base} />}
-                  </Pressable>
+                  </Press>
                 );
               })}
             </View>
@@ -94,7 +96,8 @@ export function ProjectSheet() {
             {PROJECT_ICONS.map((k) => {
               const on = sheet.icon === k;
               return (
-                <Pressable
+                <Press
+                  kind="icon"
                   key={k}
                   onPress={() => actions.patchProjectSheet({ icon: k })}
                   accessibilityRole="button"
@@ -103,7 +106,7 @@ export function ProjectSheet() {
                   style={{ width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? sw.base : colors.well }}
                 >
                   <Icon path={ICONS[k]} size={22} color={on ? sw.on : colors.ink} />
-                </Pressable>
+                </Press>
               );
             })}
           </View>
@@ -113,7 +116,8 @@ export function ProjectSheet() {
             {SCENES.map((k) => {
               const on = sheet.scene === k;
               return (
-                <Pressable
+                <Press
+                  kind="card"
                   key={k}
                   onPress={() => actions.patchProjectSheet({ scene: k })}
                   accessibilityRole="button"
@@ -127,7 +131,7 @@ export function ProjectSheet() {
                       <Glyph name="done" size={12} color={sw.on} bg={sw.base} />
                     </View>
                   )}
-                </Pressable>
+                </Press>
               );
             })}
           </View>
@@ -147,7 +151,8 @@ export function ProjectSheet() {
           {isEdit && (
             <View style={{ gap: 8 }}>
               {habits.map((h) => (
-                <Pressable
+                <Press
+                  kind="card"
                   key={h.id}
                   onPress={() => thenOpen(() => actions.openEditHabitById(h.id))}
                   accessibilityRole="button"
@@ -161,7 +166,7 @@ export function ProjectSheet() {
                   <Glyph name={isCheck(h) ? 'done' : 'clock'} size={16} color={colors.sub} bg={colors.well} label={isCheck(h) ? 'Check-off' : 'Timed'} />
                   {!isCheck(h) && <Text style={{ fontSize: 13, fontWeight: '800', color: colors.sub, fontVariant: ['tabular-nums'] }}>{fmtDur(h.dailyTargetMin * 60)}</Text>}
                   <Glyph name="chevronRight" size={16} color={colors.muted} bg={colors.well} />
-                </Pressable>
+                </Press>
               ))}
               <View style={{ alignItems: 'flex-start' }}>
                 <IconButton label="Add a habit" name="plus" size={18} color={colors.sub} bg={colors.well} diameter={40} onPress={() => thenOpen(() => actions.openNewHabit(sheet.id!))} />

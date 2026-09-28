@@ -1,10 +1,11 @@
 import React from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { FrequencyPicker } from '../components/FrequencyPicker';
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
+import { Press } from '../components/motion/Press';
 import { Sheet } from '../components/Sheet';
 import { ICONS, ICON_KEYS } from '../domain/constants';
 import { projectLook } from '../domain/look';
@@ -72,7 +73,8 @@ export function HabitSheet() {
             {ICON_KEYS.map((k) => {
               const on = sheet.icon === k;
               return (
-                <Pressable
+                <Press
+                  kind="icon"
                   key={k}
                   onPress={() => actions.patchHabitSheet({ icon: k })}
                   accessibilityRole="button"
@@ -81,7 +83,7 @@ export function HabitSheet() {
                   style={{ width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? sw.base : colors.well }}
                 >
                   <Icon path={ICONS[k]} size={22} color={on ? sw.on : colors.ink} />
-                </Pressable>
+                </Press>
               );
             })}
           </View>
@@ -94,7 +96,8 @@ export function HabitSheet() {
                 const on = sheet.projectId === p.id;
                 const s = t.swatch(projectLook(p).color);
                 return (
-                  <Pressable
+                  <Press
+                    kind="icon"
                     key={p.id}
                     onPress={() => actions.patchHabitSheet({ projectId: p.id })}
                     accessibilityRole="button"
@@ -106,7 +109,7 @@ export function HabitSheet() {
                     <Text numberOfLines={1} style={{ fontSize: 13.5, fontWeight: '800', color: on ? s.on : colors.ink, maxWidth: 160 }}>
                       {p.name}
                     </Text>
-                  </Pressable>
+                  </Press>
                 );
               })}
           </View>
@@ -172,7 +175,8 @@ export function HabitSheet() {
               {activeHabits(data)
                 .filter((h) => h.id !== sheet.id)
                 .map((h) => (
-                  <Pressable
+                  <Press
+                    kind="icon"
                     key={h.id}
                     onPress={() => actions.mergeHabit(sheet.id!, h.id)}
                     accessibilityRole="button"
@@ -180,7 +184,7 @@ export function HabitSheet() {
                     style={{ borderRadius: radius.pill, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: colors.well }}
                   >
                     <Text style={{ fontSize: 13, fontWeight: '800', color: colors.ink }}>{h.name}</Text>
-                  </Pressable>
+                  </Press>
                 ))}
             </View>
           )}

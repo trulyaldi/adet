@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
 
 import { AdetMark } from '../components/AdetMark';
+import { Press } from '../components/motion/Press';
 import { supabase } from '../sync/supabase';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
@@ -151,7 +144,8 @@ export function SignInScreen() {
         )}
         {notice && !error && <Text style={{ fontSize: 13, color: colors.sub }}>{notice}</Text>}
 
-        <Pressable
+        <Press
+          kind="button"
           disabled={!canSubmit || loading}
           onPress={step === 'email' ? sendCode : () => verify(code)}
           style={{
@@ -169,16 +163,16 @@ export function SignInScreen() {
               {step === 'email' ? 'Send code' : 'Verify'}
             </Text>
           )}
-        </Pressable>
+        </Press>
 
         {step === 'code' && (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Pressable disabled={loading} onPress={useDifferentEmail} style={{ padding: 4 }}>
+            <Press kind="icon" disabled={loading} onPress={useDifferentEmail} style={{ padding: 4 }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.sub }}>Use a different email</Text>
-            </Pressable>
-            <Pressable disabled={loading} onPress={sendCode} style={{ padding: 4 }}>
+            </Press>
+            <Press kind="icon" disabled={loading} onPress={sendCode} style={{ padding: 4 }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>Resend code</Text>
-            </Pressable>
+            </Press>
           </View>
         )}
       </View>

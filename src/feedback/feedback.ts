@@ -30,10 +30,14 @@ export const HAPTICS: Record<FeedbackEvent, Haptic> = {
   undo: { impact: Haptics.ImpactFeedbackStyle.Soft },
 };
 
-export function feedback(event: FeedbackEvent): void {
+/**
+ * Pass `haptic: false` for plain navigation taps (tabs, opening a sheet,
+ * expanding a card): the sound still plays, the haptic is kept for actions.
+ */
+export function feedback(event: FeedbackEvent, { haptic = true }: { haptic?: boolean } = {}): void {
   const prefs = devicePrefsRef.current;
   if (prefs.sound) playSound(event);
-  if (!prefs.haptics) return;
+  if (!prefs.haptics || !haptic) return;
   const h = HAPTICS[event];
   if (!h) return;
   const p = 'impact' in h ? Haptics.impactAsync(h.impact) : Haptics.notificationAsync(h.notify);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
 
 import { projectLook } from '../../domain/look';
@@ -9,6 +9,7 @@ import { PersistedState } from '../../domain/types';
 import { springs } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
+import { Press } from '../motion/Press';
 
 const H = 150;
 
@@ -29,7 +30,8 @@ export function WeeklyBars({ weeks, data }: { weeks: WeekColumn[]; data: Persist
     <View style={{ gap: 12 }}>
       <View style={{ height: H, flexDirection: 'row', alignItems: 'flex-end', gap: 5 }}>
         {weeks.map((wk, i) => (
-          <Pressable
+          <Press
+            kind="card"
             key={wk.week}
             onPress={() => setSel(i)}
             accessibilityRole="button"
@@ -43,7 +45,7 @@ export function WeeklyBars({ weeks, data }: { weeks: WeekColumn[]; data: Persist
               ))}
               {!wk.parts.length && <View style={{ flex: 1, backgroundColor: colors.track }} />}
             </Bar>
-          </Pressable>
+          </Press>
         ))}
       </View>
       {w && (

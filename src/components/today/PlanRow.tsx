@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureType } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -7,10 +7,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { TodayItem } from '../../domain/day';
 import { fmtDur, sayDur } from '../../domain/time';
 import { feedback } from '../../feedback/feedback';
-import { springs } from '../../theme/motion';
+import { press } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Glyph } from '../Glyph';
 import { Icon } from '../Icon';
+import { Press } from '../motion/Press';
 import { ProgressRing } from '../motion/ProgressRing';
 import { WeekDotsRow } from './WeekDotsRow';
 
@@ -48,7 +49,7 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
     .onEnd((e) => {
       if (e.translationX < -90 || e.velocityX < -800) {
         x.value = withTiming(-420, { duration: 180 }, () => scheduleOnRN(onAside));
-      } else x.value = withSpring(0, springs.press);
+      } else x.value = withSpring(0, press.out);
     });
 
   const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
@@ -64,7 +65,8 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
       </Animated.View>
       <GestureDetector gesture={swipe}>
         <Animated.View style={[{ flex: 1 }, rowStyle]}>
-          <Pressable
+          <Press
+            kind="card"
             onPress={() => {
               feedback('tap');
               if (check) onCheck();
@@ -85,7 +87,7 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
               if (e.nativeEvent.actionName === 'up') onMove?.(-1);
               if (e.nativeEvent.actionName === 'down') onMove?.(1);
             }}
-            style={({ pressed }) => [
+            style={[
               {
                 flex: 1,
                 flexDirection: 'row',
@@ -96,7 +98,6 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
                 paddingLeft: 16,
                 paddingRight: 6,
                 overflow: 'hidden',
-                transform: [{ scale: pressed ? 0.985 : 1 }],
               },
               t.shadow,
             ]}
@@ -127,7 +128,7 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
             ) : (
               <View style={{ width: 10 }} />
             )}
-          </Pressable>
+          </Press>
         </Animated.View>
       </GestureDetector>
     </View>
@@ -140,11 +141,12 @@ export function DoneRow({ item, onPress, bonus }: { item: TodayItem; onPress(): 
   const { colors, radius } = t;
   const sw = t.swatch(item.color);
   return (
-    <Pressable
+    <Press
+      kind="card"
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, done${item.sec > 0 ? `, ${sayDur(item.sec)}` : ''}${item.kind === 'check' ? ', tap to undo' : ', tap to keep going'}`}
-      style={({ pressed }) => ({
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
@@ -152,8 +154,7 @@ export function DoneRow({ item, onPress, bonus }: { item: TodayItem; onPress(): 
         paddingHorizontal: 12,
         borderRadius: radius.lg,
         backgroundColor: sw.light,
-        opacity: pressed ? 0.8 : 1,
-      })}
+      }}
     >
       <View style={{ width: 30, height: 30, borderRadius: radius.sm, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
         <Icon path={item.iconPath} size={16} color={sw.on} />
@@ -164,6 +165,6 @@ export function DoneRow({ item, onPress, bonus }: { item: TodayItem; onPress(): 
       {item.sec > 0 && <Text style={{ fontSize: 13, fontWeight: '800', color: t.dark ? colors.ink : sw.dark, fontVariant: ['tabular-nums'] }}>{fmtDur(item.sec)}</Text>}
       {bonus && <Glyph name="sparkle" size={18} color={t.dark ? sw.base : sw.dark} bg={sw.light} label="Bonus" />}
       {(item.done || !bonus) && <Glyph name="done" size={22} color={t.dark ? sw.base : sw.dark} bg={sw.light} />}
-    </Pressable>
+    </Press>
   );
 }
