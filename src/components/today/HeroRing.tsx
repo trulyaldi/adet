@@ -46,6 +46,8 @@ interface HeroRingProps {
 
 const SEG = 14;
 const CAP = 4;
+/** The capacity gauge's drawn width: thinner than the space it keeps (CAP), so it reads as secondary. */
+const CAP_LINE = 2.5;
 const GAP_DEG = 10;
 const MARK_LEN = 212;
 const MARK_VIEWBOX = '10.9 18.3 78.2 65.3';
@@ -74,8 +76,10 @@ function Segment({ d, len, color, frac, width }: { d: string; len: number; color
 
 /**
  * The day at a glance: one ring segment per planned habit in its project's
- * color, filling toward its share, with today's total time in the middle and
- * a thin capacity arc around the outside (a lighter second lap past it).
+ * color, filling toward its share, with today's total time in the middle.
+ * Around the outside, a hairline gauge of today's time against today's
+ * capacity: it fills clockwise from the tick at the top and reaches the tick
+ * again at full capacity (a lighter second lap past it).
  */
 export function HeroRing({ segments, trackedSec, capacitySec, complete, day, size = 220, onCheckDrawn }: HeroRingProps) {
   const t = useTheme();
@@ -157,18 +161,20 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
       accessibilityLabel={
         complete
           ? `Day complete, ${sayDur(trackedSec)}`
-          : `${sayDur(trackedSec)} today, ${doneCount} of ${segments.length} done`
+          : `${sayDur(trackedSec)} today, ${doneCount} of ${segments.length} done${capacitySec > 0 ? `, ${Math.round((trackedSec / capacitySec) * 100)}% of today's capacity` : ''}`
       }
       style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, pulseStyle]}
     >
       <Animated.View style={[{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center' }, ringStyle]}>
         <Svg width={size} height={size} style={{ position: 'absolute' }}>
-          {/* Capacity */}
+          {/* Capacity: a quiet gauge, secondary to the habit ring. */}
           <G rotation={-90} origin={`${c}, ${c}`}>
-            <Circle cx={c} cy={c} r={rCap} fill="none" stroke={colors.track} strokeWidth={CAP} />
-            <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={colors.brand} strokeWidth={CAP} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} animatedProps={lap1} />
-            <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={t.brand.bonus} strokeWidth={CAP} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} animatedProps={lap2} />
+            <Circle cx={c} cy={c} r={rCap} fill="none" stroke={colors.track} strokeWidth={CAP_LINE} opacity={0.7} />
+            <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={colors.brand} strokeWidth={CAP_LINE} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} opacity={0.55} animatedProps={lap1} />
+            <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={t.brand.bonus} strokeWidth={CAP_LINE} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} opacity={0.8} animatedProps={lap2} />
           </G>
+          {/* The capacity point: where the gauge starts and where a full day of capacity ends. */}
+          <Path d={`M${c} ${c - rCap - 2}V${c - rCap + 4.5}`} stroke={colors.sub} strokeWidth={2.5} strokeLinecap="round" />
           {/* Planned habits */}
           {segments.map((s, i) => {
             const from = i * seg + gap / 2;

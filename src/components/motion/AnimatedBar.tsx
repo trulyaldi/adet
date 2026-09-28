@@ -25,9 +25,9 @@ interface AnimatedBarProps {
 }
 
 /**
- * A thick progress bar that springs to each new value with a slight
- * overshoot, then sweeps a shine highlight across the fill. Reduce motion:
- * a short fade-free ease to the value, no shine.
+ * A thick progress bar that springs to each new value (critically damped),
+ * then sweeps a shine highlight across the fill. Reduce motion: the value
+ * shows at once, no shine.
  */
 export function AnimatedBar({ value, color, track, height = 12, label }: AnimatedBarProps) {
   const { colors } = useTheme();
@@ -39,7 +39,8 @@ export function AnimatedBar({ value, color, track, height = 12, label }: Animate
 
   useEffect(() => {
     if (reduced) {
-      fill.value = withTiming(v, timings.fade);
+      // No growing bars with reduce motion: the fill just shows its value.
+      fill.value = v;
       return;
     }
     const grew = v > fill.value + 0.001;

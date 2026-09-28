@@ -45,7 +45,7 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
           <Icon path={item.iconPath} size={28} color={sw.on} />
         </ProgressRing>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800', color: sw.on, opacity: 0.9 }}>
+          <Text numberOfLines={2} style={{ fontSize: 16, fontWeight: '800', color: sw.on, opacity: 0.9 }}>
             {item.name}
           </Text>
           <SessionClock numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 34, fontWeight: '800', color: sw.on, fontVariant: ['tabular-nums'], opacity: p.paused ? 0.6 : 1 }} />
