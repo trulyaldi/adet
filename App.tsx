@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +27,7 @@ import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
+import { preloadSounds } from './src/feedback/audio';
 import { DevicePrefsProvider } from './src/store/devicePrefs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
@@ -110,6 +111,7 @@ function ThemedStatusBar() {
 }
 
 export default function App() {
+  useEffect(preloadSounds, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

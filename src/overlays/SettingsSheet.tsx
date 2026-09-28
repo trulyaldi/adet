@@ -6,7 +6,10 @@ import { StepSlider } from '../components/StepSlider';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { BUDGET_MAX_MIN, BUDGET_MIN_MIN, BUDGET_STEP_MIN, PLAN_CAP_MAX } from '../domain/plan';
 import { MAX_REMINDER_HOURS } from '../domain/reminder';
+import { feedback } from '../feedback/feedback';
+import { useDevicePrefs } from '../store/devicePrefs';
 import { useStreak } from '../store/StreakStore';
+import { useTheme } from '../theme/ThemeProvider';
 import { useAuth } from '../sync/AuthProvider';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
@@ -37,6 +40,7 @@ export function SettingsSheet() {
           <IconButton label="Done" name="done" size={20} color="#FFFFFF" bg="#0A84FF" diameter={36} onPress={actions.closeSettings} tipBelow />
         </View>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 12, paddingTop: 12 }}>
+          <FeelCard />
           <BudgetCard />
           <CapCard />
           <ReminderCard />
@@ -143,6 +147,60 @@ function ReminderCard() {
         <IconButton label="Later" name="plus" size={15} bg={colors.screen} diameter={32} disabled={hours >= MAX_REMINDER_HOURS} onPress={() => step(1)} />
       </View>
     </Card>
+  );
+}
+
+/** Sound and haptics: two toggles, each an icon that shows its state by shape. */
+function FeelCard() {
+  const t = useTheme();
+  const { prefs, setPrefs } = useDevicePrefs();
+  return (
+    <View style={[{ backgroundColor: t.colors.card, borderRadius: t.radius.xl, padding: 14, paddingHorizontal: 16, flexDirection: 'row', gap: 12 }, t.shadow]}>
+      <Toggle
+        on={prefs.sound}
+        glyphOn="soundOn"
+        glyphOff="soundOff"
+        label="Sounds"
+        onChange={(sound) => {
+          setPrefs({ sound });
+          if (sound) feedback('tap');
+        }}
+      />
+      <Toggle
+        on={prefs.haptics}
+        glyphOn="haptic"
+        glyphOff="haptic"
+        label="Haptics"
+        onChange={(haptics) => {
+          setPrefs({ haptics });
+          if (haptics) feedback('tap');
+        }}
+      />
+    </View>
+  );
+}
+
+/** An on/off tile: filled in brand when on, outlined when off (shape and fill, not only color). */
+export function Toggle({ on, glyphOn, glyphOff, label, onChange }: { on: boolean; glyphOn: GlyphName; glyphOff: GlyphName; label: string; onChange(v: boolean): void }) {
+  const t = useTheme();
+  return (
+    <View style={{ flex: 1 }}>
+      <IconButton
+        label={label}
+        selected={on}
+        variant="chunky"
+        bg={on ? t.colors.brand : t.colors.card}
+        edge={on ? t.colors.brandDark : t.colors.line}
+        onPress={() => onChange(!on)}
+        quiet
+        style={{ height: 52, borderRadius: t.radius.lg, borderWidth: on ? 0 : 2, borderColor: t.colors.line }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Glyph name={on ? glyphOn : glyphOff} size={22} color={on ? t.colors.onBrand : t.colors.muted} />
+          <View style={{ width: 20, height: 12, borderRadius: 6, borderWidth: 2, borderColor: on ? t.colors.onBrand : t.colors.muted, backgroundColor: on ? t.colors.onBrand : 'transparent' }} />
+        </View>
+      </IconButton>
+    </View>
   );
 }
 
