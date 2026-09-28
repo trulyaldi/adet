@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { dailyStreak, FREEZES_PER_MONTH, weeklyTargetStreak } from './streaks';
+import { habitDaySec } from './plan';
+import { dailyStreak, dayRecords, FREEZES_PER_MONTH, habitWeekStreak, planStreak, weeklyTargetStreak } from './streaks';
+import { habit, sess, state } from './testkit';
 import { addDays, dkey, pkey } from './time';
+import { PersistedState } from './types';
 
 const H = 3600;
 
@@ -219,4 +222,137 @@ test('weekly streak: time on the DST Sunday counts in its own week', () => {
     };
     assert.equal(weeklyTargetStreak(map, 5, noon('2026-03-11')), 2);
   });
+});
+
+// ---------- plan-based streak (schema v4) ----------
+
+const S = { budgetMin: 60, planCap: 3 };
+const on = (m: number, d: number, h = 9) => new Date(2026, m, d, h, 0).getTime();
+/** One daily habit; a 10-minute session on each given day of September / October. */
+function daily(days: [number, number][], extra: Partial<PersistedState> = {}) {
+  const a = habit('a', 10, 5);
+  return state([a], days.map(([m, d], i) => sess('s' + i, 'a', on(m, d), 10)), { planSince: '2026-09-01', ...extra });
+}
+function streakOf(d: PersistedState, now: number) {
+  const today = dkey(new Date(now));
+  return planStreak(dayRecords(d, habitDaySec(d, now), today, S), today, d.streakCarry);
+}
+const range = (m: number, from: number, to: number): [number, number][] =>
+  Array.from({ length: to - from + 1 }, (_, i) => [m, from + i] as [number, number]);
+
+test('plan streak: complete days add up; today in progress breaks nothing', () => {
+  // Sep 21–30 done; today Oct 1 not yet.
+  const d = daily(range(8, 21, 30));
+  assert.equal(streakOf(d, on(9, 1, 12)).current, 10);
+  // Done today: +1.
+  const done = daily([...range(8, 21, 30), [9, 1]]);
+  assert.equal(streakOf(done, on(9, 1, 12)).current, 11);
+});
+
+test('one off day a week is a rest day (a moon): the streak survives', () => {
+  // Week of Sep 21: Wed Sep 23 missed. Week of Sep 28: Tue Sep 29 missed.
+  const d = daily([...range(8, 21, 22), ...range(8, 24, 28), ...range(8, 30, 30)]);
+  const s = streakOf(d, on(9, 1, 12));
+  assert.equal(s.current, 8, 'rest days neither break nor add');
+  assert.equal(s.marks.get('2026-09-23'), 'rest');
+  assert.equal(s.marks.get('2026-09-29'), 'rest');
+});
+
+test('a second off day in the same week breaks the streak (shown neutral)', () => {
+  // Sep 22 and Sep 24 both missed in the week of Sep 21.
+  const d = daily([[8, 21], [8, 23], ...range(8, 25, 30)]);
+  const s = streakOf(d, on(9, 1, 12));
+  assert.equal(s.marks.get('2026-09-22'), 'rest');
+  assert.equal(s.marks.get('2026-09-24'), 'open');
+  assert.equal(s.current, 6);
+  assert.equal(s.longest, 6);
+});
+
+test('Sunday to Monday: each week gets its own rest day', () => {
+  // Sun Sep 27 and Mon Sep 28 both missed: one per week, the streak lives.
+  const d = daily([...range(8, 21, 26), ...range(8, 29, 30)]);
+  const s = streakOf(d, on(9, 1, 12));
+  assert.equal(s.marks.get('2026-09-27'), 'rest');
+  assert.equal(s.marks.get('2026-09-28'), 'rest');
+  assert.equal(s.current, 8);
+});
+
+test('days with nothing due are free: they neither break nor add', () => {
+  const w = habit('w', 10, 5, { kind: 'weekly', times: 2 });
+  // Mon + Tue do the week; Wed–Sun are free; next Mon + Tue again.
+  const d = state([w], [sess('1', 'w', on(8, 21), 10), sess('2', 'w', on(8, 22), 10), sess('3', 'w', on(8, 28), 10), sess('4', 'w', on(8, 29), 10)], {
+    planSince: '2026-09-01',
+  });
+  const s = streakOf(d, on(8, 30, 12));
+  assert.equal(s.marks.get('2026-09-25'), 'free');
+  assert.equal(s.current, 4);
+});
+
+test("skipping the app doesn't make a day free: it's judged by the plan it would have had", () => {
+  // Sep 21–24 done, then nothing until today (Oct 1): the gap breaks the streak.
+  const d = daily(range(8, 21, 24));
+  const s = streakOf(d, on(9, 1, 12));
+  assert.equal(s.marks.get('2026-09-25'), 'rest');
+  assert.equal(s.marks.get('2026-09-26'), 'open');
+  assert.equal(s.current, 0);
+  assert.equal(s.longest, 4);
+});
+
+test('before plans existed, any tracked time counts (the old rule), with the new rest days', () => {
+  const a = habit('a', 60, 30);
+  // 5 minutes a day: under the minimum, but these days predate plans.
+  const d = state([a], range(8, 21, 27).map(([m, x], i) => sess('s' + i, 'a', on(m, x), 5)), { planSince: '2026-09-28' });
+  assert.equal(streakOf(d, on(8, 28, 12)).current, 7);
+});
+
+test('the old streak is kept as a floor until the new one breaks', () => {
+  const carry = { current: 40, longest: 55, day: '2026-09-28' };
+  // Under the new rules only Sep 26–27 count (2), but the old streak was 40 on the migration day.
+  const d = daily(range(8, 26, 27), { planSince: '2026-09-28', streakCarry: carry });
+  let s = streakOf(d, on(8, 28, 12));
+  assert.equal(s.current, 40);
+  assert.equal(s.longest, 55, 'the old longest is kept too');
+
+  // Two more complete days after the migration day: 42.
+  s = streakOf(daily([...range(8, 26, 30)], { planSince: '2026-09-28', streakCarry: carry }), on(8, 30, 20));
+  assert.equal(s.current, 42);
+
+  // A break after the migration day ends the carry: back to the new count.
+  const broken = daily([[8, 28], [8, 29], ...range(9, 3, 5)], { planSince: '2026-09-28', streakCarry: carry });
+  // Sep 30 and Oct 1 are both in the week of Sep 28: the first is its rest day, the second breaks.
+  s = streakOf(broken, on(9, 5, 20));
+  assert.equal(s.marks.get('2026-09-30'), 'rest');
+  assert.equal(s.marks.get('2026-10-01'), 'open');
+  assert.equal(s.current, 3);
+  assert.equal(s.longest, 55);
+});
+
+test('per-habit streak: consecutive weeks on target; the week in progress never breaks it', () => {
+  const w = habit('w', 10, 5, { kind: 'weekly', times: 2 });
+  const sessions = [
+    // Weeks of Sep 7, 14, 21: 2 each.
+    sess('1', 'w', on(8, 7), 10), sess('2', 'w', on(8, 9), 10),
+    sess('3', 'w', on(8, 14), 10), sess('4', 'w', on(8, 16), 10),
+    sess('5', 'w', on(8, 21), 10), sess('6', 'w', on(8, 22, 20), 10),
+    // Week of Sep 28 (current): 1 so far.
+    sess('7', 'w', on(8, 28), 10),
+  ];
+  const d = state([w], sessions);
+  const days = habitDaySec(d);
+  assert.equal(habitWeekStreak(w, days, '2026-09-30'), 3);
+  assert.equal(habitWeekStreak(w, habitDaySec({ ...d, sessions: [...sessions, sess('8', 'w', on(8, 30), 10)] }), '2026-09-30'), 4);
+  // A week under target breaks it.
+  assert.equal(habitWeekStreak(w, habitDaySec({ ...d, sessions: sessions.filter((s) => s.id !== '4') }), '2026-09-30'), 1);
+});
+
+test('the carry: finishing the migration day itself still adds one', () => {
+  // The old streak was 30 through Sep 27; the update came on Sep 28, before anything was tracked.
+  const carry = { current: 30, longest: 30, day: '2026-09-27' };
+  const before = daily(range(8, 26, 27), { planSince: '2026-09-28', streakCarry: carry });
+  assert.equal(streakOf(before, on(8, 28, 12)).current, 30);
+  const after = daily([...range(8, 26, 27), [8, 28]], { planSince: '2026-09-28', streakCarry: carry });
+  assert.equal(streakOf(after, on(8, 28, 20)).current, 31);
+  // An old-rule freeze day just before the update that the new rules call a break doesn't drop the carry.
+  const frozen = daily([[8, 21], [8, 23], [8, 25]], { planSince: '2026-09-26', streakCarry: { current: 3, longest: 9, day: '2026-09-25' } });
+  assert.equal(streakOf(frozen, on(8, 26, 12)).current, 3);
 });

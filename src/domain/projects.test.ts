@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { DEFAULT_CONFIG } from './config';
-import { recommendedHabitId, selectProjects, selectStats, selectToday } from './engine';
+import { selectProjects, selectStats } from './engine';
 import { activeHabits, activeProjects, archivedProjects, isArchived } from './projects';
+import { selectPickerRows, selectPlanToday } from './today';
 import { Habit, PersistedState } from './types';
 
 const NOW = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16
@@ -17,11 +18,15 @@ const habit = (id: string, projectId: string): Habit => ({
   tile: '#fff',
   dailyTargetMin: 30,
   weeklyTargetMin: 150,
+  frequency: { kind: 'daily' },
+  minTargetMin: 5,
 });
+
+const SETTINGS = { budgetMin: 60, planCap: 3 };
 
 function data(): PersistedState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     projects: [
       { id: 'p1', name: 'Active A', weeklyTarget: 8, started: at(1) },
       { id: 'p2', name: 'Old', weeklyTarget: 10, started: at(1), archivedAt: at(10) },
@@ -36,6 +41,10 @@ function data(): PersistedState {
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-09-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 }
 
@@ -48,23 +57,21 @@ test('archive helpers', () => {
   assert.equal(isArchived({ id: 'x', name: 'x', weeklyTarget: 1, archivedAt: null }), false);
 });
 
-test('archived projects leave Today, its pace sums and Up next', () => {
-  const t = selectToday(data(), DEFAULT_CONFIG, NOW);
-  assert.deepEqual(t.groups.map((g) => g.projectId), ['p1', 'p3']);
-  assert.ok(t.summary);
-  // 1h + 30m against 8h + 4h; the archived 2h and 10h target are left out.
-  assert.equal(t.summary!.weekLabel, '1.5h / 12h this week');
-  const rec = recommendedHabitId(data(), DEFAULT_CONFIG, NOW);
-  assert.ok(rec === 'h1' || rec === 'h3');
+test("archived projects' habits are never planned or offered", () => {
+  const t = selectPlanToday(data(), SETTINGS, NOW);
+  assert.deepEqual(t.plan.map((c) => c.habitId), ['h1', 'h3']);
+  assert.deepEqual(selectPickerRows(data(), SETTINGS, NOW, { ignoreBudget: true }).map((r) => r.habitId), []);
+  // A stored plan naming an archived habit drops it.
+  const stored = { ...data(), plans: { '2026-09-16': ['h2', 'h1'] } };
+  assert.deepEqual(selectPlanToday(stored, SETTINGS, NOW).plan.map((c) => c.habitId), ['h1']);
 
   // Everything archived: Today shows its empty state.
   const all = data();
   all.projects = all.projects.map((p) => ({ ...p, archivedAt: at(15) }));
-  const empty = selectToday(all, DEFAULT_CONFIG, NOW);
-  assert.equal(empty.groups.length, 0);
+  const empty = selectPlanToday(all, SETTINGS, NOW);
+  assert.equal(empty.plan.length, 0);
   assert.equal(empty.noHabits, true);
-  assert.equal(empty.summary, null);
-  assert.equal(recommendedHabitId(all, DEFAULT_CONFIG, NOW), null);
+  assert.equal(empty.free, false);
 });
 
 test('Projects lists archived projects separately; header counts active ones', () => {
@@ -74,8 +81,8 @@ test('Projects lists archived projects separately; header counts active ones', (
   assert.deepEqual(
     m.archived.map((a) => [a.projectId, a.sub]),
     [
-      ['p2', '2h lifetime · archived Sep 2026'],
-      ['p4', '0m lifetime · archived Sep 2026'],
+      ['p2', '2h · Sep 2026'],
+      ['p4', '0m · Sep 2026'],
     ]
   );
 });
@@ -90,10 +97,9 @@ test('archived history still counts in Stats lifetime and Time by project', () =
   assert.match(old!.label, /^57% · 2h$/);
 });
 
-test('a timer running on an archived project keeps that project on Today, outside the summary', () => {
+test('a timer running on an archived habit stays on Today (as a bonus card) until stopped', () => {
   const d = { ...data(), active: { habitId: 'h2', startedAt: NOW - 60_000, baseSec: 0 } };
-  const t = selectToday(d, DEFAULT_CONFIG, NOW);
-  assert.deepEqual(t.groups.map((g) => g.projectId), ['p1', 'p2', 'p3']);
-  assert.equal(t.groups[1].rows[0].running, true);
-  assert.equal(t.summary!.weekLabel, '1.5h / 12h this week');
+  const t = selectPlanToday(d, SETTINGS, NOW);
+  assert.deepEqual(t.plan.map((c) => c.habitId), ['h1', 'h3']);
+  assert.deepEqual(t.bonus.map((c) => [c.habitId, c.running]), [['h2', true]]);
 });

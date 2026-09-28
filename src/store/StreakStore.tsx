@@ -11,11 +11,24 @@ import { Alert, AppState } from 'react-native';
 
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
-import { activeSec, recommendedHabitId } from '../domain/engine';
+import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
+import { activeSec } from '../domain/engine';
 import { activeHabits } from '../domain/projects';
-import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
+import {
+  addToPlan,
+  clampBudgetMin,
+  clampPlanCap,
+  completionOn,
+  habitDaySec,
+  planFor,
+  PlanSettings,
+  suggestPlan,
+  swapInPlan,
+} from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
+import { finishRebalance } from '../domain/rebalance';
 import { seed } from '../domain/seed';
+import { dkey } from '../domain/time';
 import {
   applySessionEdit,
   checkSessionTimes,
@@ -41,13 +54,22 @@ import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMe
 export type Screen = 'today' | 'projects' | 'stats';
 export type StatsView = 'overview' | 'history';
 
+/**
+ * The plan editor on Today: swap a planned habit for another, add one to a
+ * plan with room, or start a bonus habit once the day is done.
+ */
+export type PlanPicker = { mode: 'swap'; habitId: string } | { mode: 'add' } | { mode: 'bonus' };
+
 export interface HabitSheetState {
   id: string | null;
   name: string;
   icon: IconKey;
   projectId: string;
+  /** Full session length in minutes. */
   dailyTargetMin: number;
-  weeklyTargetMin: number;
+  /** Minimum session length in minutes. */
+  minTargetMin: number;
+  frequency: Frequency;
 }
 export interface ProjectSheetState {
   id: string | null;
@@ -92,6 +114,12 @@ export interface SessionSheetState {
 export interface UIState {
   screen: Screen;
   timerOpen: boolean;
+  /**
+   * The length the running timer is aiming for (full or minimum), in minutes.
+   * UI-only: a timer resumed after a restart or from another device aims for
+   * the habit's full length.
+   */
+  timerGoal: { habitId: string; min: number } | null;
   heatSel: string | null;
   heatSheet: boolean;
   clearArmed: boolean;
@@ -104,18 +132,21 @@ export interface UIState {
   undo: Session | null;
   /** Monday dkey of the weekly recap shown in the recap sheet. */
   recapSheet: string | null;
-  /** Monday dkey of the recap card on Today; stays up for this app session until dismissed. */
-  recapCard: string | null;
   /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
   toast: string | null;
   settingsOpen: boolean;
   /** Which half of Stats is showing; kept while switching tabs. */
   statsView: StatsView;
+  planPicker: PlanPicker | null;
+  /** Bumped when a plan edit is blocked by the budget: budget bars flash amber and shake. */
+  budgetShake: number;
+  weekOpen: boolean;
 }
 
 const INITIAL_UI: UIState = {
   screen: 'today',
   timerOpen: false,
+  timerGoal: null,
   heatSel: null,
   heatSheet: false,
   clearArmed: false,
@@ -126,10 +157,12 @@ const INITIAL_UI: UIState = {
   sessionSheet: null,
   undo: null,
   recapSheet: null,
-  recapCard: null,
   toast: null,
   settingsOpen: false,
   statsView: 'overview',
+  planPicker: null,
+  budgetShake: 0,
+  weekOpen: false,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -151,7 +184,8 @@ export interface StreakActions {
   closeSettings(): void;
   setStatsView(view: StatsView): void;
   // timer
-  startTimer(habitId: string): void;
+  /** Start (or switch to) a habit's timer, aiming for `goalMin` minutes (default: its full length). */
+  startTimer(habitId: string, goalMin?: number): void;
   openTimer(): void;
   closeTimer(): void;
   togglePause(): void;
@@ -202,9 +236,28 @@ export interface StreakActions {
   // weekly recap
   openRecap(weekStart: string): void;
   closeRecap(): void;
-  dismissRecapCard(): void;
+  // today's plan
+  openPlanPicker(picker: PlanPicker): void;
+  closePlanPicker(): void;
+  /** Swap a planned habit for another; false (and a budget shake) when it wouldn't fit. */
+  swapPlan(outId: string, inId: string): boolean;
+  removeFromPlan(habitId: string): void;
+  /** Add a habit to today's plan; false (and a budget shake) when it wouldn't fit. */
+  addToPlan(habitId: string): boolean;
+  // week view
+  openWeek(): void;
+  closeWeek(): void;
+  /**
+   * Close the one-time rebalance screen for good, applying the chosen
+   * frequencies (habit id → frequency), or keeping everything as is (null).
+   */
+  finishRebalance(chosen: Record<string, Frequency> | null): void;
   // device settings
   setReminderHours(hours: number): void;
+  /** Daily time budget in minutes (15..180, 15-minute steps). */
+  setBudgetMin(min: number): void;
+  /** Most habits in a day's plan (1..5). */
+  setPlanCap(cap: number): void;
 }
 
 interface StreakContextValue {
@@ -223,14 +276,20 @@ interface StreakContextValue {
 
 const StreakContext = createContext<StreakContextValue | null>(null);
 
-const EMPTY_DATA: PersistedState = {
-  schemaVersion: CURRENT_SCHEMA_VERSION,
-  projects: [],
-  habits: [],
-  sessions: [],
-  active: null,
-  historyClearedAt: 0,
-};
+function emptyData(now: number): PersistedState {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    projects: [],
+    habits: [],
+    sessions: [],
+    active: null,
+    historyClearedAt: 0,
+    plans: {},
+    planSince: dkey(new Date(now)),
+    streakCarry: null,
+    rebalancePending: false,
+  };
+}
 
 interface StoreState {
   data: PersistedState;
@@ -254,7 +313,7 @@ function forUser(data: PersistedState, meta: SyncMeta, userId: string, now: numb
   const fresh: SyncMeta = { ...EMPTY_SYNC_META, ownerId: userId };
   // Data owned by a different account is never uploaded into this one.
   if (meta.ownerId !== null || isUntouchedSeed(data, seed(now))) {
-    return { ...base, data: EMPTY_DATA, sync: fresh };
+    return { ...base, data: emptyData(now), sync: fresh };
   }
   return { ...base, data, sync: { ...fresh, outbox: enqueue({}, allAsChanges(data)) } };
 }
@@ -262,12 +321,12 @@ function forUser(data: PersistedState, meta: SyncMeta, userId: string, now: numb
 export function StreakProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [wiped, setWiped] = useState(false);
-  const [store, setStore] = useState<StoreState>({
-    data: EMPTY_DATA,
+  const [store, setStore] = useState<StoreState>(() => ({
+    data: emptyData(Date.now()),
     sync: EMPTY_SYNC_META,
     localRev: 0,
     activeRev: 0,
-  });
+  }));
   const data = store.data;
   const [ui, setUi] = useState<UIState>(INITIAL_UI);
   const [now, setNow] = useState(() => Date.now());
@@ -377,18 +436,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
   }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
 
-  // Last week's recap card: the first time it's offered it is recorded as seen
-  // on this device, so it appears once per week; it stays up for this session
-  // until dismissed. Re-checked when data changes, e.g. last week arriving via sync.
-  const lastWeek = lastCompletedWeekStart(now);
-  useEffect(() => {
-    if (!ready || wiped) return;
-    const recap = recapToShow(store.data, Date.now(), settings.recapSeenWeek);
-    if (!recap) return;
-    setUi((p) => ({ ...p, recapCard: recap.weekStart }));
-    updateSettings({ recapSeenWeek: recap.weekStart });
-  }, [ready, wiped, lastWeek, store.data, settings.recapSeenWeek, updateSettings]);
-
   // Once per device: offer to remove sessions under a minute left over from
   // before the stop rule. Re-checked as data arrives (e.g. the first pull on a
   // new device) until answered; the ref keeps it to one alert per app session.
@@ -418,6 +465,46 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       { cancelable: true, onDismiss: done }
     );
   }, [ready, wiped, store.data.sessions, settings.shortSessionsReviewed, updateSettings, setData]);
+
+  // Today's plan is fixed the first time the day is shown, so it doesn't
+  // reshuffle as habits are done (completing one changes the weekly counts the
+  // suggestion is based on). Re-suggested when the budget or cap changes. An
+  // empty suggestion isn't fixed, so habits added (or synced) later that day
+  // are still picked up; a plan the user emptied stays empty.
+  const today = dkey(new Date(now));
+  const todayPinned = data.plans[today] !== undefined;
+  const planSettings: PlanSettings = useMemo(
+    () => ({ budgetMin: settings.budgetMin, planCap: settings.planCap }),
+    [settings.budgetMin, settings.planCap]
+  );
+  const planSettingsRef = useRef(planSettings);
+  planSettingsRef.current = planSettings;
+  const pinnedWith = useRef<PlanSettings | null>(null);
+  useEffect(() => {
+    if (!ready || wiped) return;
+    const settingsChanged = pinnedWith.current !== null && pinnedWith.current !== planSettings;
+    pinnedWith.current = planSettings;
+    if (todayPinned && !settingsChanged) return;
+    setData((d) => {
+      const days = habitDaySec(d);
+      const suggested = suggestPlan(d, days, today, planSettings);
+      // After a settings change, habits already done today stay in the plan when they still fit.
+      const kept = settingsChanged
+        ? (d.plans[today] ?? []).filter((id) => {
+            const h = d.habits.find((x) => x.id === id);
+            return h && completionOn(h, habitDaySec(d, Date.now()), today);
+          })
+        : [];
+      let plan = kept;
+      for (const id of suggested) plan = addToPlan(plan, id, d, planSettings) ?? plan;
+      if (!plan.length) {
+        if (d.plans[today] === undefined) return d;
+        const { [today]: _dropped, ...rest } = d.plans;
+        return { ...d, plans: rest };
+      }
+      return { ...d, plans: { ...d.plans, [today]: plan } };
+    });
+  }, [ready, wiped, today, todayPinned, planSettings, data.habits, setData]);
 
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
@@ -450,7 +537,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       closeSettings: () => patchUi({ settingsOpen: false }),
       setStatsView: (statsView) => patchUi({ statsView }),
 
-      startTimer: (habitId) => {
+      startTimer: (habitId, goalMin) => {
         const now = Date.now();
         const prev = storeRef.current.data.active;
         // Switching habits stops the running timer first (same rule as Stop).
@@ -464,7 +551,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             active: { habitId, startedAt: now, baseSec: 0 },
           };
         });
-        patchUi(discarded ? { timerOpen: true, toast: SHORT_TIMER_TOAST } : { timerOpen: true });
+        const goal = goalMin ?? storeRef.current.data.habits.find((h) => h.id === habitId)?.dailyTargetMin;
+        const timerGoal = goal ? { habitId, min: goal } : null;
+        patchUi(discarded ? { timerOpen: true, timerGoal, toast: SHORT_TIMER_TOAST } : { timerOpen: true, timerGoal });
         // Reminder permission is asked on timer start; iOS only prompts the first time.
         if (settingsRef.current.reminderHours > 0) {
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
@@ -530,7 +619,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             icon: 'code',
             projectId,
             dailyTargetMin: 30,
-            weeklyTargetMin: 150,
+            minTargetMin: defaultMinMin(30),
+            frequency: { kind: 'daily' },
           },
         }),
       openEditHabit: (habit) =>
@@ -541,7 +631,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             icon: habit.icon,
             projectId: habit.projectId,
             dailyTargetMin: habit.dailyTargetMin,
-            weeklyTargetMin: habit.weeklyTargetMin,
+            minTargetMin: habit.minTargetMin,
+            frequency: habit.frequency,
           },
         }),
       closeHabitSheet: () => patchUi({ habitSheet: null }),
@@ -555,6 +646,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setUi((prevUi) => {
           const sh = prevUi.habitSheet;
           if (!sh || !sh.name.trim()) return prevUi;
+          const frequency = normalizeFrequency(sh.frequency);
+          const minTargetMin = clampMinMin(sh.minTargetMin, sh.dailyTargetMin);
+          // Older app versions show the weekly minutes target; keep it in step.
+          const weeklyTargetMin = sh.dailyTargetMin * weeklyTargetOf(frequency);
           setData((d) => {
             if (sh.id) {
               return {
@@ -567,7 +662,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                         icon: sh.icon,
                         projectId: sh.projectId,
                         dailyTargetMin: sh.dailyTargetMin,
-                        weeklyTargetMin: sh.weeklyTargetMin,
+                        weeklyTargetMin,
+                        frequency,
+                        minTargetMin,
                       }
                     : h
                 ),
@@ -585,7 +682,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
               icon: sh.icon,
               tile,
               dailyTargetMin: sh.dailyTargetMin,
-              weeklyTargetMin: sh.weeklyTargetMin,
+              weeklyTargetMin,
+              frequency,
+              minTargetMin,
             };
             return { ...d, habits: [...d.habits, newHabit] };
           });
@@ -724,8 +823,15 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       closeStageSheet: () => patchUi({ stageSheet: null }),
 
       openLogSheet: () => {
-        const def =
-          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ?? activeHabits(data)[0]?.id ?? null;
+        // Default to the first planned habit not done yet today.
+        const now = Date.now();
+        const day = dkey(new Date(now));
+        const days = habitDaySec(data, now);
+        const next = planFor(data, days, day, planSettingsRef.current).find((id) => {
+          const h = data.habits.find((x) => x.id === id);
+          return h && !completionOn(h, days, day);
+        });
+        const def = next ?? activeHabits(data)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {
@@ -839,7 +945,45 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
       openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
       closeRecap: () => patchUi({ recapSheet: null }),
-      dismissRecapCard: () => patchUi({ recapCard: null }),
+
+      openPlanPicker: (planPicker) => patchUi({ planPicker }),
+      closePlanPicker: () => patchUi({ planPicker: null }),
+      swapPlan: (outId, inId) => {
+        const d = storeRef.current.data;
+        const day = dkey(new Date());
+        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
+        const next = swapInPlan(current, outId, inId, d, planSettingsRef.current);
+        if (!next) {
+          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
+          return false;
+        }
+        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
+        patchUi({ planPicker: null });
+        return true;
+      },
+      removeFromPlan: (habitId) => {
+        const day = dkey(new Date());
+        setData((d) => {
+          const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
+          return { ...d, plans: { ...d.plans, [day]: current.filter((id) => id !== habitId) } };
+        });
+      },
+      addToPlan: (habitId) => {
+        const d = storeRef.current.data;
+        const day = dkey(new Date());
+        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
+        const next = addToPlan(current, habitId, d, planSettingsRef.current);
+        if (!next) {
+          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
+          return false;
+        }
+        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
+        patchUi({ planPicker: null });
+        return true;
+      },
+      openWeek: () => patchUi({ weekOpen: true }),
+      closeWeek: () => patchUi({ weekOpen: false }),
+      finishRebalance: (chosen) => setData((d) => finishRebalance(d, chosen, dkey(new Date()))),
 
       setReminderHours: (hours) => {
         const next = updateSettings({ reminderHours: clampReminderHours(hours) });
@@ -847,6 +991,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
         }
       },
+      setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
+      setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
     };
     // A few actions read `data` directly (deleteHabit's timerOpen decision,
     // openLogSheet, deleteSession's undo copy); the rest use

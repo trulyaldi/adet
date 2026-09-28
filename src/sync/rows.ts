@@ -1,6 +1,7 @@
 // Mapping between domain changes and Supabase rows (see supabase/migrations).
 // Pure: no client import, so it can be unit-tested under node.
 
+import { clampMinMin, defaultMinMin, parseFrequency } from '../domain/frequency';
 import { ACTIVE_ID, Change, parseTimestamp, SyncTable } from '../domain/sync';
 import { IconKey } from '../domain/types';
 
@@ -54,6 +55,9 @@ export function changeToRow(c: Change, userId: string): Row {
         tile: r.tile,
         daily_target_min: r.dailyTargetMin,
         weekly_target_min: r.weeklyTargetMin,
+        // Needs migration 004_doable_day.
+        frequency: r.frequency,
+        min_target_min: r.minTargetMin,
         merged_into: c.deletedAt === null ? null : c.mergedInto ?? null,
       };
     }
@@ -95,7 +99,12 @@ export function rowToChange(table: SyncTable, row: Row): Change {
           updatedAt,
         },
       };
-    case 'habits':
+    case 'habits': {
+      // Rows written before migration 004, or by older app versions, have no
+      // frequency or minimum: they read as daily with the default minimum.
+      const dailyTargetMin = num(row.daily_target_min);
+      const minTargetMin =
+        row.min_target_min == null ? defaultMinMin(dailyTargetMin) : clampMinMin(num(row.min_target_min), dailyTargetMin);
       return {
         table,
         id: String(row.id),
@@ -107,11 +116,14 @@ export function rowToChange(table: SyncTable, row: Row): Change {
           name: String(row.name),
           icon: String(row.icon) as IconKey,
           tile: String(row.tile),
-          dailyTargetMin: num(row.daily_target_min),
+          dailyTargetMin,
           weeklyTargetMin: num(row.weekly_target_min),
           updatedAt,
+          frequency: parseFrequency(row.frequency),
+          minTargetMin,
         },
       };
+    }
     case 'sessions':
       return {
         table,

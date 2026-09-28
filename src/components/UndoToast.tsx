@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
+import { Glyph, IconButton } from './Glyph';
 
 /**
  * "Session deleted · Undo", shown while a deleted session can still be
@@ -25,10 +26,8 @@ export function UndoToast() {
         paddingRight: 8,
       }}
     >
-      <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>Session deleted</Text>
-      <Pressable onPress={actions.undoDelete} hitSlop={8} style={{ paddingVertical: 4, paddingHorizontal: 10 }}>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF' }}>Undo</Text>
-      </Pressable>
+      <Glyph name="trash" size={18} color="#FFFFFF" bg={colors.ink} label="Session deleted" />
+      <IconButton label="Undo" name="undo" size={20} color="#FFFFFF" diameter={34} onPress={actions.undoDelete} />
     </View>
   );
 }

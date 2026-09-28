@@ -74,6 +74,8 @@ export function Sheet({
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
           style={{
             position: 'absolute',
             top: 0,

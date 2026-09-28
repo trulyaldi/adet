@@ -43,11 +43,12 @@ src/
     storage.ts              AsyncStorage load / migrate / save ('streak-v3'; reads legacy 'streak-v2')
     StreakStore.tsx         React context: state, 1s tick, all actions (CRUD, timer)
   theme/tokens.ts           colors, radii, shadows
-  components/               Icon (SVG), ProgressBar, Sheet, TabBar
+  components/               glyphs.ts + Glyph (the Adet icon set, IconButton with labels and
+                            long-press tooltips), DayRing, PlanCard, BudgetBar, ProgressBar, Sheet, TabBar
   screens/                  TodayScreen, ProjectsScreen, StatsScreen
   overlays/                 TimerOverlay, HabitSheet, ProjectSheet, StageSheet,
                             LogTimeSheet, EditSessionSheet, ActivityHistorySheet,
-                            ActivityDaySheet
+                            ActivityDaySheet, PlanPickerSheet, WeekSheet, RebalanceScreen
 ```
 
 The `domain/` layer is a faithful, framework-free port of the design's `DCLogic`
@@ -57,11 +58,16 @@ thin: they call a selector and attach press handlers from the store.
 ## Data model
 
 - **Project** — `{ name, weeklyTarget (h/week), started, archivedAt? }`; archived projects are hidden from Today/Projects but their history counts in Stats
-- **Habit** — belongs to a project; `{ name, icon, tile, dailyTargetMin, weeklyTargetMin }` (targets are in minutes; `dailyTargetMin` is kept and synced but no longer shown)
+- **Habit** — belongs to a project; `{ name, icon, tile, dailyTargetMin, minTargetMin, frequency, weeklyTargetMin }`. `dailyTargetMin` is the full session length, `minTargetMin` the minimum (both minutes); `frequency` is every day, 1–6 times a week, or fixed weekdays (`src/domain/frequency.ts`). `weeklyTargetMin` is kept in step for older app versions.
+- **Completion** is derived, never stored: a day's time on a habit reaching its minimum counts as done, reaching its full length as a full session (`src/domain/plan.ts`).
+- **Plans** (local-only, not synced) — each day's plan of at most `planCap` habits within the daily `budgetMin` (device settings), fixed when the day is first shown. `planSince`, `streakCarry` and `rebalancePending` are local-only too.
+- **Streaks** (`src/domain/streaks.ts`) — a day counts when its plan is done; days with nothing planned are neutral; the first unfinished day of each week is a rest day. The pre-plans streak is kept as a floor (`streakCarry`).
 - **Session** — a logged block of time on a habit `{ start, end, duration, notes?, manual? }`; `manual` is true when logged manually
 - **PersistedState** — carries a numeric `schemaVersion`
 - Stages (by lifetime hours): Novice → Learner → Builder → Practitioner → Professional → Expert → Master
 
 ## Schema versioning
 
-To change persisted data, increment `CURRENT_SCHEMA_VERSION` in `src/domain/types.ts`, append a migration to `MIGRATIONS` in `src/domain/migrations.ts`, and add a migration test. Each migration converts one version to the next and stamps the resulting `schemaVersion`.
+To change persisted data, increment `CURRENT_SCHEMA_VERSION` in `src/domain/types.ts`, append a migration to `MIGRATIONS` in `src/domain/migrations.ts`, and add a migration test. Each migration converts one version to the next and stamps the resulting `schemaVersion`. New top-level fields must also be added to `persistedSlice` (the saved fields).
+
+Supabase migrations in `supabase/migrations/` are run by hand in the SQL editor, in order, **before** opening a build that needs them: a build that sends a column the server doesn't have stalls all syncing on that device. `004_doable_day.sql` (habit `frequency` and `min_target_min`) is needed from the daily-plan build on.

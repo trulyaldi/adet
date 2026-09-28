@@ -3,23 +3,38 @@ import { Text, View } from 'react-native';
 
 import { useStreak } from '../store/StreakStore';
 import { colors } from '../theme/tokens';
+import { Glyph, useTip } from './Glyph';
 
-/** Small dot + label: synced, syncing, or offline with the pending count. */
+/** A cloud glyph: ticked when synced, dotted while syncing, struck through offline (with the pending count). */
 export function SyncIndicator() {
   const { sync } = useStreak();
-  const dot = sync.state === 'synced' ? colors.green : sync.state === 'syncing' ? colors.muted : colors.warn;
   const label =
     sync.state === 'synced'
       ? 'Synced'
       : sync.state === 'syncing'
-        ? 'Syncing…'
+        ? 'Syncing'
         : sync.pending
-          ? `Offline · ${sync.pending} pending`
+          ? `Offline, ${sync.pending} pending`
           : 'Offline';
+  const { show, tip } = useTip(label, true);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: dot }} />
-      <Text style={{ fontSize: 12, fontWeight: '600', color: colors.muted }}>{label}</Text>
+    <View style={{ position: 'relative' }}>
+      <View
+        accessible
+        accessibilityLabel={label}
+        onTouchEnd={show}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+      >
+        <Glyph
+          name={sync.state === 'synced' ? 'cloud' : sync.state === 'syncing' ? 'cloudSync' : 'cloudOff'}
+          size={16}
+          color={colors.muted}
+        />
+        {sync.state === 'offline' && sync.pending > 0 && (
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.muted, fontVariant: ['tabular-nums'] }}>{sync.pending}</Text>
+        )}
+      </View>
+      {tip}
     </View>
   );
 }

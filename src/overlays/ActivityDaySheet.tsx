@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { CompletionMark } from '../components/CompletionMark';
+import { Glyph } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { UndoToast } from '../components/UndoToast';
@@ -20,28 +22,18 @@ export function ActivityDaySheet() {
       <View style={{ gap: 14, paddingTop: 12 }}>
         <UndoToast />
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5 }}>
-              ACTIVITY
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: colors.ink, marginTop: 2 }}>
-              {model.heatSelDate}
-            </Text>
-          </View>
+          <Text style={{ flex: 1, fontSize: 20, fontWeight: '800', color: colors.ink }}>{model.heatSelDate}</Text>
           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>{model.heatSelInfo}</Text>
         </View>
 
         {model.heatSelEmpty && (
-          <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 14, paddingVertical: 26 }}>
-            No time logged this day
-          </Text>
+          <View style={{ alignItems: 'center', paddingVertical: 26 }}>
+            <Glyph name="list" size={26} color={colors.faint} label="Nothing logged this day" />
+          </View>
         )}
 
         {model.heatSelSessions.length > 0 && (
           <View>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5, marginBottom: 2 }}>
-              SESSIONS
-            </Text>
             {model.heatSelSessions.map((s) => (
               <Pressable
                 key={s.id}
@@ -65,6 +57,7 @@ export function ActivityDaySheet() {
                     <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{s.note}</Text>
                   ) : null}
                 </View>
+                <CompletionMark mark={s.mark} bonus={s.bonus} />
                 <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
               </Pressable>
             ))}

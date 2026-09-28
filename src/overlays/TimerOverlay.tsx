@@ -1,8 +1,9 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
+import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { MessageToast } from '../components/UndoToast';
 import { selectTimer } from '../domain/engine';
@@ -13,10 +14,12 @@ import { colors, radius } from '../theme/tokens';
 
 const R = 124;
 const CIRC = 2 * Math.PI * R;
+const DONE_GREEN = '#1F8A3B';
 
 export function TimerOverlay() {
   const { data, ui, now, config, actions } = useStreak();
-  const model = selectTimer(data, config, now);
+  const goal = ui.timerGoal && data.active && ui.timerGoal.habitId === data.active.habitId ? ui.timerGoal.min : undefined;
+  const model = selectTimer(data, config, now, goal);
   const open = ui.timerOpen && !!model;
 
   const stop = useStopTimer();
@@ -27,7 +30,7 @@ export function TimerOverlay() {
       {model && (
         <View style={{ flex: 1, backgroundColor: colors.screen, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 24) + 16 }}>
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
               <View
                 style={{
@@ -41,31 +44,14 @@ export function TimerOverlay() {
               >
                 <Icon path={model.iconPath} size={22} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>
-                  {model.name}
-                </Text>
-                <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext }}>
-                  {model.projectLabel}
-                </Text>
-              </View>
+              <Text numberOfLines={1} style={{ flex: 1, fontSize: 16, fontWeight: '800', color: colors.ink }}>
+                {model.name}
+              </Text>
             </View>
-            <Pressable
-              onPress={actions.closeTimer}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: radius.pill,
-                backgroundColor: colors.card,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 15, color: colors.subtext }}>✕</Text>
-            </Pressable>
+            <IconButton label="Hide timer" name="chevronDown" size={20} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.closeTimer} tipBelow />
           </View>
 
-          {/* Ring + clock */}
+          {/* Ring toward the chosen length, clock inside */}
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <View style={{ width: 280, height: 280, alignItems: 'center', justifyContent: 'center' }}>
               <Svg width={280} height={280} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
@@ -75,35 +61,38 @@ export function TimerOverlay() {
                   cy={140}
                   r={R}
                   fill="none"
-                  stroke={model.ringColor}
+                  stroke={model.reached ? DONE_GREEN : model.ringColor}
                   strokeWidth={12}
                   strokeLinecap="round"
                   strokeDasharray={CIRC}
                   strokeDashoffset={CIRC * (1 - model.ringProgress)}
                 />
               </Svg>
-              <Text style={{ fontSize: 56, fontWeight: '800', letterSpacing: 0.5, color: colors.ink }}>
+              {/* Goal: its circle glyph and minutes; a check once today's time reaches it. */}
+              <View
+                accessible
+                accessibilityLabel={
+                  model.reached
+                    ? 'Done for today'
+                    : `${model.goalIsMin ? 'Minimum' : 'Full'} session, ${model.goalMin} minutes`
+                }
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, height: 26 }}
+              >
+                {model.reached ? (
+                  <Glyph name="done" size={26} color={DONE_GREEN} bg={colors.screen} />
+                ) : (
+                  <>
+                    <Glyph name={model.goalIsMin ? 'min' : 'full'} size={16} color={colors.subtext} bg={colors.screen} />
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.subtext, fontVariant: ['tabular-nums'] }}>
+                      {model.goalMin}
+                    </Text>
+                  </>
+                )}
+              </View>
+              <Text style={{ fontSize: 56, fontWeight: '800', letterSpacing: 0.5, color: colors.ink, fontVariant: ['tabular-nums'] }}>
                 {fmtClock(model.displaySec)}
               </Text>
             </View>
-
-            {/* Quote */}
-            {!!config.timerQuote.trim() && (
-              <View style={{ alignItems: 'center', gap: 12, marginTop: 30, maxWidth: 280 }}>
-                <View style={{ width: 150, height: 1, backgroundColor: 'rgba(23,24,26,0.18)' }} />
-                <Text
-                  style={{
-                    fontStyle: 'italic',
-                    fontSize: 16,
-                    lineHeight: 24,
-                    color: '#6C6F76',
-                    textAlign: 'center',
-                  }}
-                >
-                  {config.timerQuote.trim()}
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Starting another habit discards a too-short running timer and opens
@@ -114,32 +103,27 @@ export function TimerOverlay() {
 
           {/* Controls */}
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Pressable
-              onPress={actions.togglePause}
-              style={{
-                flex: 1,
-                borderRadius: radius.lg,
-                padding: 17,
-                alignItems: 'center',
-                backgroundColor: colors.card,
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>
-                {model.tracking ? 'Pause' : 'Resume'}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={stop}
-              style={{
-                flex: 1,
-                borderRadius: radius.lg,
-                padding: 17,
-                alignItems: 'center',
-                backgroundColor: config.accent,
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Done</Text>
-            </Pressable>
+            <View style={{ flex: 1 }}>
+              <IconButton
+                label={model.tracking ? 'Pause' : 'Resume'}
+                name={model.tracking ? 'pause' : 'play'}
+                size={24}
+                bg={colors.card}
+                onPress={actions.togglePause}
+                style={{ borderRadius: radius.lg, padding: 17 }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <IconButton
+                label="Stop and save"
+                name="done"
+                size={26}
+                color="#FFFFFF"
+                bg={config.accent}
+                onPress={stop}
+                style={{ borderRadius: radius.lg, padding: 16 }}
+              />
+            </View>
           </View>
         </View>
       )}

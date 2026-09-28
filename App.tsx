@@ -11,11 +11,14 @@ import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
 import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
+import { PlanPickerSheet } from './src/overlays/PlanPickerSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
+import { RebalanceScreen } from './src/overlays/RebalanceScreen';
 import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { TimerOverlay } from './src/overlays/TimerOverlay';
+import { WeekSheet } from './src/overlays/WeekSheet';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
@@ -65,6 +68,9 @@ function Root() {
       <ActivityDaySheet />
       <RecapSheet />
       <SettingsSheet />
+      <PlanPickerSheet />
+      <WeekSheet />
+      <RebalanceScreen />
     </View>
   );
 }

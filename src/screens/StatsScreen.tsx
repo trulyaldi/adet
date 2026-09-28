@@ -3,6 +3,8 @@ import { Animated, Easing, Pressable, ScrollView, Text, View } from 'react-nativ
 import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
+import { CompletionMark } from '../components/CompletionMark';
+import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { PatternsCard } from '../components/PatternsCard';
 import { ProgressBar } from '../components/ProgressBar';
@@ -10,11 +12,13 @@ import { selectStats } from '../domain/engine';
 import { lastCompletedWeekStart, pastRecaps } from '../domain/recap';
 import { fmtH } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
+import { usePlanStreak } from '../store/usePlanStreak';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
 export function StatsScreen() {
   const { data, ui, now, config, actions } = useStreak();
   const model = selectStats(data, config, now, { heatSel: ui.heatSel });
+  const streak = usePlanStreak();
 
   return (
     <ScrollView
@@ -22,12 +26,11 @@ export function StatsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>Stats</Text>
-      <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>{model.sub}</Text>
 
       <Segmented
         options={[
-          { key: 'overview', label: 'Overview' },
-          { key: 'history', label: 'History' },
+          { key: 'overview', label: 'Overview', glyph: 'bars' },
+          { key: 'history', label: 'History', glyph: 'list' },
         ]}
         value={ui.statsView}
         onChange={actions.setStatsView}
@@ -72,7 +75,7 @@ export function StatsScreen() {
               }
             />
             <PeriodTile
-              value={model.recStreak}
+              value={streak.longest + 'd'}
               label="Longest streak"
               iconBg="#FDE4D5"
               icon={
@@ -173,7 +176,6 @@ export function StatsScreen() {
                   ))}
                   <Text style={{ fontSize: 11, color: colors.muted, marginLeft: 3 }}>More</Text>
                 </View>
-                <Text style={{ fontSize: 11, color: colors.muted }}>time per day</Text>
               </View>
             </View>
 
@@ -197,6 +199,8 @@ export function StatsScreen() {
                   <Pressable
                     key={ci}
                     disabled={!cell.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={cell.key ?? undefined}
                     onPress={() => cell.key && actions.pickHeat(cell.key)}
                     style={{
                       flex: 1,
@@ -232,33 +236,25 @@ export function StatsScreen() {
           {/* Recent sessions */}
           <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, paddingHorizontal: 18, marginTop: 10 }, shadowCard]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingBottom: 4 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>Recent sessions</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <Pressable onPress={actions.openLogSheet}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: config.accent }}>+ Log</Text>
-                </Pressable>
+              <Glyph name="list" size={20} color={colors.ink} label="Recent sessions" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <IconButton label="Log time" name="plus" size={17} color={config.accent} bg={colors.track} diameter={32} onPress={actions.openLogSheet} />
                 {model.historyHasRows &&
                   (ui.clearArmed ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                      <Pressable onPress={actions.cancelClear}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>Cancel</Text>
-                      </Pressable>
-                      <Pressable onPress={actions.confirmClear}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.danger }}>Clear all</Text>
-                      </Pressable>
-                    </View>
+                    <>
+                      <IconButton label="Keep the list" name="close" size={15} color={colors.subtext} bg={colors.track} diameter={32} onPress={actions.cancelClear} />
+                      <IconButton label="Clear the list (sessions are kept)" name="done" size={17} color="#FFFFFF" bg={colors.ink} diameter={32} onPress={actions.confirmClear} />
+                    </>
                   ) : (
-                    <Pressable onPress={actions.armClear}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0A84FF' }}>Clear</Text>
-                    </Pressable>
+                    <IconButton label="Clear the list" name="trash" size={17} color={colors.subtext} bg={colors.track} diameter={32} onPress={actions.armClear} />
                   ))}
               </View>
             </View>
 
             {!model.historyHasRows && (
-              <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 14, paddingVertical: 26 }}>
-                No sessions yet
-              </Text>
+              <View style={{ alignItems: 'center', paddingVertical: 26 }}>
+                <Glyph name="list" size={26} color={colors.faint} label="No sessions yet" />
+              </View>
             )}
 
             {model.historyDays.map((day) => (
@@ -289,6 +285,7 @@ export function StatsScreen() {
                         <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{hr.note}</Text>
                       ) : null}
                     </View>
+                    <CompletionMark mark={hr.mark} bonus={hr.bonus} />
                     <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
                   </Pressable>
                 ))}
@@ -329,13 +326,26 @@ function PastWeeksCard() {
         >
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{r.rangeLabel}</Text>
-            <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>
-              {r.targetCount > 0 ? `${r.hitCount} of ${r.targetCount} targets hit · ` : ''}
-              {r.sessions} {r.sessions === 1 ? 'session' : 'sessions'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 3 }}>
+              {/* Only met targets are counted; never a shortfall tally. */}
+              {r.hitCount > 0 && (
+                <View
+                  accessible
+                  accessibilityLabel={`${r.hitCount} ${r.hitCount === 1 ? 'target' : 'targets'} met`}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                >
+                  <Glyph name="done" size={12} color={colors.subtext} />
+                  <Text style={{ fontSize: 12, color: colors.subtext, fontVariant: ['tabular-nums'] }}>{r.hitCount}</Text>
+                </View>
+              )}
+              <View accessible accessibilityLabel={`${r.sessions} sessions`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Glyph name="list" size={12} color={colors.subtext} />
+                <Text style={{ fontSize: 12, color: colors.subtext, fontVariant: ['tabular-nums'] }}>{r.sessions}</Text>
+              </View>
+            </View>
           </View>
           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{fmtH(r.totalSec)}</Text>
-          <Text style={{ fontSize: 16, color: colors.muted }}>›</Text>
+          <Glyph name="chevronRight" size={16} color={colors.muted} />
         </Pressable>
       ))}
     </View>
@@ -347,7 +357,7 @@ function Segmented<K extends string>({
   value,
   onChange,
 }: {
-  options: { key: K; label: string }[];
+  options: { key: K; label: string; glyph: GlyphName }[];
   value: K;
   onChange(key: K): void;
 }) {
@@ -360,13 +370,14 @@ function Segmented<K extends string>({
             key={o.key}
             onPress={() => onChange(o.key)}
             accessibilityRole="tab"
+            accessibilityLabel={o.label}
             accessibilityState={{ selected: on }}
             style={[
               { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 9, backgroundColor: on ? colors.card : 'transparent' },
               on ? shadowCard : null,
             ]}
           >
-            <Text style={{ fontSize: 13.5, fontWeight: on ? '700' : '600', color: on ? colors.ink : colors.subtext }}>{o.label}</Text>
+            <Glyph name={o.glyph} size={18} color={on ? colors.ink : colors.subtext} />
           </Pressable>
         );
       })}
@@ -442,13 +453,14 @@ function LifetimeHero({ lifetimeLabel, lifetimeSub }: { lifetimeLabel: string; l
         </Animated.View>
       )}
       <View style={{ position: 'relative', zIndex: 1 }}>
-        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1 }}>
-          LIFETIME
-        </Text>
+        <Glyph name="clock" size={18} color="rgba(255,255,255,0.55)" bg={colors.ink} label="Lifetime" />
         <Text style={{ fontSize: 40, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1, marginTop: 4 }}>
           {lifetimeLabel}
         </Text>
-        <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', marginTop: 8 }}>{lifetimeSub}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
+          <Glyph name="calendar" size={13} color="rgba(255,255,255,0.65)" bg={colors.ink} label="Since" />
+          <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)' }}>{lifetimeSub}</Text>
+        </View>
       </View>
     </View>
   );

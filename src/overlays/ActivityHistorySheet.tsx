@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { selectStats } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
@@ -16,17 +17,12 @@ export function ActivityHistorySheet() {
     <Sheet visible={visible} onClose={actions.closeHeatSheet} maxHeightPct={0.88}>
       {model && (
       <View style={{ paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Full history</Text>
             <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{model.heatFullRangeLabel}</Text>
           </View>
-          <Pressable
-            onPress={actions.closeHeatSheet}
-            style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 14, color: colors.subtext }}>✕</Text>
-          </Pressable>
+          <CloseButton onPress={actions.closeHeatSheet} />
         </View>
 
         {/* Day-of-week header */}
@@ -49,6 +45,8 @@ export function ActivityHistorySheet() {
               <Pressable
                 key={ci}
                 disabled={!cell.key}
+                accessibilityRole="button"
+                accessibilityLabel={cell.key ?? undefined}
                 onPress={() => cell.key && actions.pickHeat(cell.key)}
                 style={{
                   flex: 1,

@@ -20,7 +20,18 @@ const cases: Change[] = [
     id: 'h1',
     deletedAt: T,
     mergedInto: 'h2',
-    record: { id: 'h1', projectId: 'p1', name: 'H', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150, updatedAt: T },
+    record: {
+      id: 'h1',
+      projectId: 'p1',
+      name: 'H',
+      icon: 'book',
+      tile: '#fff',
+      dailyTargetMin: 30,
+      weeklyTargetMin: 90,
+      updatedAt: T,
+      frequency: { kind: 'days', days: [0, 2, 4] },
+      minTargetMin: 10,
+    },
   },
   {
     table: 'sessions',
@@ -70,4 +81,36 @@ test('project rows without archived_at (before migration 003, or null) read as a
   // bigint columns can come back as strings.
   const str = rowToChange('projects', { ...row, archived_at: String(T) });
   assert.ok(str.table === 'projects' && str.record.archivedAt === T);
+});
+
+test('habit rows from before migration 004 (or older apps) read as daily with the default minimum', () => {
+  const row = {
+    user_id: 'u',
+    id: 'h9',
+    project_id: 'p1',
+    name: 'Old',
+    icon: 'code',
+    tile: '#fff',
+    daily_target_min: 40,
+    weekly_target_min: 200,
+    merged_into: null,
+    updated_at: '2026-09-27T10:00:00.123456+00:00',
+    deleted_at: null,
+  };
+  const c = rowToChange('habits', row);
+  assert.equal(c.table, 'habits');
+  if (c.table !== 'habits') return;
+  assert.deepEqual(c.record.frequency, { kind: 'daily' });
+  assert.equal(c.record.minTargetMin, 5);
+  // A bad value never crashes the pull.
+  const odd = rowToChange('habits', { ...row, frequency: { kind: 'weekly', times: 'x' }, min_target_min: 90 });
+  if (odd.table !== 'habits') return;
+  assert.deepEqual(odd.record.frequency, { kind: 'daily' });
+  assert.equal(odd.record.minTargetMin, 40, 'a minimum is never longer than the full session');
+});
+
+test('habit rows send frequency and minimum (needs migration 004)', () => {
+  const row = changeToRow(cases[1], 'u');
+  assert.deepEqual(row.frequency, { kind: 'days', days: [0, 2, 4] });
+  assert.equal(row.min_target_min, 10);
 });

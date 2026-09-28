@@ -1,7 +1,10 @@
 import React from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, View } from 'react-native';
 
+import { Glyph, GlyphName, IconButton } from '../components/Glyph';
+import { StepSlider } from '../components/StepSlider';
 import { SyncIndicator } from '../components/SyncIndicator';
+import { BUDGET_MAX_MIN, BUDGET_MIN_MIN, BUDGET_STEP_MIN, PLAN_CAP_MAX } from '../domain/plan';
 import { MAX_REMINDER_HOURS } from '../domain/reminder';
 import { useStreak } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
@@ -27,17 +30,16 @@ export function SettingsSheet() {
             paddingHorizontal: 20,
             paddingTop: 20,
             paddingBottom: 8,
+            zIndex: 10,
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '800', color: colors.ink }}>Settings</Text>
-          <Pressable onPress={actions.closeSettings} hitSlop={10}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#0A84FF' }}>Done</Text>
-          </Pressable>
+          <Glyph name="gear" size={26} color={colors.ink} label="Settings" />
+          <IconButton label="Done" name="done" size={20} color="#FFFFFF" bg="#0A84FF" diameter={36} onPress={actions.closeSettings} tipBelow />
         </View>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-          <SectionLabel>Timer</SectionLabel>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 12, paddingTop: 12 }}>
+          <BudgetCard />
+          <CapCard />
           <ReminderCard />
-          <SectionLabel>Account</SectionLabel>
           <AccountCard />
         </ScrollView>
       </View>
@@ -45,68 +47,102 @@ export function SettingsSheet() {
   );
 }
 
-function SectionLabel({ children }: { children: string }) {
+function Card({ glyph, label, children }: { glyph: GlyphName; label: string; children: React.ReactNode }) {
   return (
-    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5, marginTop: 18, marginBottom: 8 }}>
-      {children.toUpperCase()}
-    </Text>
+    <View
+      style={[
+        { backgroundColor: colors.card, borderRadius: radius.xl, padding: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+        shadowCard,
+      ]}
+    >
+      <Glyph name={glyph} size={22} color={colors.subtext} label={label} />
+      {children}
+    </View>
   );
 }
 
+/** Daily time budget: clock, slider, minutes. */
+function BudgetCard() {
+  const { settings, config, actions } = useStreak();
+  return (
+    <Card glyph="clock" label="Daily time budget">
+      <View style={{ flex: 1 }}>
+        <StepSlider
+          value={settings.budgetMin}
+          min={BUDGET_MIN_MIN}
+          max={BUDGET_MAX_MIN}
+          step={BUDGET_STEP_MIN}
+          accent={config.accent}
+          label="Daily time budget, minutes"
+          onChange={actions.setBudgetMin}
+        />
+      </View>
+      <Text style={{ width: 36, textAlign: 'right', fontSize: 15, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>
+        {settings.budgetMin}
+      </Text>
+    </Card>
+  );
+}
+
+/** Habits per day: five dots, tap one to set the cap. */
+function CapCard() {
+  const { settings, config, actions } = useStreak();
+  return (
+    <Card glyph="dots" label="Habits per day">
+      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4 }}>
+        {Array.from({ length: PLAN_CAP_MAX }, (_, i) => {
+          const n = i + 1;
+          const on = n <= settings.planCap;
+          return (
+            <IconButton
+              key={n}
+              onPress={() => actions.setPlanCap(n)}
+              hitSlop={6}
+              label={`${n} ${n === 1 ? 'habit' : 'habits'} per day`}
+              selected={n === settings.planCap}
+              style={{ padding: 4 }}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: on ? config.accent : 'transparent',
+                  borderWidth: 2,
+                  borderColor: on ? config.accent : colors.faint,
+                }}
+              />
+            </IconButton>
+          );
+        })}
+      </View>
+      <Text style={{ width: 36, textAlign: 'right', fontSize: 15, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>
+        {settings.planCap}
+      </Text>
+    </Card>
+  );
+}
+
+/** "Still working?" reminder for a timer left running: bell, hours, − / +. */
 function ReminderCard() {
   const { settings, actions } = useStreak();
   const hours = settings.reminderHours;
   const step = (delta: number) => actions.setReminderHours(Math.min(MAX_REMINDER_HOURS, Math.max(0, hours + delta)));
 
   return (
-    <View
-      style={[
-        {
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          padding: 14,
-          paddingHorizontal: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        },
-        shadowCard,
-      ]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>Long-timer reminder</Text>
-        <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>
-          Asks if a timer is still running after this long
-        </Text>
-      </View>
+    <Card glyph="bell" label="Reminder for a long-running timer">
+      <View style={{ flex: 1 }} />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <StepPill label="−" disabled={hours <= 0} onPress={() => step(-1)} />
-        <Text style={{ width: 34, textAlign: 'center', fontSize: 14, fontWeight: '700', color: colors.ink }}>
-          {hours > 0 ? `${hours}h` : 'Off'}
+        <IconButton label="Sooner" name="minus" size={15} bg={colors.screen} diameter={32} disabled={hours <= 0} onPress={() => step(-1)} />
+        <Text
+          accessibilityLabel={hours > 0 ? `${hours} hours` : 'Off'}
+          style={{ width: 34, textAlign: 'center', fontSize: 14, fontWeight: '700', color: colors.ink, fontVariant: ['tabular-nums'] }}
+        >
+          {hours > 0 ? `${hours}h` : '–'}
         </Text>
-        <StepPill label="+" disabled={hours >= MAX_REMINDER_HOURS} onPress={() => step(1)} />
+        <IconButton label="Later" name="plus" size={15} bg={colors.screen} diameter={32} disabled={hours >= MAX_REMINDER_HOURS} onPress={() => step(1)} />
       </View>
-    </View>
-  );
-}
-
-function StepPill({ label, disabled, onPress }: { label: string; disabled: boolean; onPress(): void }) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={{
-        width: 32,
-        height: 32,
-        borderRadius: 11,
-        backgroundColor: colors.screen,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: disabled ? 0.4 : 1,
-      }}
-    >
-      <Text style={{ fontSize: 18, fontWeight: '600', color: colors.ink }}>{label}</Text>
-    </Pressable>
+    </Card>
   );
 }
 
@@ -115,6 +151,7 @@ function AccountCard() {
   const { sync, clearLocalData } = useStreak();
   const [busy, setBusy] = React.useState(false);
 
+  // Signing out wipes this device, so it's confirmed in words.
   const confirmSignOut = () => {
     const unsynced = sync.pending;
     Alert.alert(
@@ -145,36 +182,30 @@ function AccountCard() {
   return (
     <View
       style={[
-        {
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          padding: 14,
-          paddingHorizontal: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        },
+        { backgroundColor: colors.card, borderRadius: radius.xl, padding: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
         shadowCard,
       ]}
     >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 12, color: colors.subtext }}>Signed in as</Text>
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink, marginTop: 2 }}
-        >
-          {session?.user.email ?? 'Unknown account'}
-        </Text>
-        <View style={{ marginTop: 4 }}>
-          <SyncIndicator />
-        </View>
-      </View>
-      <Pressable disabled={busy} onPress={confirmSignOut} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.dangerSoft, opacity: busy ? 0.5 : 1 }}>
-        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.danger }}>Sign out</Text>
-      </Pressable>
+      <SyncIndicator />
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        accessibilityLabel={`Signed in as ${session?.user.email ?? 'unknown account'}`}
+        style={{ flex: 1, fontSize: 14.5, fontWeight: '700', color: colors.ink }}
+      >
+        {session?.user.email ?? '—'}
+      </Text>
+      <IconButton
+        label="Sign out"
+        name="signOut"
+        size={19}
+        color={colors.danger}
+        bg={colors.dangerSoft}
+        diameter={38}
+        disabled={busy}
+        onPress={confirmSignOut}
+      />
     </View>
   );
 }
-

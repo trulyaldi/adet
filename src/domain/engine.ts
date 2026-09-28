@@ -3,11 +3,12 @@
 
 import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
-import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
+import { addDays, dkey, fmtH, fmtHM, monday, pad, pkey } from './time';
 import { dailyStreak, weeklyTargetStreak } from './streaks';
 import { timeOfDay } from './insights';
-import { activeHabits, activeProjects, archivedProjects, isArchived } from './projects';
-import { weekPace, weekSummary, WeekSummary } from './weeks';
+import { activeProjects, archivedProjects, isArchived } from './projects';
+import { weekPace } from './weeks';
+import { Completion, completionOf, habitDaySec, HabitDays } from './plan';
 import {
   ActiveTimer,
   Habit,
@@ -178,27 +179,27 @@ function buildContext(data: PersistedState, now: number): StatContext {
 
 /**
  * This week vs last week. Non-punitive: gains read as progress, shortfalls as
- * a plain amount, and a change under a minute is neutral ("—"), never an arrow.
+ * a plain amount in neutral gray (never red), and a change under a minute is
+ * neutral ("—"), never an arrow.
  */
 export function trendOf(ps: { week: number; lastWeek: number }) {
   const d = ps.week - ps.lastWeek;
   if (Math.abs(d) < 60) return { label: '—', sub: 'same as last week', color: '#8A8D93' };
   if (d > 0) return { label: '↑ ' + fmtH(d), sub: 'vs last week', color: '#1F8A3B' };
-  return { label: '↓ ' + fmtH(-d), sub: 'vs last week', color: '#FF3B30' };
+  return { label: '↓ ' + fmtH(-d), sub: 'vs last week', color: '#8A8D93' };
 }
 
 function iconPath(icon: IconKey): string {
   return ICONS[icon] || ICONS.code;
 }
 
-/** A project's week against its target, as shown on Today and Projects. */
+/** A project's week against its target, as shown on Projects. */
 function weekProgress(weekSec: number, targetHours: number, now: number) {
   const pace = weekPace(weekSec, targetHours, now);
   const pct = pace.targetSec ? Math.min(100, Math.round((weekSec / pace.targetSec) * 100)) : 0;
   return {
-    weekLabel: pace.targetSec
-      ? fmtH(weekSec) + ' / ' + fmtH(pace.targetSec) + ' this week'
-      : fmtH(weekSec) + ' this week',
+    /** Numbers only, e.g. "3.5h / 8h" (the card's clock glyph says "this week"). */
+    weekLabel: pace.targetSec ? fmtH(weekSec) + ' / ' + fmtH(pace.targetSec) : fmtH(weekSec),
     weekPct: pct,
     barColor: pct >= 100 ? '#34C759' : '#17181A',
     // Without a target the pace label would just repeat the week's time.
@@ -227,188 +228,9 @@ export function dayLabel(key: string, now: number): string {
   return DOWFULL[d.getDay()].slice(0, 3) + ', ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate();
 }
 
-/** "5d streak", "5d streak · track today" when at risk, "" with no streak. */
+/** "5d streak", "" with no streak. Never a nudge when it's at risk. */
 function streakText(streak: { current: number; atRisk: boolean }): string {
-  return streak.current > 0 ? streak.current + 'd streak' + (streak.atRisk ? ' · track today' : '') : '';
-}
-
-// ---------- TODAY ----------
-function recommendedIdFrom(
-  ctx: StatContext,
-  data: PersistedState,
-  now: number
-): string | null {
-  void now;
-  let recommendedId: string | null = null;
-  let lowestScore = Infinity;
-
-  for (const h of activeHabits(data)) {
-    if (data.active && data.active.habitId === h.id) continue;
-
-    const stt = ctx.habitStats[h.id];
-    const dGoal = (h.dailyTargetMin || 30) * 60;
-    if (stt.day >= dGoal) continue;
-
-    const wGoal = (h.weeklyTargetMin || 150) * 60;
-    const score = stt.day / dGoal + (stt.week / wGoal) * 0.25;
-    if (score < lowestScore) {
-      lowestScore = score;
-      recommendedId = h.id;
-    }
-  }
-
-  return recommendedId;
-}
-
-export interface TodayRow {
-  habitId: string;
-  iconPath: string;
-  tile: string;
-  name: string;
-  /** "45m today" / "Not tracked today"; "Running" / "Paused" while its timer is on. */
-  sub: string;
-  /** The "Up next" suggestion (see recommendedHabitId). */
-  recommended: boolean;
-  running: boolean;
-  paused: boolean;
-  /** The running timer's elapsed seconds; 0 when not running. */
-  elapsedSec: number;
-  /** "Start" or "Continue" (something already tracked today). */
-  btnLabel: string;
-}
-export interface TodayGroup {
-  projectId: string;
-  name: string;
-  /** e.g. "3.5h / 8h this week". */
-  weekLabel: string;
-  weekPct: number;
-  barColor: string;
-  /** e.g. "5.5h left · ~1.1h/day for 5 days" (see weekPace); "" without a target. */
-  paceLabel: string;
-  paceMet: boolean;
-  /** e.g. "5d streak", "5d streak · track today" when at risk, "" with no streak. */
-  streakLabel: string;
-  /** The project's daily streak survives only if something is tracked today. */
-  streakAtRisk: boolean;
-  rows: TodayRow[];
-}
-export interface TodayModel {
-  todayDateLabel: string;
-  streakLabel: string;
-  /** After the streak in the header chip: "❄ 2" freezes left, "track today" when at risk, or "". */
-  streakNote: string;
-  streakAtRisk: boolean;
-  /**
-   * This week across the projects shown, when two or more have a target
-   * (with one, the project's own card already says the same).
-   */
-  summary: (WeekSummary & { pct: number }) | null;
-  groups: TodayGroup[];
-  noHabits: boolean;
-  hasHabits: boolean;
-}
-
-export function recommendedHabitId(
-  data: PersistedState,
-  config: AppConfig,
-  now: number
-): string | null {
-  void config;
-  const ctx = buildContext(data, now);
-  return recommendedIdFrom(ctx, data, now);
-}
-
-export function selectToday(
-  data: PersistedState,
-  config: AppConfig,
-  now: number
-): TodayModel {
-  const ctx = buildContext(data, now);
-  const global = dailyStreak(daySecMap(data, now), now);
-  const globalStreak = global.current;
-  const todayD = ctx.todayD;
-  const recommendedId = recommendedIdFrom(ctx, data, now);
-
-  const live = activeProjects(data).filter((p) => ctx.projStats[p.id].habits.length > 0);
-  // A timer can still be running on an archived project's habit (started on
-  // another device, or by an older app version); keep that project visible
-  // until it's stopped, without counting it toward pace.
-  const runningPid = data.active ? data.habits.find((h) => h.id === data.active!.habitId)?.projectId : undefined;
-  const shown = data.projects.filter(
-    (p) => live.includes(p) || (p.id === runningPid && isArchived(p))
-  );
-
-  const groups: TodayGroup[] = shown.map((p) => {
-    const ps = ctx.projStats[p.id];
-    const streak = dailyStreak(daySecMap(data, now, ps.habits.map((h) => h.id)), now);
-    return {
-      projectId: p.id,
-      name: p.name,
-      ...weekProgress(ps.week, p.weeklyTarget, now),
-      streakLabel: streakText(streak),
-      streakAtRisk: streak.atRisk,
-      rows: ps.habits.map((h) => {
-        const stt = ctx.habitStats[h.id];
-        const active = data.active;
-        const running = !!(active && active.habitId === h.id);
-        const paused = running && !active?.startedAt;
-        const rec = h.id === recommendedId;
-        const tracked = stt.day >= 60;
-        return {
-          habitId: h.id,
-          iconPath: iconPath(h.icon),
-          tile: h.tile,
-          name: h.name,
-          sub: running
-            ? paused
-              ? 'Paused'
-              : 'Running'
-            : tracked
-            ? fmtHM(Math.floor(stt.day)) + ' today'
-            : 'Not tracked today',
-          recommended: rec,
-          running,
-          paused,
-          elapsedSec: running ? activeSec(active, now) : 0,
-          btnLabel: tracked ? 'Continue' : 'Start',
-        };
-      }),
-    };
-  });
-
-  // With one project its streak is the header chip's; show it once.
-  if (groups.length === 1) groups[0].streakLabel = '';
-
-  const summary = weekSummary(
-    live.map((p) => {
-      const ps = ctx.projStats[p.id];
-      return {
-        weekSec: ps.week,
-        todaySec: ps.habits.reduce((a, h) => a + ctx.habitStats[h.id].day, 0),
-        targetHours: p.weeklyTarget,
-      };
-    }),
-    now
-  );
-
-  return {
-    todayDateLabel:
-      MONTHS[todayD.getMonth()] +
-      ' ' +
-      todayD.getDate() +
-      ', ' +
-      todayD.getFullYear(),
-    streakLabel: globalStreak + ' day' + (globalStreak === 1 ? '' : 's'),
-    streakNote: global.atRisk ? 'track today' : globalStreak > 0 ? '❄ ' + global.freezesLeft : '',
-    streakAtRisk: global.atRisk,
-    summary:
-      summary.projects >= 2
-        ? { ...summary, pct: Math.min(100, Math.round((summary.doneSec / summary.targetSec) * 100)) }
-        : null,
-    groups,
-    noHabits: groups.length === 0,
-    hasHabits: groups.length > 0,
-  };
+  return streak.current > 0 ? streak.current + 'd streak' : '';
 }
 
 // ---------- PROJECTS ----------
@@ -417,11 +239,11 @@ export interface ProjectHabitRow {
   iconPath: string;
   tile: string;
   name: string;
-  /** "40% of project time"; "" when the project has a single habit. */
+  /** "40%" of the project's time; "" when the project has a single habit. */
   shareLabel: string;
   /** Share of the project's lifetime time, 0..100. */
   shareBarW: number;
-  /** Lifetime, this week and sessions; "" for a single habit (the project's numbers already say it). */
+  /** Lifetime time, e.g. "12h"; "" for a single habit (the project's numbers already say it). */
   sub: string;
 }
 export interface ProjectCard {
@@ -449,9 +271,11 @@ export interface ProjectCard {
   sessionsLabel: string;
   /** Consecutive weeks meeting the weekly target, e.g. "3w". */
   weekStreakLabel: string;
+  /** Consecutive weeks meeting the weekly target (shown with the chain glyph). */
+  weekStreak: number;
   trendLabel: string;
   trendColor: string;
-  /** e.g. "Started Jul 2026"; "" when unknown. */
+  /** e.g. "Jul 2026" (shown with the calendar glyph); "" when unknown. */
   startedLabel: string;
   habits: ProjectHabitRow[];
 }
@@ -459,7 +283,7 @@ export interface ProjectCard {
 export interface ArchivedCard {
   projectId: string;
   name: string;
-  /** e.g. "12.5h lifetime · archived Sep 2026". */
+  /** e.g. "12.5h · Sep 2026" (lifetime, then when it was archived). */
   sub: string;
 }
 export interface ProjectsModel {
@@ -493,6 +317,7 @@ export function selectProjects(
     const streak = dailyStreak(pDays, now);
     const trend = trendOf(ps);
     const several = ps.habits.length >= 2;
+    const weekStreak = weeklyTargetStreak(pDays, p.weeklyTarget, now);
     return {
       projectId: p.id,
       name: p.name,
@@ -505,12 +330,11 @@ export function selectProjects(
       stagePct,
       lifetimeLabel: fmtH(ps.life),
       sessionsLabel: String(ps.count),
-      weekStreakLabel: weeklyTargetStreak(pDays, p.weeklyTarget, now) + 'w',
+      weekStreakLabel: weekStreak + 'w',
+      weekStreak,
       trendLabel: trend.label,
       trendColor: trend.color,
-      startedLabel: started
-        ? 'Started ' + MONTHS[started.getMonth()].slice(0, 3) + ' ' + started.getFullYear()
-        : '',
+      startedLabel: started ? MONTHS[started.getMonth()].slice(0, 3) + ' ' + started.getFullYear() : '',
       habits: ps.habits
         .slice()
         .sort((a, b) => ctx.habitStats[b.id].life - ctx.habitStats[a.id].life)
@@ -522,16 +346,9 @@ export function selectProjects(
             iconPath: iconPath(x.icon),
             tile: x.tile,
             name: x.name,
-            shareLabel: several ? share + '% of project time' : '',
+            shareLabel: several ? share + '%' : '',
             shareBarW: share,
-            sub: several
-              ? fmtH(stt.life) +
-                ' lifetime · ' +
-                fmtH(stt.week) +
-                ' this week · ' +
-                stt.count +
-                (stt.count === 1 ? ' session' : ' sessions')
-              : '',
+            sub: several ? fmtH(stt.life) : '',
           };
         }),
     };
@@ -542,12 +359,7 @@ export function selectProjects(
     return {
       projectId: p.id,
       name: p.name,
-      sub:
-        fmtH(ctx.projStats[p.id].life) +
-        ' lifetime · archived ' +
-        MONTHS[at.getMonth()].slice(0, 3) +
-        ' ' +
-        at.getFullYear(),
+      sub: fmtH(ctx.projStats[p.id].life) + ' · ' + MONTHS[at.getMonth()].slice(0, 3) + ' ' + at.getFullYear(),
     };
   });
 
@@ -610,7 +422,7 @@ export function selectStageSheet(
       wk <= 1
         ? 'About a week away at your current pace'
         : '~' + Math.ceil(wk) + ' weeks away at ' + paceH.toFixed(1) + 'h / week';
-  } else etaLabel = 'Log some time this week to start closing the gap';
+  } else etaLabel = '';
 
   const ladder: StageLadderRow[] = stages.map(([name, hrs]) => ({
     name,
@@ -659,6 +471,10 @@ export interface HeatSelSession {
   sub: string;
   /** The session note, shown on its own line; "" when none. */
   note: string;
+  /** The habit's completion that day (see dayMarks). */
+  mark: Completion | null;
+  /** Done that day outside its plan. */
+  bonus: boolean;
 }
 export interface DistRow {
   name: string;
@@ -674,6 +490,10 @@ export interface HistoryRow {
   sub: string;
   /** The session note, shown on its own line; "" when none. */
   note: string;
+  /** The habit's completion that day (see dayMarks). */
+  mark: Completion | null;
+  /** Done that day outside its plan. */
+  bonus: boolean;
 }
 /** Recent sessions that started on one local day, newest first. */
 export interface HistoryDay {
@@ -696,7 +516,6 @@ export interface StatsModel {
   weekHours: string;
   monthHours: string;
   avgDaily: string;
-  recStreak: string;
   projDist: DistRow[];
   legendCells: string[];
   dayHeads: string[];
@@ -720,14 +539,35 @@ export interface StatsModel {
 
 /**
  * The vs-last-week insight (this week so far against last week in full), or
- * null when last week had nothing to compare with.
+ * null when last week had nothing to compare with or this week is behind it.
  */
 export function weekVsLastWeek(weekSec: number, lastWeekSec: number, iconPath = ''): Insight | null {
   if (lastWeekSec <= 0) return null;
   const d = weekSec - lastWeekSec;
   if (Math.abs(d) < 60) return { iconPath, bg: '#D9F2E3', text: 'You’ve matched last week’s total.' };
   if (d > 0) return { iconPath, bg: '#D9F2E3', text: 'You’re ' + fmtH(d) + ' past last week’s total.' };
-  return { iconPath, bg: '#D8EAF9', text: fmtH(-d) + ' more to match last week.' };
+  // Behind last week is never framed as a shortfall to make up.
+  return null;
+}
+
+/**
+ * A habit-day's completion goes on one of its rows only (the first one given
+ * for that habit and day), so a day with several sessions shows it once. It's
+ * a bonus when that day had a plan without the habit (days from before plans
+ * existed have none, so they show no bonus badge).
+ */
+function dayMarks(data: PersistedState, days: HabitDays) {
+  const seen = new Set<string>();
+  return (habitId: string, start: number): { mark: Completion | null; bonus: boolean } => {
+    const k = dkey(new Date(start));
+    const key = habitId + '|' + k;
+    if (seen.has(key)) return { mark: null, bonus: false };
+    seen.add(key);
+    const h = data.habits.find((x) => x.id === habitId);
+    const mark = h ? completionOf(h, days.get(h.id)?.get(k) ?? 0) : null;
+    const plan = data.plans[k];
+    return { mark, bonus: !!mark && !!plan && !plan.includes(habitId) };
+  };
 }
 
 export function selectStats(
@@ -851,9 +691,10 @@ export function selectStats(
     heatSelEmpty = tot <= 0;
     // A lone session's time is already on its row; a running timer has no row.
     heatSelInfo = parts.length >= 2 || running ? fmtHM(Math.floor(tot)) + ' total' : '';
+    const markSel = dayMarks(data, habitDaySec(data, now));
     heatSelSessions = data.sessions
       .filter((s) => dkey(new Date(s.start)) === ui.heatSel)
-      .sort((a, b) => a.start - b.start)
+      .sort((a, b) => b.start - a.start)
       .map((s) => {
         const h = data.habits.find((x) => x.id === s.habitId);
         return h
@@ -864,14 +705,14 @@ export function selectStats(
               name: h.name,
               sub: sessionLine(s),
               note: s.notes ?? '',
+              ...markSel(s.habitId, s.start),
             }
           : null;
       })
-      .filter((x): x is HeatSelSession => !!x);
+      .filter((x): x is HeatSelSession => !!x)
+      // Marked newest-first (the day's last session), listed oldest first.
+      .reverse();
   }
-
-  // longest streak across all history (freezes included, see dailyStreak)
-  const recStreak = dailyStreak(dayMap, now).longest;
 
   // Insights: one card, each fact once. (Icon paths are 24x24 stroke glyphs:
   // flame / bars / calendar / clock.)
@@ -950,6 +791,7 @@ export function selectStats(
     .sort((a, b) => b.start - a.start)
     .slice(0, 10);
   const historyDays: HistoryDay[] = [];
+  const markRow = dayMarks(data, habitDaySec(data, now));
   for (const s of recent) {
     const h = data.habits.find((x) => x.id === s.habitId)!;
     const key = dkey(new Date(s.start));
@@ -965,6 +807,7 @@ export function selectStats(
       name: h.name,
       sub: sessionLine(s),
       note: s.notes ?? '',
+      ...markRow(s.habitId, s.start),
     });
   }
   const historyRows: HistoryRow[] = historyDays.flatMap((d) => d.rows);
@@ -975,12 +818,10 @@ export function selectStats(
     hasInsights: insights.length > 0,
     lifetimeLabel: (lifeAll / 3600).toFixed(1) + ' hours',
     // The average per day has its own tile, so it isn't repeated here.
-    lifetimeSub:
-      'Since ' + MONTHS[firstDay.getMonth()].slice(0, 3) + ' ' + firstDay.getDate(),
+    lifetimeSub: MONTHS[firstDay.getMonth()].slice(0, 3) + ' ' + firstDay.getDate(),
     weekHours: fmtH(weekAll),
     monthHours: fmtH(monthAll),
     avgDaily: fmtHM(Math.floor(avgSec)),
-    recStreak: recStreak + 'd',
     projDist,
     legendCells: HEAT_SCALE.slice(),
     dayHeads: DOWS.map((d) => d[0]),
@@ -1029,34 +870,52 @@ export interface TimerModel {
   name: string;
   iconPath: string;
   tile: string;
-  projectLabel: string;
   tracking: boolean;
   displaySec: number;
-  ringProgress: number; // 0..1 over the current 30-min cycle
+  /** The session length aimed for, in minutes (full or minimum). */
+  goalMin: number;
+  /** Whether the goal is the minimum (half circle) rather than the full length. */
+  goalIsMin: boolean;
+  /** 0..1 toward the goal, counting today's earlier time on the habit. */
+  ringProgress: number;
+  /** Today's time on the habit reached the goal: the timer keeps running, but the ring shows done. */
+  reached: boolean;
   ringColor: string;
 }
 
+/**
+ * The running timer. `goalMin` is the length chosen at start; without one
+ * (a timer resumed after a restart, or from another device) it's the full
+ * length. Progress counts today's earlier sessions too, since completion is
+ * judged on the day's total.
+ */
 export function selectTimer(
   data: PersistedState,
   config: AppConfig,
-  now: number
+  now: number,
+  goalMin?: number
 ): TimerModel | null {
   const active = data.active;
   const habit = active ? data.habits.find((h) => h.id === active.habitId) : null;
   if (!active || !habit) return null;
-  const project = data.projects.find((p) => p.id === habit.projectId);
   const tracking = !!active.startedAt;
   const secs = activeSec(active, now);
+  const today = dkey(new Date(now));
+  const earlier = habitSec(data, now, habit.id, (s) => dkey(new Date(s.start)) === today) - secs;
+  const goal = Math.max(1, goalMin ?? habit.dailyTargetMin);
+  const progress = Math.min(1, (earlier + secs) / (goal * 60));
   return {
     open: true,
     habitId: habit.id,
     name: habit.name,
     iconPath: iconPath(habit.icon),
     tile: habit.tile,
-    projectLabel: project ? project.name : '',
     tracking,
     displaySec: secs,
-    ringProgress: (secs % 1800) / 1800,
+    goalMin: goal,
+    goalIsMin: goal < habit.dailyTargetMin,
+    ringProgress: progress,
+    reached: progress >= 1,
     ringColor: tracking ? config.accent : '#C9CBD1',
   };
 }

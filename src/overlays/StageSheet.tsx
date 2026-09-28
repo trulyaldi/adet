@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
+import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { selectStageSheet } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
@@ -22,7 +23,7 @@ export function StageSheet() {
       {model && (
         <View style={{ gap: 16, paddingTop: 12 }}>
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 {model.projectName}
@@ -31,12 +32,7 @@ export function StageSheet() {
                 {model.currentStage}
               </Text>
             </View>
-            <Pressable
-              onPress={actions.closeStageSheet}
-              style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{ fontSize: 14, color: colors.subtext }}>✕</Text>
-            </Pressable>
+            <CloseButton onPress={actions.closeStageSheet} />
           </View>
 
           {/* Next stage progress */}
@@ -49,16 +45,17 @@ export function StageSheet() {
               <View style={{ marginTop: 11 }}>
                 <ProgressBar pct={model.progressPct} color={config.accent} track={colors.track3} height={8} />
               </View>
+              {!!model.etaLabel && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 13 }}>
                 <Icon path={SUN} size={16} color={config.accent} strokeWidth={2} />
                 <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.ink }}>{model.etaLabel}</Text>
               </View>
+              )}
             </View>
           )}
 
           {/* Ladder */}
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.subtext, marginBottom: 10 }}>All stages</Text>
             {model.ladder.map((lv) => (
               <View
                 key={lv.name}
@@ -89,10 +86,6 @@ export function StageSheet() {
             ))}
           </View>
 
-          <Text style={{ fontSize: 12.5, color: colors.muted, lineHeight: 19, textAlign: 'center', paddingHorizontal: 8 }}>
-            Every logged session moves you forward. Higher stages take more hours — the more consistent effort you put
-            in, the sooner you rank up.
-          </Text>
         </View>
       )}
     </Sheet>

@@ -7,12 +7,10 @@ import {
   trendOf,
   weekVsLastWeek,
   daySecMap,
-  recommendedHabitId,
   selectProjects,
   selectStats,
   selectStageSheet,
   selectTimer,
-  selectToday,
   stageOf,
   stagesFor,
 } from './engine';
@@ -53,12 +51,8 @@ test('seed is deterministic and self-consistent', () => {
   assert.equal(a.projects[0].started, earliest);
 });
 
-test('selectToday / selectProjects / selectStats produce coherent output on seed', () => {
+test('selectProjects / selectStats produce coherent output on seed', () => {
   const data = seed(NOW);
-  const today = selectToday(data, DEFAULT_CONFIG, NOW);
-  assert.equal(today.groups.length, 1);
-  assert.equal(today.groups[0].rows.length, 4);
-  assert.match(today.streakLabel, /days?$/);
 
   const projects = selectProjects(data, DEFAULT_CONFIG, NOW);
   assert.equal(projects.cards.length, 1);
@@ -96,67 +90,6 @@ test('active timer contributes to today/day totals and timer model', () => {
   assert.ok(map[dkey(new Date(NOW))] >= 600);
 });
 
-test('Today rows show time tracked today; recommendation is deterministic', () => {
-  const today = dkey(new Date(NOW));
-  assert.equal(today, '2026-07-10');
-  const data: PersistedState = {
-    schemaVersion: 3,
-    projects: [
-      { id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 86_400_000 },
-    ],
-    habits: [
-      {
-        id: 'h1',
-        projectId: 'p1',
-        name: 'Writing',
-        icon: 'code',
-        tile: '#EDE7F6',
-        dailyTargetMin: 60,
-        weeklyTargetMin: 300,
-      },
-      {
-        id: 'h2',
-        projectId: 'p1',
-        name: 'Reading',
-        icon: 'book',
-        tile: '#E3F2FD',
-        dailyTargetMin: 30,
-        weeklyTargetMin: 150,
-      },
-    ],
-    sessions: [
-      {
-        id: 's1',
-        habitId: 'h1',
-        start: new Date(2026, 6, 10, 8, 0, 0).getTime(),
-        end: new Date(2026, 6, 10, 8, 30, 0).getTime(),
-        duration: 30 * 60,
-      },
-      {
-        id: 's2',
-        habitId: 'h2',
-        start: new Date(2026, 6, 10, 9, 0, 0).getTime(),
-        end: new Date(2026, 6, 10, 9, 10, 0).getTime(),
-        duration: 10 * 60,
-      },
-    ],
-    active: null,
-    historyClearedAt: 0,
-  };
-
-  const model = selectToday(data, DEFAULT_CONFIG, NOW);
-  assert.equal(model.hasHabits, true);
-  assert.equal(recommendedHabitId(data, DEFAULT_CONFIG, NOW), 'h2');
-  // Rows show time tracked today, never the (hidden) daily target.
-  const rows = model.groups[0].rows;
-  assert.deepEqual(rows.map((r) => r.sub), ['30m today', '10m today']);
-  assert.ok(rows.every((r) => !r.sub.includes('/')));
-  assert.deepEqual(rows.map((r) => r.btnLabel), ['Continue', 'Continue']);
-  // One project: no separate summary card (the project card says the same).
-  assert.equal(model.summary, null);
-  assert.equal(model.groups[0].weekLabel, '40m / 8h this week');
-});
-
 test('manual sessions show a "logged manually" marker and their note in history', () => {
   const start = new Date(2026, 6, 8, 12, 0, 0).getTime(); // Wed Jul 8
   const data: PersistedState = {
@@ -178,6 +111,10 @@ test('manual sessions show a "logged manually" marker and their note in history'
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
@@ -211,6 +148,10 @@ test('selected heatmap day lists each session in time order with its start, dura
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: '2026-07-08' });
@@ -238,6 +179,10 @@ test('activity heatmap: inline card caps at base weeks, full history extends bac
     sessions: [mk(1, 's1'), mk(200, 's2')], // ~28+ weeks of span
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
@@ -277,6 +222,10 @@ test('stats insights: one card, each fact once', () => {
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const texts = (d: PersistedState) => selectStats(d, DEFAULT_CONFIG, NOW, { heatSel: null }).insights.map((i) => i.text);
@@ -309,7 +258,7 @@ test('stats insights: one card, each fact once', () => {
 
 test('stats lifetime line does not repeat the average-per-day tile', () => {
   const m = selectStats(seed(NOW), DEFAULT_CONFIG, NOW, { heatSel: null });
-  assert.match(m.lifetimeSub, /^Since [A-Z][a-z]{2} \d+$/);
+  assert.match(m.lifetimeSub, /^[A-Z][a-z]{2} \d+$/);
   assert.ok(!m.lifetimeSub.includes(m.avgDaily));
 });
 
@@ -332,11 +281,12 @@ test('project pace uses local Monday-start weeks across the New York DST switch'
       ],
       active: null,
       historyClearedAt: 0,
+      plans: {},
+      planSince: '2026-01-01',
+      streakCarry: null,
+      rebalancePending: false,
     };
     const wed = at(2, 11, 12, 0);
-    const group = selectToday(data, DEFAULT_CONFIG, wed).groups[0];
-    assert.equal(group.paceLabel, '6h left · ~1.2h/day for 5 days');
-    assert.equal(group.paceMet, false);
     assert.equal(selectProjects(data, DEFAULT_CONFIG, wed).cards[0].paceLabel, '6h left · ~1.2h/day for 5 days');
   } finally {
     if (prev === undefined) delete process.env.TZ;
@@ -344,7 +294,7 @@ test('project pace uses local Monday-start weeks across the New York DST switch'
   }
 });
 
-test('streaks on Today, Projects and Stats use freezes and the given now', () => {
+test('project streaks on Projects use freezes and the given now', () => {
   const day = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
   const s = (id: string, d: number) => ({ id, habitId: 'h1', start: day(d), end: day(d) + 1800_000, duration: 1800 });
   const data: PersistedState = {
@@ -357,14 +307,16 @@ test('streaks on Today, Projects and Stats use freezes and the given now', () =>
     sessions: [s('a', 10), s('b', 11), s('c', 13), s('d', 14)],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const now = new Date(2026, 8, 15, 9, 0).getTime();
-  assert.equal(selectToday(data, DEFAULT_CONFIG, now).streakLabel, '4 days');
   assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d streak');
-  assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
 });
 
-test('Today project line: compact streak only, at-risk nudge, hidden with a single project', () => {
+test('Projects: target-week streak, and never a nudge when the day streak is at risk', () => {
   const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
   const s = (id: string, d: number, sec = 1800, habitId = 'h1') => ({ id, habitId, start: at(d), end: at(d) + sec * 1000, duration: sec });
   const base = (sessions: ReturnType<typeof s>[], weeklyTarget = 8): PersistedState => ({
@@ -380,124 +332,28 @@ test('Today project line: compact streak only, at-risk nudge, hidden with a sing
     sessions,
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   });
   const wed = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16
 
   // Weeks of Sep 7 and Sep 14 both reach 1h against a 1h target; Sep 14–16 tracked.
   const met = base([s('a', 8, 3600), s('b', 14, 1800), s('c', 15, 1800), s('d', 16, 600)], 1);
-  const g = selectToday(met, DEFAULT_CONFIG, wed).groups[0];
-  // No target-week streak and no "vs last week" delta on Today.
-  assert.equal(g.streakLabel, '3d streak');
-  assert.equal(g.streakAtRisk, false);
   const card = selectProjects(met, DEFAULT_CONFIG, wed).cards[0];
+  assert.equal(card.streakLabel, '3d streak');
   assert.equal(card.weekStreakLabel, '2w');
+  assert.equal(card.weekStreak, 2);
   assert.equal(card.streakAtRisk, false);
 
   // No streak: nothing shown.
-  assert.equal(selectToday(base([]), DEFAULT_CONFIG, wed).groups[0].streakLabel, '');
+  assert.equal(selectProjects(base([]), DEFAULT_CONFIG, wed).cards[0].streakLabel, '');
 
-  // Sep 13–14 tracked, Sep 15 (yesterday) missed, today untracked: at risk.
-  const risky = selectToday(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).groups[0];
-  assert.equal(risky.streakLabel, '2d streak · track today');
+  // Sep 13–14 tracked, Sep 15 (yesterday) missed, today untracked: at risk, but no nudge.
+  const risky = selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0];
+  assert.equal(risky.streakLabel, '2d streak', 'never a nudge');
   assert.equal(risky.streakAtRisk, true);
-  assert.equal(selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0].streakAtRisk, true);
-
-  // A single project's streak is the header chip's, so it isn't repeated.
-  const one = base([s('a', 15), s('b', 16)]);
-  one.projects = one.projects.slice(0, 1);
-  one.habits = one.habits.slice(0, 1);
-  const solo = selectToday(one, DEFAULT_CONFIG, wed);
-  assert.equal(solo.streakLabel, '2 days');
-  assert.equal(solo.groups[0].streakLabel, '');
-});
-
-test('Today rows: running and paused timers replace the today label; Up next never on the running habit', () => {
-  const data = seed(NOW);
-  const running: PersistedState = { ...data, active: { habitId: 'h1', startedAt: NOW - 125_000, baseSec: 0 } };
-  const rows = selectToday(running, DEFAULT_CONFIG, NOW).groups[0].rows;
-  const r = rows.find((x) => x.habitId === 'h1')!;
-  assert.equal(r.running, true);
-  assert.equal(r.sub, 'Running');
-  assert.equal(r.elapsedSec, 125);
-  assert.equal(r.recommended, false);
-  const others = rows.filter((x) => x.habitId !== 'h1');
-  assert.ok(others.every((x) => !x.running && x.elapsedSec === 0));
-
-  const paused: PersistedState = { ...data, active: { habitId: 'h1', startedAt: null, baseSec: 90 } };
-  const p = selectToday(paused, DEFAULT_CONFIG, NOW).groups[0].rows.find((x) => x.habitId === 'h1')!;
-  assert.equal(p.paused, true);
-  assert.equal(p.sub, 'Paused');
-  assert.equal(p.elapsedSec, 90);
-});
-
-test('Today header chip shows freezes left, or a nudge when the streak is at risk', () => {
-  const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
-  const s = (id: string, d: number) => ({ id, habitId: 'h1', start: at(d), end: at(d) + 1800_000, duration: 1800 });
-  const data = (sessions: ReturnType<typeof s>[]): PersistedState => ({
-    schemaVersion: 3,
-    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(1) }],
-    habits: [
-      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
-    ],
-    sessions,
-    active: null,
-    historyClearedAt: 0,
-  });
-  const now = new Date(2026, 8, 16, 12, 0).getTime(); // Sep 16
-
-  // Sep 12 frozen: one of September's two freezes used.
-  const alive = selectToday(data([s('a', 11), s('b', 13), s('c', 14), s('d', 15)]), DEFAULT_CONFIG, now);
-  assert.equal(alive.streakLabel, '4 days');
-  assert.equal(alive.streakNote, '❄ 1');
-  assert.equal(alive.streakAtRisk, false);
-
-  const risky = selectToday(data([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, now);
-  assert.equal(risky.streakLabel, '2 days');
-  assert.equal(risky.streakNote, 'track today');
-  assert.equal(risky.streakAtRisk, true);
-
-  assert.equal(selectToday(data([]), DEFAULT_CONFIG, now).streakNote, '', 'no streak: no freeze count');
-});
-
-test('Today week summary: two or more projects with targets, pace summed per project', () => {
-  const wed = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16: 5 days left
-  const at = (d: number, h: number) => new Date(2026, 8, d, h, 0).getTime();
-  const habit = (id: string, projectId: string) => ({
-    id,
-    projectId,
-    name: id,
-    icon: 'book' as const,
-    tile: '#fff',
-    dailyTargetMin: 30,
-    weeklyTargetMin: 150,
-  });
-  const sess = (id: string, habitId: string, start: number, sec: number) => ({ id, habitId, start, end: start + sec * 1000, duration: sec });
-  const data: PersistedState = {
-    schemaVersion: 3,
-    projects: [
-      { id: 'p1', name: 'A', weeklyTarget: 8, started: at(1, 9) },
-      { id: 'p2', name: 'B', weeklyTarget: 3, started: at(1, 9) },
-      { id: 'p3', name: 'No habits', weeklyTarget: 10, started: at(1, 9) },
-    ],
-    habits: [habit('h1', 'p1'), habit('h2', 'p2')],
-    sessions: [
-      sess('a', 'h1', at(14, 9), 3 * 3600), // Mon: 3h
-      sess('b', 'h2', at(16, 9), 1800), // today: 30m
-    ],
-    active: null,
-    historyClearedAt: 0,
-  };
-  const m = selectToday(data, DEFAULT_CONFIG, wed);
-  // p3 has no habits, so Today doesn't show it and it isn't summed.
-  assert.equal(m.groups.length, 2);
-  assert.ok(m.summary);
-  assert.equal(m.summary!.weekLabel, '3.5h / 11h this week');
-  assert.equal(m.summary!.pct, 32);
-  // p1: (8h-3h)/5 = 1h; p2: 3h/5 = 36m, less 30m done today = 6m.
-  assert.equal(m.summary!.todaySec, 3600 + 360);
-  assert.equal(m.summary!.todayLabel, '1.1h more today to stay on pace');
-  // No level badge on Today.
-  assert.ok(!('stageLabel' in m.groups[0]));
 });
 
 test('Projects card: each number once; habit share only with two or more habits', () => {
@@ -526,22 +382,26 @@ test('Projects card: each number once; habit share only with two or more habits'
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const wed = new Date(2026, 8, 16, 12, 0).getTime();
   const [two, one] = selectProjects(data, DEFAULT_CONFIG, wed).cards;
 
-  assert.equal(two.weekLabel, '4h / 8h this week');
+  assert.equal(two.weekLabel, '4h / 8h');
   assert.equal(two.lifetimeLabel, '4h');
   assert.equal(two.sessionsLabel, '2');
-  assert.equal(two.startedLabel, 'Started Sep 2026');
+  assert.equal(two.startedLabel, 'Sep 2026');
   // The level panel names stages only; lifetime hours appear once, in the tile.
   assert.equal(two.nextStageLabel, '→ Learner at 10h');
   assert.ok(!('stageHoursLabel' in two) && !('weekShort' in two) && !('sub' in two));
   assert.deepEqual(
     two.habits.map((h) => [h.shareLabel, h.sub]),
     [
-      ['75% of project time', '3h lifetime · 3h this week · 1 session'],
-      ['25% of project time', '1h lifetime · 1h this week · 1 session'],
+      ['75%', '3h'],
+      ['25%', '1h'],
     ]
   );
 
@@ -566,6 +426,10 @@ test('recent sessions are grouped by day with Today / Yesterday / date headers',
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const m = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
   assert.deepEqual(
@@ -587,10 +451,11 @@ test('week-over-week copy: neutral under a minute, natural sentences otherwise',
   assert.equal(trendOf({ week: 3541, lastWeek: 3600 }).label, '—', 'never a red arrow with 0m');
   assert.equal(trendOf({ week: 7200, lastWeek: 3600 }).label, '↑ 1h');
   assert.equal(trendOf({ week: 0, lastWeek: 1080 }).label, '↓ 18m');
+  assert.equal(trendOf({ week: 0, lastWeek: 1080 }).color, '#8A8D93', 'a shortfall is neutral gray, never red');
 
   const text = (w: number, l: number) => weekVsLastWeek(w, l)?.text ?? null;
-  assert.equal(text(3600, 3600 + 18 * 60), '18m more to match last week.');
-  assert.equal(text(0, 5400), '1.5h more to match last week.');
+  assert.equal(text(3600, 3600 + 18 * 60), null, 'behind is never framed as a shortfall');
+  assert.equal(text(0, 5400), null);
   assert.equal(text(7200, 3600), 'You’re 1h past last week’s total.');
   assert.equal(text(3630, 3600), 'You’ve matched last week’s total.');
   assert.equal(text(3600, 0), null, 'nothing to compare with');
@@ -611,6 +476,10 @@ test('day sheet: total only when it adds to the session rows', () => {
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const day = (d: PersistedState, key: string) => selectStats(d, DEFAULT_CONFIG, NOW, { heatSel: key });
 

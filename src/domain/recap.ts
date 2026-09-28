@@ -146,20 +146,21 @@ export function pastRecaps(data: PersistedState, now: number, count: number): We
 export function changeLabel(sec: number, prevSec: number): string {
   const d = sec - prevSec;
   if (Math.abs(d) < 60) return 'same as the week before';
-  return (d > 0 ? 'up ' : 'down ') + fmtH(Math.abs(d)) + ' on the week before';
+  // Less than the week before is never framed as a shortfall.
+  return d > 0 ? 'up ' + fmtH(d) + ' on the week before' : '';
 }
 
 /**
- * One-line summary, e.g. "Hit 2 of 3 targets · 14.5h tracked · up 2h on the
- * week before". `tracked: false` leaves out the total, for views that show it
- * on its own.
+ * One-line summary, e.g. "2 targets met · 14.5h tracked · up 2h on the week
+ * before". Only met targets are counted (never "of N"), and a quieter week
+ * isn't called out. `tracked: false` leaves out the total, for views that
+ * show it on its own.
  */
 export function recapSummary(r: WeekRecap, opts: { tracked?: boolean } = {}): string {
   const parts: string[] = [];
-  if (r.targetCount > 0) {
-    parts.push(`Hit ${r.hitCount} of ${r.targetCount} target${r.targetCount === 1 ? '' : 's'}`);
-  }
+  if (r.hitCount > 0) parts.push(`${r.hitCount} target${r.hitCount === 1 ? '' : 's'} met`);
   if (opts.tracked !== false) parts.push(fmtH(r.totalSec) + ' tracked');
-  parts.push(changeLabel(r.totalSec, r.prevTotalSec));
+  const change = changeLabel(r.totalSec, r.prevTotalSec);
+  if (change) parts.push(change);
   return parts.join(' · ');
 }
