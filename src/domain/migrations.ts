@@ -1,10 +1,14 @@
 import { clampMinMin, DAILY, defaultMinMin, parseFrequency } from './frequency';
 import { seed } from './seed';
 import { dailyStreak } from './streaks';
-import { dkey } from './time';
+import { addDays, dkey } from './time';
 import { CURRENT_SCHEMA_VERSION, PersistedState, StreakCarry } from './types';
 
-/** The streak under the pre-v4 rule (any tracked time, monthly freezes), kept as a carry. */
+/**
+ * The streak under the pre-v4 rule (any tracked time, monthly freezes), kept
+ * as a carry. Its day is the last day that streak counted: today if already
+ * tracked, else yesterday (so finishing today still adds one).
+ */
 function legacyCarry(sessions: any[], now: number): StreakCarry | null {
   const dayMap: Record<string, number> = {};
   for (const s of sessions) {
@@ -14,7 +18,9 @@ function legacyCarry(sessions: any[], now: number): StreakCarry | null {
   }
   const old = dailyStreak(dayMap, now);
   if (!old.current && !old.longest) return null;
-  return { current: old.current, longest: old.longest, day: dkey(new Date(now)) };
+  const today = dkey(new Date(now));
+  const day = (dayMap[today] || 0) > 0 ? today : dkey(addDays(new Date(now), -1));
+  return { current: old.current, longest: old.longest, day };
 }
 
 export const MIGRATIONS: Array<(s: any, now: number) => any> = [

@@ -226,8 +226,9 @@ export function planStreak(records: DayRecord[], today: string, carry: StreakCar
     }
   }
 
+  // A break on or before the carry's day is already reflected in the old value.
   let current = run;
-  if (carry && (lastBreak === null || lastBreak < carry.day)) {
+  if (carry && (lastBreak === null || lastBreak <= carry.day)) {
     current = Math.max(run, carry.current + completeSinceCarry);
   }
   longest = Math.max(longest, current, carry?.longest ?? 0);

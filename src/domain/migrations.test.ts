@@ -195,13 +195,13 @@ test('v3 habits become every-day habits with a 5-minute (or shorter) minimum', (
 });
 
 test('the v4 migration keeps the old streak as a carry', () => {
-  // Tracked every day Jun 21 – Jul 9 (19 days), today (Jul 10) not yet.
+  // Tracked every day Jun 21 – Jul 9 (19 days), today (Jul 10) not yet: counted through Jul 9.
   const sessions = Array.from({ length: 19 }, (_, i) => {
     const start = new Date(2026, 5, 21 + i, 9, 0).getTime();
     return { id: 's' + i, habitId: 'a', start, end: start + 600_000, duration: 600 };
   });
   const r = hydrate({ v3: JSON.stringify(v3State([v3Habit('a', 20)], sessions)), v2: null }, NOW);
-  assert.deepEqual(r.streakCarry, { current: 19, longest: 19, day: '2026-07-10' });
+  assert.deepEqual(r.streakCarry, { current: 19, longest: 19, day: '2026-07-09' });
   // Nothing lost.
   assert.equal(r.sessions.length, 19);
   assert.equal(r.habits.length, 1);

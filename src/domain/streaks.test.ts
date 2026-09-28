@@ -344,3 +344,15 @@ test('per-habit streak: consecutive weeks on target; the week in progress never 
   // A week under target breaks it.
   assert.equal(habitWeekStreak(w, habitDaySec({ ...d, sessions: sessions.filter((s) => s.id !== '4') }), '2026-09-30'), 1);
 });
+
+test('the carry: finishing the migration day itself still adds one', () => {
+  // The old streak was 30 through Sep 27; the update came on Sep 28, before anything was tracked.
+  const carry = { current: 30, longest: 30, day: '2026-09-27' };
+  const before = daily(range(8, 26, 27), { planSince: '2026-09-28', streakCarry: carry });
+  assert.equal(streakOf(before, on(8, 28, 12)).current, 30);
+  const after = daily([...range(8, 26, 27), [8, 28]], { planSince: '2026-09-28', streakCarry: carry });
+  assert.equal(streakOf(after, on(8, 28, 20)).current, 31);
+  // An old-rule freeze day just before the update that the new rules call a break doesn't drop the carry.
+  const frozen = daily([[8, 21], [8, 23], [8, 25]], { planSince: '2026-09-26', streakCarry: { current: 3, longest: 9, day: '2026-09-25' } });
+  assert.equal(streakOf(frozen, on(8, 26, 12)).current, 3);
+});

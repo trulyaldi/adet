@@ -91,11 +91,11 @@ export interface ActiveTimer {
  * the new rules never show less than the user already had.
  */
 export interface StreakCarry {
-  /** The old current streak on `day`. */
+  /** The old current streak, counted through `day`. */
   current: number;
   /** The old longest streak. */
   longest: number;
-  /** dkey of the day the carry was recorded (the migration day). */
+  /** dkey of the last day the old streak counted (the migration day, or the day before if untracked). */
   day: string;
 }
 
