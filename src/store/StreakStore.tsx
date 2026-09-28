@@ -11,11 +11,13 @@ import { Alert, AppState } from 'react-native';
 
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
+import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
 import { activeSec, recommendedHabitId } from '../domain/engine';
 import { activeHabits } from '../domain/projects';
 import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
+import { dkey } from '../domain/time';
 import {
   applySessionEdit,
   checkSessionTimes,
@@ -46,8 +48,11 @@ export interface HabitSheetState {
   name: string;
   icon: IconKey;
   projectId: string;
+  /** Full session length in minutes. */
   dailyTargetMin: number;
-  weeklyTargetMin: number;
+  /** Minimum session length in minutes. */
+  minTargetMin: number;
+  frequency: Frequency;
 }
 export interface ProjectSheetState {
   id: string | null;
@@ -223,14 +228,20 @@ interface StreakContextValue {
 
 const StreakContext = createContext<StreakContextValue | null>(null);
 
-const EMPTY_DATA: PersistedState = {
-  schemaVersion: CURRENT_SCHEMA_VERSION,
-  projects: [],
-  habits: [],
-  sessions: [],
-  active: null,
-  historyClearedAt: 0,
-};
+function emptyData(now: number): PersistedState {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    projects: [],
+    habits: [],
+    sessions: [],
+    active: null,
+    historyClearedAt: 0,
+    plans: {},
+    planSince: dkey(new Date(now)),
+    streakCarry: null,
+    rebalancePending: false,
+  };
+}
 
 interface StoreState {
   data: PersistedState;
@@ -254,7 +265,7 @@ function forUser(data: PersistedState, meta: SyncMeta, userId: string, now: numb
   const fresh: SyncMeta = { ...EMPTY_SYNC_META, ownerId: userId };
   // Data owned by a different account is never uploaded into this one.
   if (meta.ownerId !== null || isUntouchedSeed(data, seed(now))) {
-    return { ...base, data: EMPTY_DATA, sync: fresh };
+    return { ...base, data: emptyData(now), sync: fresh };
   }
   return { ...base, data, sync: { ...fresh, outbox: enqueue({}, allAsChanges(data)) } };
 }
@@ -262,12 +273,12 @@ function forUser(data: PersistedState, meta: SyncMeta, userId: string, now: numb
 export function StreakProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [wiped, setWiped] = useState(false);
-  const [store, setStore] = useState<StoreState>({
-    data: EMPTY_DATA,
+  const [store, setStore] = useState<StoreState>(() => ({
+    data: emptyData(Date.now()),
     sync: EMPTY_SYNC_META,
     localRev: 0,
     activeRev: 0,
-  });
+  }));
   const data = store.data;
   const [ui, setUi] = useState<UIState>(INITIAL_UI);
   const [now, setNow] = useState(() => Date.now());
@@ -530,7 +541,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             icon: 'code',
             projectId,
             dailyTargetMin: 30,
-            weeklyTargetMin: 150,
+            minTargetMin: defaultMinMin(30),
+            frequency: { kind: 'daily' },
           },
         }),
       openEditHabit: (habit) =>
@@ -541,7 +553,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             icon: habit.icon,
             projectId: habit.projectId,
             dailyTargetMin: habit.dailyTargetMin,
-            weeklyTargetMin: habit.weeklyTargetMin,
+            minTargetMin: habit.minTargetMin,
+            frequency: habit.frequency,
           },
         }),
       closeHabitSheet: () => patchUi({ habitSheet: null }),
@@ -555,6 +568,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setUi((prevUi) => {
           const sh = prevUi.habitSheet;
           if (!sh || !sh.name.trim()) return prevUi;
+          const frequency = normalizeFrequency(sh.frequency);
+          const minTargetMin = clampMinMin(sh.minTargetMin, sh.dailyTargetMin);
+          // Older app versions show the weekly minutes target; keep it in step.
+          const weeklyTargetMin = sh.dailyTargetMin * weeklyTargetOf(frequency);
           setData((d) => {
             if (sh.id) {
               return {
@@ -567,7 +584,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                         icon: sh.icon,
                         projectId: sh.projectId,
                         dailyTargetMin: sh.dailyTargetMin,
-                        weeklyTargetMin: sh.weeklyTargetMin,
+                        weeklyTargetMin,
+                        frequency,
+                        minTargetMin,
                       }
                     : h
                 ),
@@ -585,7 +604,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
               icon: sh.icon,
               tile,
               dailyTargetMin: sh.dailyTargetMin,
-              weeklyTargetMin: sh.weeklyTargetMin,
+              weeklyTargetMin,
+              frequency,
+              minTargetMin,
             };
             return { ...d, habits: [...d.habits, newHabit] };
           });

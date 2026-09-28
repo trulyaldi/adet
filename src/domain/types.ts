@@ -1,10 +1,15 @@
 // Core data model — ported 1:1 from the Streak v2 design (DCLogic state shape).
 
+import type { Frequency } from './frequency';
+
+export type { Frequency } from './frequency';
+
 /**
  * v1: legacy goals/goalId shape; v2: projects/projectId without required targets;
- * v3: habits have daily and weekly targets.
+ * v3: habits have daily and weekly targets;
+ * v4: habits have a frequency and a minimum; days have a plan (local-only).
  */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export type IconKey =
   | 'code'
@@ -40,12 +45,19 @@ export interface Habit {
   icon: IconKey;
   /** Pastel tile background color. */
   tile: string;
-  /** Daily time target in minutes. */
+  /** The full session length in minutes (the habit's timer length). */
   dailyTargetMin: number;
-  /** Weekly time target in minutes. */
+  /**
+   * Weekly time target in minutes. Kept and synced for older app versions,
+   * which show it; set from the full length and frequency on save.
+   */
   weeklyTargetMin: number;
   /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
   updatedAt?: number;
+  /** How often the habit is due. */
+  frequency: Frequency;
+  /** The minimum session in minutes (1..dailyTargetMin); reaching it counts as done. */
+  minTargetMin: number;
 }
 
 export interface Session {
@@ -74,6 +86,19 @@ export interface ActiveTimer {
   updatedAt?: number;
 }
 
+/**
+ * The old streak, kept when the plan-based streak replaced it (schema v4) so
+ * the new rules never show less than the user already had.
+ */
+export interface StreakCarry {
+  /** The old current streak on `day`. */
+  current: number;
+  /** The old longest streak. */
+  longest: number;
+  /** dkey of the day the carry was recorded (the migration day). */
+  day: string;
+}
+
 /** The slice of state that is persisted to device storage. */
 export interface PersistedState {
   schemaVersion: number;
@@ -82,6 +107,17 @@ export interface PersistedState {
   sessions: Session[];
   active: ActiveTimer | null;
   historyClearedAt: number;
+  // Local-only (not synced), like historyClearedAt:
+  /** Each day's plan (habit ids), fixed when the day is first shown and edited by swap/remove. */
+  plans: Record<string, string[]>;
+  /**
+   * dkey from which days are judged by their plan. Earlier days (before this
+   * device had plans) count as complete when anything was tracked.
+   */
+  planSince: string;
+  streakCarry: StreakCarry | null;
+  /** The one-time rebalance screen is still to be shown (set by the v4 migration). */
+  rebalancePending: boolean;
 }
 
 /** A [name, thresholdHours] stage tuple. */

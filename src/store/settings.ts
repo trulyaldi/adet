@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { clampBudgetMin, clampPlanCap, DEFAULT_BUDGET_MIN, DEFAULT_PLAN_CAP } from '../domain/plan';
 import { clampReminderHours, DEFAULT_REMINDER_HOURS } from '../domain/reminder';
 
 // Device-only preferences: never synced and kept across sign-outs.
@@ -12,12 +13,18 @@ export interface AppSettings {
   recapSeenWeek: string | null;
   /** The one-time "remove sessions under a minute" prompt was answered on this device. */
   shortSessionsReviewed: boolean;
+  /** Daily time budget in minutes: a day's plan never adds up to more (full lengths). */
+  budgetMin: number;
+  /** Most habits in a day's plan. */
+  planCap: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   reminderHours: DEFAULT_REMINDER_HOURS,
   recapSeenWeek: null,
   shortSessionsReviewed: false,
+  budgetMin: DEFAULT_BUDGET_MIN,
+  planCap: DEFAULT_PLAN_CAP,
 };
 
 export async function loadSettings(): Promise<AppSettings> {
@@ -32,6 +39,8 @@ export async function loadSettings(): Promise<AppSettings> {
           ? saved.recapSeenWeek
           : null,
       shortSessionsReviewed: saved.shortSessionsReviewed === true,
+      budgetMin: clampBudgetMin(saved.budgetMin),
+      planCap: clampPlanCap(saved.planCap),
     };
   } catch {
     return DEFAULT_SETTINGS;

@@ -63,9 +63,11 @@ export async function clearState(): Promise<void> {
 /** Persist the durable slice and sync bookkeeping in one write. */
 export async function saveState(data: PersistedState, sync: SyncMeta): Promise<void> {
   try {
-    const { schemaVersion, projects, habits, sessions, active, historyClearedAt } = data;
+    const { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending } =
+      data;
+    const saved = { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending };
     await AsyncStorage.multiSet([
-      [KEY, JSON.stringify({ schemaVersion, projects, habits, sessions, active, historyClearedAt })],
+      [KEY, JSON.stringify(saved)],
       [SYNC_KEY, JSON.stringify(sync)],
     ]);
   } catch {
