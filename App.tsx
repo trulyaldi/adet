@@ -13,6 +13,7 @@ import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
 import { PlanPickerSheet } from './src/overlays/PlanPickerSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
+import { RebalanceScreen } from './src/overlays/RebalanceScreen';
 import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
@@ -69,6 +70,7 @@ function Root() {
       <SettingsSheet />
       <PlanPickerSheet />
       <WeekSheet />
+      <RebalanceScreen />
     </View>
   );
 }

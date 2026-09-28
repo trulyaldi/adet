@@ -27,6 +27,7 @@ import {
   swapInPlan,
 } from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
+import { finishRebalance } from '../domain/rebalance';
 import { seed } from '../domain/seed';
 import { dkey } from '../domain/time';
 import {
@@ -250,6 +251,11 @@ export interface StreakActions {
   // week view
   openWeek(): void;
   closeWeek(): void;
+  /**
+   * Close the one-time rebalance screen for good, applying the chosen
+   * frequencies (habit id → frequency), or keeping everything as is (null).
+   */
+  finishRebalance(chosen: Record<string, Frequency> | null): void;
   dismissRecapCard(): void;
   // device settings
   setReminderHours(hours: number): void;
@@ -995,6 +1001,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       },
       openWeek: () => patchUi({ weekOpen: true }),
       closeWeek: () => patchUi({ weekOpen: false }),
+      finishRebalance: (chosen) => setData((d) => finishRebalance(d, chosen, dkey(new Date()))),
 
       setReminderHours: (hours) => {
         const next = updateSettings({ reminderHours: clampReminderHours(hours) });
