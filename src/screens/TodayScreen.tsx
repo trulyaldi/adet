@@ -13,6 +13,9 @@ import { colors, radius, shadowCard } from '../theme/tokens';
 
 const FLAME =
   'M12 21c3.9 0 6.5-2.4 6.5-6 0-2.5-1.4-4.7-3-6.5-.3 1-.8 1.9-1.7 2.5C13.6 8.6 13 5.5 10 3c.3 2.5-.7 4.4-2.1 6C6.6 10.6 5.5 12.4 5.5 15c0 3.6 2.6 6 6.5 6z';
+// Feather "settings" (MIT).
+const GEAR =
+  'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z';
 const LEAF =
   'M20 4C10.5 5 5.5 10 5.5 19c9 0 14-5 14.5-15zM5.5 19C8 13.5 11.5 9.5 16.5 6.5';
 
@@ -26,38 +29,55 @@ export function TodayScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ flexShrink: 1 }}>
           <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
             Today
           </Text>
-          <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>
+          <Text numberOfLines={1} style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>
             {model.todayDateLabel}
           </Text>
           <View style={{ marginTop: 6 }}>
             <SyncIndicator />
           </View>
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: colors.card,
-            borderRadius: radius.pill,
-            paddingVertical: 7,
-            paddingHorizontal: 12,
-          }}
-        >
-          <Icon path={FLAME} size={14} color={colors.ink} strokeWidth={2} />
-          <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
-            {model.streakLabel}
-            {model.streakNote ? (
-              <Text style={{ color: model.streakAtRisk ? colors.warn : colors.subtext }}>
-                {' · ' + model.streakNote}
-              </Text>
-            ) : null}
-          </Text>
+        <View style={{ alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
+          <Pressable
+            onPress={actions.openSettings}
+            hitSlop={8}
+            accessibilityLabel="Settings"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: radius.pill,
+              backgroundColor: colors.card,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon path={GEAR} size={18} color={colors.subtext} strokeWidth={1.9} />
+          </Pressable>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: colors.card,
+              borderRadius: radius.pill,
+              paddingVertical: 7,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Icon path={FLAME} size={14} color={colors.ink} strokeWidth={2} />
+            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
+              {model.streakLabel}
+              {model.streakNote ? (
+                <Text style={{ color: model.streakAtRisk ? colors.warn : colors.subtext }}>
+                  {' · ' + model.streakNote}
+                </Text>
+              ) : null}
+            </Text>
+          </View>
         </View>
       </View>
 

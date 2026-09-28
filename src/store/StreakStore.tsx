@@ -106,6 +106,7 @@ export interface UIState {
   recapCard: string | null;
   /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
   toast: string | null;
+  settingsOpen: boolean;
 }
 
 const INITIAL_UI: UIState = {
@@ -123,6 +124,7 @@ const INITIAL_UI: UIState = {
   recapSheet: null,
   recapCard: null,
   toast: null,
+  settingsOpen: false,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -140,6 +142,8 @@ const SHORT_TIMER_TOAST = 'Under a minute, not saved';
 export interface StreakActions {
   // navigation
   setScreen(s: Screen): void;
+  openSettings(): void;
+  closeSettings(): void;
   // timer
   startTimer(habitId: string): void;
   openTimer(): void;
@@ -433,6 +437,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
     return {
       setScreen: (screen) => patchUi({ screen }),
+      openSettings: () => patchUi({ settingsOpen: true }),
+      closeSettings: () => patchUi({ settingsOpen: false }),
 
       startTimer: (habitId) => {
         const now = Date.now();

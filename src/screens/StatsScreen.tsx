@@ -1,18 +1,15 @@
 import React from 'react';
-import { Alert, Animated, Easing, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, Text, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
 import { PatternsCard } from '../components/PatternsCard';
 import { ProgressBar } from '../components/ProgressBar';
-import { SyncIndicator } from '../components/SyncIndicator';
 import { selectStats } from '../domain/engine';
 import { lastCompletedWeekStart, pastRecaps } from '../domain/recap';
-import { MAX_REMINDER_HOURS } from '../domain/reminder';
 import { fmtH } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
-import { useAuth } from '../sync/AuthProvider';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
 export function StatsScreen() {
@@ -315,8 +312,6 @@ export function StatsScreen() {
       </View>
 
       <PastWeeksCard />
-      <ReminderCard />
-      <AccountCard />
     </ScrollView>
   );
 }
@@ -356,128 +351,6 @@ function PastWeeksCard() {
           <Text style={{ fontSize: 16, color: colors.muted }}>›</Text>
         </Pressable>
       ))}
-    </View>
-  );
-}
-
-function ReminderCard() {
-  const { settings, actions } = useStreak();
-  const hours = settings.reminderHours;
-  const step = (delta: number) => actions.setReminderHours(Math.min(MAX_REMINDER_HOURS, Math.max(0, hours + delta)));
-
-  return (
-    <View
-      style={[
-        {
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          padding: 14,
-          paddingHorizontal: 16,
-          marginTop: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        },
-        shadowCard,
-      ]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>Long-timer reminder</Text>
-        <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>
-          {hours > 0 ? `Ask if a timer is still running after ${hours}h` : 'Off'}
-        </Text>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <StepPill label="−" disabled={hours <= 0} onPress={() => step(-1)} />
-        <Text style={{ width: 34, textAlign: 'center', fontSize: 14, fontWeight: '700', color: colors.ink }}>
-          {hours > 0 ? `${hours}h` : 'Off'}
-        </Text>
-        <StepPill label="+" disabled={hours >= MAX_REMINDER_HOURS} onPress={() => step(1)} />
-      </View>
-    </View>
-  );
-}
-
-function StepPill({ label, disabled, onPress }: { label: string; disabled: boolean; onPress(): void }) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={{
-        width: 32,
-        height: 32,
-        borderRadius: 11,
-        backgroundColor: colors.screen,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: disabled ? 0.4 : 1,
-      }}
-    >
-      <Text style={{ fontSize: 18, fontWeight: '600', color: colors.ink }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function AccountCard() {
-  const { session, signOut } = useAuth();
-  const { sync, clearLocalData } = useStreak();
-  const [busy, setBusy] = React.useState(false);
-
-  const confirmSignOut = () => {
-    const unsynced = sync.pending;
-    Alert.alert(
-      'Sign out?',
-      unsynced
-        ? `${unsynced} change${unsynced === 1 ? " hasn't" : "s haven't"} synced yet and will be lost. Your data will be removed from this device.`
-        : "Your data is synced and will be removed from this device. You'll need to sign in again to see it.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: unsynced ? 'Sign out anyway' : 'Sign out',
-          style: 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await clearLocalData();
-              await signOut();
-            } catch (e) {
-              setBusy(false);
-              Alert.alert('Could not sign out', e instanceof Error ? e.message : String(e));
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  return (
-    <View
-      style={[
-        {
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          padding: 14,
-          paddingHorizontal: 16,
-          marginTop: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        },
-        shadowCard,
-      ]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 12, color: colors.subtext }}>Signed in as</Text>
-        <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink, marginTop: 2 }}>
-          {session?.user.email ?? 'Unknown account'}
-        </Text>
-        <View style={{ marginTop: 4 }}>
-          <SyncIndicator />
-        </View>
-      </View>
-      <Pressable disabled={busy} onPress={confirmSignOut} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.dangerSoft, opacity: busy ? 0.5 : 1 }}>
-        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.danger }}>Sign out</Text>
-      </Pressable>
     </View>
   );
 }
