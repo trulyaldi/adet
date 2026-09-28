@@ -61,10 +61,11 @@ export function TextNum({ style, ...rest }: TextProps) {
 }
 
 /**
- * A number counting up from zero the first time it shows (0.7s, ease out);
- * later changes jump. With reduce motion it just shows the value.
+ * A number counting up from zero once `start` turns true (0.7s, ease out),
+ * e.g. when its card first scrolls into view; later changes jump. With
+ * reduce motion it just shows the value.
  */
-export function useCountUpOnce(value: number, reduced: boolean): number {
+export function useCountUpOnce(value: number, reduced: boolean, start = true): number {
   const [shown, setShown] = useState(reduced ? value : 0);
   const done = useRef(reduced);
   useEffect(() => {
@@ -72,6 +73,7 @@ export function useCountUpOnce(value: number, reduced: boolean): number {
       setShown(value);
       return;
     }
+    if (!start) return;
     done.current = true;
     const t0 = Date.now();
     let raf = 0;
@@ -82,7 +84,7 @@ export function useCountUpOnce(value: number, reduced: boolean): number {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [value]);
+  }, [value, start]);
   return shown;
 }
 

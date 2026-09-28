@@ -114,7 +114,7 @@ export function thisWeek(data: PersistedState, now: number, idx: DayIndex = dayI
   const start = monday(new Date(now));
   const today = dkey(new Date(now));
   const byProject = sumRange(data, start.getTime(), now + 1);
-  const last = sumRange(data, start.getTime() - 7 * DAY_MS, now - 7 * DAY_MS + 1);
+  const last = sumRange(data, addDays(start, -7).getTime(), addDays(new Date(now), -7).getTime() + 1);
   const active = data.projects.filter((p) => !isArchived(p));
   const withTarget = active.filter((p) => p.weeklyTarget > 0);
   const targetSec = withTarget.reduce((a, p) => a + p.weeklyTarget * 3600, 0);
@@ -290,7 +290,7 @@ export interface ProjectProgress {
 export function projectProgress(data: PersistedState, now: number, idx: DayIndex = dayIndex(data)): ProjectProgress[] {
   const start = monday(new Date(now));
   const week = sumRange(data, start.getTime(), now + 1);
-  const last = sumRange(data, start.getTime() - 7 * DAY_MS, now - 7 * DAY_MS + 1);
+  const last = sumRange(data, addDays(start, -7).getTime(), addDays(new Date(now), -7).getTime() + 1);
   const weeks = [3, 2, 1, 0].map((i) => sumDays(idx, addDays(start, -7 * i), 7));
   const all = new Map<string, number>();
   for (const day of idx.values()) for (const [pid, sec] of day) all.set(pid, (all.get(pid) || 0) + sec);

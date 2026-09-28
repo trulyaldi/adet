@@ -83,7 +83,7 @@ export const PeriodChart = memo(function PeriodChart({ info, lowData }: { info: 
 
   const bar = selected !== null ? c.bars[selected] : undefined;
   return (
-    <StatsCard glyph="stats" label="Time per day" right={controls}>
+    <StatsCard glyph="stats" label={period === 'week' ? 'Time per day' : period === 'month' ? 'Time per week' : 'Time per month'} right={controls}>
       <GestureDetector gesture={swipe}>
         <View>
           <Bars chart={c} selected={selected} onSelect={select} info={info} />

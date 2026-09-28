@@ -176,6 +176,18 @@ test('weeks can start on Sunday', () => {
   }
 });
 
+test('memoized views follow a week start change', () => {
+  const data = fixture();
+  assert.equal(thisWeekOf(data, NOW).dots[0].letter, 'M');
+  setWeekStartDay(0);
+  try {
+    assert.equal(thisWeekOf(data, NOW).dots[0].letter, 'S');
+    assert.equal(chartOf(data, NOW, 'week', 0).bars[0].label, 'S');
+  } finally {
+    setWeekStartDay(1);
+  }
+});
+
 test('memoized chart: switching period recomputes, the same period does not', () => {
   const data = fixture();
   const w = chartOf(data, NOW, 'week', 0);

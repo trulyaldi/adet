@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { Button } from '../components/Button';
@@ -47,6 +47,15 @@ export function StatsScreen() {
   const badges = badgeCollectionOf(data);
   const next = useMemo(() => nextStreakMilestone(data.badges, streak.current), [data.badges, streak.current]);
   const lowData = recs.daysWithTime < LOW_DATA_DAYS;
+  // Records count up the first time their card comes into view.
+  const [recordsSeen, setRecordsSeen] = useState(false);
+  const view = useRef({ offset: 0, height: 0, recordsY: Infinity, seen: false });
+  const checkRecords = useCallback(() => {
+    const v = view.current;
+    if (v.seen || !v.height || v.offset + v.height < v.recordsY + 60) return;
+    v.seen = true;
+    setRecordsSeen(true);
+  }, []);
   const toChart = useCallback(() => scroll.current?.scrollTo({ y: Math.max(0, chartY.current - 8), animated: true }), []);
 
   const header = (
@@ -74,7 +83,20 @@ export function StatsScreen() {
 
   let i = 0;
   return (
-    <ScrollView ref={scroll} contentContainerStyle={{ paddingTop: 12, paddingHorizontal: 16, paddingBottom: 110, gap: 14 }} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      ref={scroll}
+      contentContainerStyle={{ paddingTop: 12, paddingHorizontal: 16, paddingBottom: 110, gap: 14 }}
+      showsVerticalScrollIndicator={false}
+      scrollEventThrottle={100}
+      onLayout={(e) => {
+        view.current.height = e.nativeEvent.layout.height;
+        checkRecords();
+      }}
+      onScroll={(e) => {
+        view.current.offset = e.nativeEvent.contentOffset.y;
+        checkRecords();
+      }}
+    >
       {header}
       <Appear index={i++}>
         <WeekHero week={week} info={info} onPress={toChart} />
@@ -96,9 +118,16 @@ export function StatsScreen() {
         <StreakShelf current={streak.current} longest={streak.longest} badges={badges} next={next} info={info} />
       </Appear>
       {!lowData && (
-        <Appear index={i++}>
-          <RecordsGrid records={recs} />
-        </Appear>
+        <View
+          onLayout={(e) => {
+            view.current.recordsY = e.nativeEvent.layout.y;
+            checkRecords();
+          }}
+        >
+          <Appear index={i++}>
+            <RecordsGrid records={recs} shown={recordsSeen} />
+          </Appear>
+        </View>
       )}
     </ScrollView>
   );

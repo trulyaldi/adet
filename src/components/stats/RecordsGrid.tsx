@@ -8,8 +8,8 @@ import { useReducedMotion } from '../../theme/useMotion';
 import { Glyph, GlyphName } from '../Glyph';
 import { StatsCard, TextNum, useCountUpOnce } from './common';
 
-/** Four records, each an icon and a number that counts up the first time it shows. */
-export const RecordsGrid = memo(function RecordsGrid({ records }: { records: Records }) {
+/** Four records, each an icon and a number that counts up the first time the card is on screen (`shown`). */
+export const RecordsGrid = memo(function RecordsGrid({ records, shown }: { records: Records; shown: boolean }) {
   const items: { glyph: GlyphName; label: string; sec: number }[] = [
     { glyph: 'today', label: 'Best day', sec: records.bestDaySec },
     { glyph: 'clock', label: 'Longest session', sec: records.longestSessionSec },
@@ -20,17 +20,17 @@ export const RecordsGrid = memo(function RecordsGrid({ records }: { records: Rec
     <StatsCard glyph="badge" label="Records">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {items.map((it) => (
-          <Tile key={it.label} {...it} />
+          <Tile key={it.label} {...it} start={shown} />
         ))}
       </View>
     </StatsCard>
   );
 });
 
-function Tile({ glyph, label, sec }: { glyph: GlyphName; label: string; sec: number }) {
+function Tile({ glyph, label, sec, start }: { glyph: GlyphName; label: string; sec: number; start: boolean }) {
   const t = useTheme();
   const reduced = useReducedMotion();
-  const shown = useCountUpOnce(sec, reduced);
+  const shown = useCountUpOnce(sec, reduced, start);
   return (
     <View accessible accessibilityLabel={`${label}, ${sayDur(sec)}`} style={{ flexGrow: 1, flexBasis: '45%', backgroundColor: t.colors.well, borderRadius: t.radius.lg, padding: 12, gap: 8 }}>
       <Glyph name={glyph} size={20} color={t.colors.sub} />

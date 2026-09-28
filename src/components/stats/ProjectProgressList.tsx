@@ -54,7 +54,7 @@ function Row({ row, expanded, onToggle }: { row: ProjectProgress; expanded: bool
             style={[
               { flex: 1 },
               // Reached: a soft glow in the project color.
-              row.reached && { shadowColor: sw.base, shadowOpacity: t.dark ? 0.6 : 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+              row.reached && { backgroundColor: sw.light, borderRadius: 6, shadowColor: sw.base, shadowOpacity: t.dark ? 0.6 : 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
             ]}
           >
             <AnimatedBar value={row.frac} color={sw.base} track={sw.light} height={12} />

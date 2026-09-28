@@ -174,7 +174,7 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
             <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={t.brand.bonus} strokeWidth={CAP_LINE} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} opacity={0.8} animatedProps={lap2} />
           </G>
           {/* The capacity point: where the gauge starts and where a full day of capacity ends. */}
-          <Path d={`M${c} ${c - rCap - 3.5}V${c - rCap + 3.5}`} stroke={colors.sub} strokeWidth={2.5} strokeLinecap="round" />
+          <Path d={`M${c} ${c - rCap - 2}V${c - rCap + 4.5}`} stroke={colors.sub} strokeWidth={2.5} strokeLinecap="round" />
           {/* Planned habits */}
           {segments.map((s, i) => {
             const from = i * seg + gap / 2;

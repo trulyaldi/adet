@@ -8,7 +8,7 @@ import { selectToday, TodayItem, TodayModel } from './day';
 import { selectProjectsView } from './projectsView';
 import { badgeCollection, chart, dayIndex, focusHours, Period, projectProgress, QUARTER_HOUR_MS, records, thisWeek } from './stats';
 import { streakV5 } from './streaks';
-import { dkey } from './time';
+import { dkey, weekStartDay } from './time';
 import { PersistedState } from './types';
 
 /**
@@ -58,8 +58,9 @@ export const projectsViewOf = memoLast((data: PersistedState, now: number) => se
 // ---------- Stats ----------
 // Keyed on the slices each view reads (never on `data` itself, which changes
 // identity when a timer starts or pauses) and on a clock bucket: the day, or a
-// quarter hour for views that compare with "the same moment last week". So a
-// running timer elsewhere and the store's 15s tick recompute nothing.
+// quarter hour for views that compare with "the same moment last week" (and
+// the week start, a global read at call time). So a running timer elsewhere
+// and the store's 15s tick recompute nothing.
 
 const day = (now: number) => dkey(new Date(now));
 const quarter = (now: number) => Math.floor(now / QUARTER_HOUR_MS);
@@ -69,22 +70,22 @@ export const dayIndexOf = memoLast((data: PersistedState) => dayIndex(data), (da
 
 export const thisWeekOf = memoLast(
   (data: PersistedState, now: number) => thisWeek(data, now, dayIndexOf(data)),
-  (data, now) => [data.sessions, data.habits, data.projects, quarter(now)]
+  (data, now) => [data.sessions, data.habits, data.projects, quarter(now), weekStartDay()]
 );
 
 export const projectProgressOf = memoLast(
   (data: PersistedState, now: number) => projectProgress(data, now, dayIndexOf(data)),
-  (data, now) => [data.sessions, data.habits, data.projects, quarter(now)]
+  (data, now) => [data.sessions, data.habits, data.projects, quarter(now), weekStartDay()]
 );
 
 export const chartOf = memoLast(
   (data: PersistedState, now: number, period: Period, offset: number) => chart(data, now, period, offset, dayIndexOf(data)),
-  (data, now, period, offset) => [data.sessions, data.habits, data.projects, data.prefs, data.dailyLogs, data.days, day(now), period, offset]
+  (data, now, period, offset) => [data.sessions, data.habits, data.projects, data.prefs, data.dailyLogs, data.days, day(now), period, offset, weekStartDay()]
 );
 
 export const focusHoursOf = memoLast(
   (data: PersistedState, now: number) => focusHours(data, now),
-  (data, now) => [data.sessions, data.habits, day(now)]
+  (data, now) => [data.sessions, data.habits, day(now), weekStartDay()]
 );
 
 export const recordsOf = memoLast(
