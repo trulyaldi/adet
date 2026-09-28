@@ -3,21 +3,26 @@
 
 import { clampMinMin, defaultMinMin, parseFrequency } from '../domain/frequency';
 import { isIconKey, isProjectColor, isScene } from '../domain/look';
-import { ACTIVE_ID, Change, parseTimestamp, SyncTable } from '../domain/sync';
-import { IconKey } from '../domain/types';
+import { parsePrefs } from '../domain/capacity';
+import { ACTIVE_ID, Change, parseTimestamp, PREFS_ID, SyncTable } from '../domain/sync';
+import { IconKey, LogItem } from '../domain/types';
 
 export type Row = Record<string, unknown>;
 
-/** Push order: parents before children. */
-export const PUSH_ORDER: SyncTable[] = ['projects', 'habits', 'sessions', 'active_timers'];
+/** Push order: parents before children. The redesign's tables (005) go last. */
+export const PUSH_ORDER: SyncTable[] = ['projects', 'habits', 'sessions', 'active_timers', 'habit_marks', 'daily_logs', 'badges', 'user_prefs'];
 /** Pull order: children before parents, so a child is never fetched after a parent it depends on is. */
-export const PULL_ORDER: SyncTable[] = ['sessions', 'active_timers', 'habits', 'projects'];
+export const PULL_ORDER: SyncTable[] = ['sessions', 'habit_marks', 'active_timers', 'daily_logs', 'badges', 'user_prefs', 'habits', 'projects'];
 
 export const CONFLICT_TARGET: Record<SyncTable, string> = {
   projects: 'user_id,id',
   habits: 'user_id,id',
   sessions: 'user_id,id',
   active_timers: 'user_id',
+  habit_marks: 'user_id,id',
+  daily_logs: 'user_id,id',
+  badges: 'user_id,id',
+  user_prefs: 'user_id,id',
 };
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -63,6 +68,8 @@ export function changeToRow(c: Change, userId: string): Row {
         // Needs migration 004_doable_day.
         frequency: r.frequency,
         min_target_min: r.minTargetMin,
+        // Needs migration 005_redesign.
+        kind: r.kind ?? 'timed',
         merged_into: c.deletedAt === null ? null : c.mergedInto ?? null,
       };
     }
@@ -83,7 +90,47 @@ export function changeToRow(c: Change, userId: string): Row {
       const r = c.record;
       return { ...meta, habit_id: r.habitId, started_at: r.startedAt, base_sec: r.baseSec };
     }
+    // The redesign's tables (migration 005_redesign).
+    case 'habit_marks': {
+      const r = c.record;
+      return { ...meta, id: r.id, habit_id: r.habitId, day: r.day };
+    }
+    case 'daily_logs': {
+      const r = c.record;
+      return {
+        ...meta,
+        id: r.id,
+        capacity_min: r.capacityMin,
+        planned_min: r.plannedMin,
+        actual_min: r.actualMin,
+        items: r.items,
+        done_count: r.doneCount,
+      };
+    }
+    case 'badges': {
+      const r = c.record;
+      return { ...meta, id: r.id, earned_at: r.earnedAt };
+    }
+    case 'user_prefs': {
+      const r = c.record;
+      return { ...meta, id: PREFS_ID, capacity_min: r.capacityMin, week_start: r.weekStart };
+    }
   }
+}
+
+function logItems(v: unknown): LogItem[] {
+  let raw = v;
+  if (typeof v === 'string') {
+    try {
+      raw = JSON.parse(v);
+    } catch {
+      raw = [];
+    }
+  }
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x) => x && typeof x.habitId === 'string' && typeof x.projectId === 'string')
+    .map((x) => ({ habitId: x.habitId, projectId: x.projectId, shareMin: Number(x.shareMin) || 0 }));
 }
 
 export function rowToChange(table: SyncTable, row: Row): Change {
@@ -130,6 +177,8 @@ export function rowToChange(table: SyncTable, row: Row): Change {
           updatedAt,
           frequency: parseFrequency(row.frequency),
           minTargetMin,
+          // Rows from before 005 (or older app versions) have no kind: timed.
+          kind: row.kind === 'check' ? 'check' : 'timed',
         },
       };
     }
@@ -161,5 +210,33 @@ export function rowToChange(table: SyncTable, row: Row): Change {
           updatedAt,
         },
       };
+    case 'habit_marks':
+      return {
+        table,
+        id: String(row.id),
+        deletedAt,
+        record: { id: String(row.id), habitId: String(row.habit_id), day: String(row.day), updatedAt },
+      };
+    case 'daily_logs':
+      return {
+        table,
+        id: String(row.id),
+        deletedAt,
+        record: {
+          id: String(row.id),
+          capacityMin: num(row.capacity_min),
+          plannedMin: num(row.planned_min),
+          actualMin: num(row.actual_min),
+          items: logItems(row.items),
+          doneCount: num(row.done_count ?? 0),
+          updatedAt,
+        },
+      };
+    case 'badges':
+      return { table, id: String(row.id), deletedAt, record: { id: String(row.id), earnedAt: num(row.earned_at), updatedAt } };
+    case 'user_prefs': {
+      const prefs = parsePrefs({ capacityMin: row.capacity_min, weekStart: num(row.week_start) });
+      return { table, id: PREFS_ID, deletedAt, record: { ...prefs, updatedAt } };
+    }
   }
 }

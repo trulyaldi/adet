@@ -1,12 +1,23 @@
 // Pure sync logic: change detection, the outbox, and last-write-wins merging.
 // No React or Supabase here; src/sync/ does the I/O.
 
-import { ActiveTimer, Habit, PersistedState, Project, Session } from './types';
+import { markId } from './marks';
+import { ActiveTimer, Badge, DailyLog, Habit, Mark, PersistedState, Project, Session, UserPrefs } from './types';
 
-export type SyncTable = 'projects' | 'habits' | 'sessions' | 'active_timers';
+export type SyncTable =
+  | 'projects'
+  | 'habits'
+  | 'sessions'
+  | 'active_timers'
+  | 'habit_marks'
+  | 'daily_logs'
+  | 'badges'
+  | 'user_prefs';
 
 /** The active timer is a per-user singleton; this is its id in the outbox. */
 export const ACTIVE_ID = 'active';
+/** Planning preferences are one record per user, with this id. */
+export const PREFS_ID = 'prefs';
 
 interface ChangeBase {
   id: string;
@@ -22,7 +33,11 @@ export type Change =
   | (ChangeBase & { table: 'projects'; record: Project })
   | (ChangeBase & { table: 'habits'; record: Habit; mergedInto?: string | null })
   | (ChangeBase & { table: 'sessions'; record: Session })
-  | (ChangeBase & { table: 'active_timers'; record: ActiveTimer });
+  | (ChangeBase & { table: 'active_timers'; record: ActiveTimer })
+  | (ChangeBase & { table: 'habit_marks'; record: Mark })
+  | (ChangeBase & { table: 'daily_logs'; record: DailyLog })
+  | (ChangeBase & { table: 'badges'; record: Badge })
+  | (ChangeBase & { table: 'user_prefs'; record: UserPrefs });
 
 /** Pending local changes, keyed by changeKey(); newer changes replace older ones. */
 export type Outbox = Record<string, Change>;
@@ -126,9 +141,38 @@ export function stampLocalChanges(
     }
   }
 
+  const marks = stampList(prev.marks, next.marks, now);
+  const logs = stampList(prev.dailyLogs, next.dailyLogs, now);
+  const badges = stampList(prev.badges, next.badges, now);
+  const simple = [
+    ['habit_marks', marks],
+    ['daily_logs', logs],
+    ['badges', badges],
+  ] as const;
+  for (const [table, st] of simple) {
+    for (const record of st.upserts) changes.push({ table, id: record.id, record, deletedAt: null } as Change);
+    for (const r of st.deletes) changes.push({ table, id: r.id, record: { ...r, updatedAt: now }, deletedAt: now } as Change);
+  }
+
+  let prefs = next.prefs;
+  if (prev.prefs !== next.prefs) {
+    prefs = { ...next.prefs, updatedAt: now };
+    changes.push({ table: 'user_prefs', id: PREFS_ID, record: prefs, deletedAt: null });
+  }
+
   if (!changes.length) return { data: next, changes };
   return {
-    data: { ...next, projects: projects.list, habits: habits.list, sessions: sessions.list, active },
+    data: {
+      ...next,
+      projects: projects.list,
+      habits: habits.list,
+      sessions: sessions.list,
+      active,
+      marks: marks.list,
+      dailyLogs: logs.list,
+      badges: badges.list,
+      prefs,
+    },
     changes,
   };
 }
@@ -155,6 +199,10 @@ export function allAsChanges(data: PersistedState): Change[] {
   if (data.active) {
     changes.push({ table: 'active_timers', id: ACTIVE_ID, record: stamp(data.active), deletedAt: null });
   }
+  for (const r of data.marks) changes.push({ table: 'habit_marks', id: r.id, record: stamp(r), deletedAt: null });
+  for (const r of data.dailyLogs) changes.push({ table: 'daily_logs', id: r.id, record: stamp(r), deletedAt: null });
+  for (const r of data.badges) changes.push({ table: 'badges', id: r.id, record: stamp(r), deletedAt: null });
+  changes.push({ table: 'user_prefs', id: PREFS_ID, record: stamp(data.prefs), deletedAt: null });
   return changes;
 }
 
@@ -178,7 +226,16 @@ export function confirmPushed(outbox: Outbox, pushed: Change[]): Outbox {
 // ---------------------------------------------------------------------------
 
 /** Apply order: children before parents, so cascades see the latest children. */
-const APPLY_ORDER: Record<SyncTable, number> = { sessions: 0, active_timers: 1, habits: 2, projects: 3 };
+const APPLY_ORDER: Record<SyncTable, number> = {
+  sessions: 0,
+  habit_marks: 0,
+  active_timers: 1,
+  daily_logs: 1,
+  badges: 1,
+  user_prefs: 1,
+  habits: 2,
+  projects: 3,
+};
 
 /**
  * Merge pulled rows into local state with last-write-wins per record.
@@ -202,6 +259,10 @@ export function mergeRemote(
   const projects = new Map(data.projects.map((r) => [r.id, r]));
   const habits = new Map(data.habits.map((r) => [r.id, r]));
   const sessions = new Map(data.sessions.map((r) => [r.id, r]));
+  const marks = new Map(data.marks.map((r) => [r.id, r]));
+  const logs = new Map(data.dailyLogs.map((r) => [r.id, r]));
+  const badges = new Map(data.badges.map((r) => [r.id, r]));
+  let prefs = data.prefs;
   let active = data.active;
   const ob: Outbox = { ...outbox };
   const followUps: Change[] = [];
@@ -217,6 +278,14 @@ export function mergeRemote(
         return sessions.get(c.id);
       case 'active_timers':
         return active;
+      case 'habit_marks':
+        return marks.get(c.id);
+      case 'daily_logs':
+        return logs.get(c.id);
+      case 'badges':
+        return badges.get(c.id);
+      case 'user_prefs':
+        return prefs;
     }
   };
 
@@ -240,6 +309,18 @@ export function mergeRemote(
         followUps.push({ table: 'sessions', id: s.id, record: moved, deletedAt: null });
       } else {
         deleteSession(s);
+      }
+    }
+    for (const m of [...marks.values()]) {
+      if (m.habitId !== habitId) continue;
+      marks.delete(m.id);
+      delete ob[changeKey({ table: 'habit_marks', id: m.id })];
+      followUps.push({ table: 'habit_marks', id: m.id, record: { ...m, updatedAt: now }, deletedAt: now });
+      const to = mergedInto ? markId(mergedInto, m.day) : null;
+      if (to && !marks.has(to)) {
+        const moved: Mark = { id: to, habitId: mergedInto!, day: m.day, updatedAt: now };
+        marks.set(to, moved);
+        followUps.push({ table: 'habit_marks', id: to, record: moved, deletedAt: null });
       }
     }
     if (mergedInto && active && active.habitId === habitId) {
@@ -300,6 +381,22 @@ export function mergeRemote(
       case 'active_timers':
         active = remoteDeleted ? null : rc.record;
         break;
+      case 'habit_marks':
+        if (remoteDeleted) marks.delete(rc.id);
+        else marks.set(rc.id, rc.record);
+        break;
+      case 'daily_logs':
+        if (remoteDeleted) logs.delete(rc.id);
+        else logs.set(rc.id, rc.record);
+        break;
+      case 'badges':
+        if (remoteDeleted) badges.delete(rc.id);
+        else badges.set(rc.id, rc.record);
+        break;
+      case 'user_prefs':
+        // Preferences are never deleted; a stray delete leaves them as they are.
+        if (!remoteDeleted) prefs = rc.record;
+        break;
     }
   }
 
@@ -311,6 +408,10 @@ export function mergeRemote(
       habits: [...habits.values()],
       sessions: [...sessions.values()],
       active,
+      marks: [...marks.values()],
+      dailyLogs: [...logs.values()],
+      badges: [...badges.values()],
+      prefs,
     },
     outbox: enqueue(ob, followUps),
   };

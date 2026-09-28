@@ -1,25 +1,23 @@
-// The update to daily plans, end to end on realistic old data: nine daily
-// habits with timer lengths from 3 to 90 minutes, five months of history
-// with an unbroken streak, a running timer, notes and manual logs, saved in
-// the exact v3 shape the previous version wrote.
+// The redesign, end to end on realistic old data: nine daily habits with
+// timer lengths from 3 to 90 minutes, five months of history with an
+// unbroken streak, a running timer, notes and manual logs, saved in the exact
+// v3 shape an old version wrote (and once more via a v4 save).
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { dailyStreak } from './streaks';
+import { selectToday } from './day';
+import { withLooks } from './look';
 import { hydrate, persistedSlice } from './migrations';
-import { habitDaySec, planMinutes } from './plan';
+import { qualifiedBadges } from './milestones';
 import { seed } from './seed';
-import { dayRecords, planStreak } from './streaks';
+import { dailyStreak, streakV5 } from './streaks';
 import { isUntouchedSeed } from './sync';
 import { addDays, dkey } from './time';
-import { selectPlanToday } from './today';
 import { PersistedState } from './types';
-import { selectWeek } from './week';
 
 // Wednesday Sep 30, 2026, 08:00.
 const NOW = new Date(2026, 8, 30, 8, 0).getTime();
-const SETTINGS = { budgetMin: 60, planCap: 3 };
 const LENGTHS: [string, number][] = [
   ['Coding', 60],
   ['LeetCode', 30],
@@ -84,10 +82,7 @@ function upgraded(): { old: ReturnType<typeof oldSave>; data: PersistedState } {
   return { old, data: hydrate({ v3: JSON.stringify(old), v2: null }, NOW) };
 }
 
-const streakOf = (d: PersistedState, now: number) => {
-  const day = dkey(new Date(now));
-  return planStreak(dayRecords(d, habitDaySec(d, now), day, SETTINGS), day, d.streakCarry);
-};
+const streakOf = (d: PersistedState, now: number) => streakV5(d, dkey(new Date(now)), d.streakCarry);
 
 test('upgrade: loads with nothing lost', () => {
   const { old, data } = upgraded();
@@ -113,47 +108,53 @@ test('upgrade: the long streak is kept, never lower under the new rules', () => 
   for (const s of old.sessions) oldMap[dkey(new Date(s.start))] = (oldMap[dkey(new Date(s.start))] || 0) + s.duration;
   const before = dailyStreak(oldMap, NOW);
   assert.equal(before.current, STREAK_DAYS);
-  assert.deepEqual(data.streakCarry, { current: STREAK_DAYS, longest: STREAK_DAYS, day: '2026-09-29' });
+  assert.ok(data.streakCarry && data.streakCarry.current >= STREAK_DAYS);
   const s = streakOf(data, NOW);
-  assert.equal(s.current, STREAK_DAYS);
+  assert.ok(s.current >= STREAK_DAYS, `${s.current}`);
   assert.ok(s.longest >= STREAK_DAYS);
+  // Doing anything today adds a day.
+  const later = NOW + 3600_000;
+  const done = { ...data, sessions: [...data.sessions, { id: 'today', habitId: 'h1', start: NOW + 60_000, end: NOW + 20 * 60_000, duration: 19 * 60 }] };
+  assert.equal(streakOf(done, later).current, s.current + 1);
 });
 
-test("upgrade: today's plan fits the cap and the budget, and finishing it by minimums completes the day", () => {
+test('upgrade: projects get distinct colors, icons and scenes; habits become timed', () => {
   const { data } = upgraded();
-  const t = selectPlanToday(data, SETTINGS, NOW);
-  assert.ok(t.plan.length <= 3 && t.plan.length > 0);
-  assert.ok(t.plannedMin <= 60);
-  assert.ok(!t.plan.some((c) => c.fullMin > 60), 'a 90-minute habit never fits a 60-minute day');
+  const looked = withLooks(data);
+  const colors = looked.projects.map((p) => p.color);
+  assert.equal(new Set(colors).size, colors.length);
+  assert.ok(looked.projects.every((p) => p.icon && p.scene));
+  assert.ok(data.habits.every((h) => h.kind === 'timed'));
+  assert.equal(data.rebalancePending, false, 'the welcome flow replaces the old screen');
+});
+
+test("upgrade: today's plan follows the weekly targets; the check never shows at the start", () => {
+  const { data } = upgraded();
+  const t = selectToday(data, NOW);
+  assert.ok(t.items.length > 0);
   assert.equal(t.complete, false);
-
-  // Do each planned habit for its minimum only (the running timer is stopped first).
-  const done: PersistedState = {
-    ...data,
-    active: null,
-    plans: { ...data.plans, [t.day]: t.plan.map((c) => c.habitId) },
-    sessions: [
-      ...data.sessions,
-      ...t.plan.map((c, i) => {
-        const start = NOW + i * 600_000;
-        return { id: 'today' + i, habitId: c.habitId, start, end: start + c.minMin * 60_000, duration: c.minMin * 60 };
-      }),
-    ],
-  };
-  const later = NOW + 3 * 3600_000;
-  const after = selectPlanToday(done, SETTINGS, later);
-  assert.equal(after.complete, true, 'minimums count as done');
-  assert.ok(after.plan.every((c) => c.done === 'min' || c.done === 'full'));
-  assert.equal(streakOf(done, later).current, STREAK_DAYS + 1);
-  // The week view marks today complete.
-  assert.equal(selectWeek(done, SETTINGS, later).cells[2].kind, 'complete');
+  assert.ok(t.active, 'the running timer shows as the active session');
+  assert.equal(t.active!.habitId, 'h2');
+  assert.ok(t.plannedMin > 0);
 });
 
-test('upgrade: plans survive a save and reload', () => {
+test('upgrade: milestones already reached are recorded quietly, not celebrated', () => {
   const { data } = upgraded();
-  const t = selectPlanToday(data, SETTINGS, NOW);
-  const pinned = { ...data, plans: { [t.day]: t.plan.map((c) => c.habitId) } };
-  const again = hydrate({ v3: JSON.stringify(persistedSlice(pinned)), v2: null }, NOW + 1000);
-  assert.deepEqual(again.plans, pinned.plans);
-  assert.equal(planMinutes(again.plans[t.day], again), t.plannedMin);
+  assert.equal(data.badgesPrimed, false);
+  const ids = qualifiedBadges(data, streakOf(data, NOW).current, NOW);
+  assert.ok(ids.includes('first-session') && ids.includes('streak-100'));
+});
+
+test('upgrade: saved and loaded again, nothing changes and nothing migrates twice', () => {
+  const { data } = upgraded();
+  const again = hydrate({ v3: JSON.stringify(persistedSlice(data)), v2: null }, NOW + 60_000);
+  assert.deepEqual(again, persistedSlice(data));
+});
+
+test('upgrade from a v4 save: the streak that build showed is the floor', () => {
+  // The same history, saved by a v4 build ten days ago with a big carry.
+  const saved = { ...oldSave(), schemaVersion: 4, streakCarry: { current: 400, longest: 400, day: dkey(addDays(new Date(NOW), -1)) }, plans: {}, planSince: dkey(addDays(new Date(NOW), -1)), rebalancePending: false };
+  saved.habits = saved.habits.map((h: any) => ({ ...h, frequency: { kind: 'daily' }, minTargetMin: 5 }));
+  const r = hydrate({ v3: JSON.stringify(saved), v2: null }, NOW);
+  assert.ok(streakOf(r, NOW).current >= 400);
 });
