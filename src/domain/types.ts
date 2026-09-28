@@ -8,9 +8,13 @@ export type { Frequency } from './frequency';
 /**
  * v1: legacy goals/goalId shape; v2: projects/projectId without required targets;
  * v3: habits have daily and weekly targets;
- * v4: habits have a frequency and a minimum; days have a plan (local-only).
+ * v4: habits have a frequency and a minimum; days have a plan (local-only);
+ * v5: the redesign — habit kinds, done marks, capacity, daily logs, badges.
  */
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
+
+/** `timed`: a count-up timer toward a target. `check`: tap to complete, no timer. */
+export type HabitKind = 'timed' | 'check';
 
 export type IconKey =
   | 'code'
@@ -70,8 +74,26 @@ export interface Habit {
   updatedAt?: number;
   /** How often the habit is due. */
   frequency: Frequency;
-  /** The minimum session in minutes (1..dailyTargetMin); reaching it counts as done. */
+  /**
+   * The v4 minimum session in minutes (1..dailyTargetMin). No longer shown:
+   * any time counts now. Kept and synced for older app versions.
+   */
   minTargetMin: number;
+  /** v5; absent means timed. */
+  kind?: HabitKind;
+}
+
+/**
+ * A habit marked done on a day: a check-off, or "done" tapped on a timer.
+ * One per habit per day (id = habitId:dkey), soft-deleted to undo.
+ */
+export interface Mark {
+  id: string;
+  habitId: string;
+  /** dkey of the day it counts on. */
+  day: string;
+  /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
+  updatedAt?: number;
 }
 
 export interface Session {
@@ -119,6 +141,8 @@ export interface PersistedState {
   projects: Project[];
   habits: Habit[];
   sessions: Session[];
+  /** v5: done marks (synced). */
+  marks: Mark[];
   active: ActiveTimer | null;
   historyClearedAt: number;
   // Local-only (not synced), like historyClearedAt:

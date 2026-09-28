@@ -92,14 +92,15 @@ const streakOf = (d: PersistedState, now: number) => {
 
 test('upgrade: loads with nothing lost', () => {
   const { old, data } = upgraded();
-  assert.equal(data.schemaVersion, 4);
+  assert.equal(data.schemaVersion, 5);
   assert.deepEqual(data.projects, old.projects);
   assert.deepEqual(data.sessions, old.sessions, 'every session, note and manual flag kept as is');
   assert.deepEqual(data.active, old.active, 'the running timer keeps running');
   assert.equal(data.historyClearedAt, old.historyClearedAt);
   assert.equal(data.habits.length, 9);
   for (const [i, h] of data.habits.entries()) {
-    const { frequency, minTargetMin, ...rest } = h;
+    const { frequency, minTargetMin, kind, ...rest } = h;
+    assert.equal(kind, 'timed', 'every existing habit is timed');
     assert.deepEqual(rest, old.habits[i], `${h.name}: old fields unchanged`);
     assert.deepEqual(frequency, { kind: 'daily' }, 'daily habits stay every day');
     assert.equal(minTargetMin, Math.min(5, old.habits[i].dailyTargetMin));

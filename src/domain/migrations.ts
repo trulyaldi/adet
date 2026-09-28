@@ -2,7 +2,7 @@ import { clampMinMin, DAILY, defaultMinMin, parseFrequency } from './frequency';
 import { seed } from './seed';
 import { dailyStreak } from './streaks';
 import { addDays, dkey } from './time';
-import { CURRENT_SCHEMA_VERSION, PersistedState, StreakCarry } from './types';
+import { CURRENT_SCHEMA_VERSION, Mark, PersistedState, StreakCarry } from './types';
 
 /**
  * The streak under the pre-v4 rule (any tracked time, monthly freezes), kept
@@ -66,6 +66,14 @@ export const MIGRATIONS: Array<(s: any, now: number) => any> = [
     streakCarry: legacyCarry(s.sessions || [], now),
     rebalancePending: (s.habits || []).length > 0,
   }),
+  // v5: the redesign. Every existing habit is timed (its length becomes a
+  // target marker, not a deadline); done marks start empty.
+  (s: any) => ({
+    ...s,
+    schemaVersion: 5,
+    habits: (s.habits || []).map((h: any) => ({ ...h, kind: h.kind === 'check' ? 'check' : 'timed' })),
+    marks: Array.isArray(s.marks) ? s.marks : [],
+  }),
 ];
 
 export function migrate(state: any, fromVersion: number, now: number): any {
@@ -84,6 +92,14 @@ function plansOf(v: unknown): Record<string, string[]> {
     if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Array.isArray(ids)) out[k] = ids.filter((x): x is string => typeof x === 'string');
   }
   return out;
+}
+
+/** Saved marks, with anything malformed dropped. */
+function marksOf(v: unknown): Mark[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(
+    (m): m is Mark => !!m && typeof m.id === 'string' && typeof m.habitId === 'string' && typeof m.day === 'string'
+  );
 }
 
 export function hydrate(
@@ -136,6 +152,7 @@ export function hydrate(
     projects,
     habits,
     sessions,
+    marks: marksOf(migrated.marks),
     active: migrated.active || null,
     historyClearedAt: migrated.historyClearedAt || 0,
     plans: plansOf(migrated.plans),
@@ -154,6 +171,6 @@ export function hydrate(
  * are saved here too; they're never synced.
  */
 export function persistedSlice(data: PersistedState): PersistedState {
-  const { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending } = data;
-  return { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending };
+  const { schemaVersion, projects, habits, sessions, marks, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending } = data;
+  return { schemaVersion, projects, habits, sessions, marks, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending };
 }

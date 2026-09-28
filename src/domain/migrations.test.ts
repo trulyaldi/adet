@@ -74,7 +74,7 @@ test('hydrates unstamped v3-key data as v2 and preserves explicit targets', () =
 
 test('already-current data passes through unchanged', () => {
   const saved = {
-    schemaVersion: 4,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 1000 }],
     habits: [
       {
@@ -87,9 +87,11 @@ test('already-current data passes through unchanged', () => {
         weeklyTargetMin: 75,
         frequency: { kind: 'weekly', times: 3 },
         minTargetMin: 10,
+        kind: 'check',
       },
     ],
     sessions: [],
+    marks: [{ id: 'h1:2026-07-10', habitId: 'h1', day: '2026-07-10' }],
     active: null,
     historyClearedAt: 123,
     plans: { '2026-07-10': ['h1'] },
@@ -145,6 +147,7 @@ test('a stamped empty state stays empty instead of re-seeding', () => {
     projects: [],
     habits: [],
     sessions: [],
+    marks: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -180,7 +183,7 @@ const v3Habit = (id: string, dailyTargetMin: number) => ({
 
 test('v3 habits become every-day habits with a 5-minute (or shorter) minimum', () => {
   const r = hydrate({ v3: JSON.stringify(v3State([v3Habit('a', 45), v3Habit('b', 5), v3Habit('c', 3)])), v2: null }, NOW);
-  assert.equal(r.schemaVersion, 4);
+  assert.equal(r.schemaVersion, CURRENT_SCHEMA_VERSION);
   assert.deepEqual(
     r.habits.map((h) => [h.id, h.frequency, h.dailyTargetMin, h.minTargetMin, h.weeklyTargetMin]),
     [
@@ -219,7 +222,7 @@ test('an untouched seed saved by the previous version still reads as untouched',
   const old = {
     schemaVersion: 3,
     projects: s.projects,
-    habits: s.habits.map(({ frequency: _f, minTargetMin: _m, ...h }) => h),
+    habits: s.habits.map(({ frequency: _f, minTargetMin: _m, kind: _k, ...h }) => h),
     sessions: s.sessions,
     active: null,
     historyClearedAt: 0,

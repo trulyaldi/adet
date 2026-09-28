@@ -14,13 +14,13 @@ export function seed(now: number = Date.now()): PersistedState {
   const projects: Project[] = [
     { id: 'g1', name: 'Become ML Engineer', weeklyTarget: 12, started: null },
   ];
-  // Key order matches what the v3→v4 migration produces (new fields last), so a
+  // Key order matches what the migrations produce (new fields last), so a
   // seed saved by an older version still reads as untouched (see isUntouchedSeed).
   const habits: Habit[] = [
-    { id: 'h1', projectId: 'g1', name: 'Coding', icon: 'code', tile: '#E4E0F7', dailyTargetMin: 60, weeklyTargetMin: 300, frequency: { kind: 'daily' }, minTargetMin: 5 },
-    { id: 'h2', projectId: 'g1', name: 'LeetCode', icon: 'target', tile: '#D9F2E3', dailyTargetMin: 30, weeklyTargetMin: 150, frequency: { kind: 'daily' }, minTargetMin: 5 },
-    { id: 'h3', projectId: 'g1', name: 'Reading', icon: 'book', tile: '#FDE4D5', dailyTargetMin: 30, weeklyTargetMin: 150, frequency: { kind: 'daily' }, minTargetMin: 5 },
-    { id: 'h4', projectId: 'g1', name: 'Portfolio', icon: 'briefcase', tile: '#FADCE8', dailyTargetMin: 30, weeklyTargetMin: 120, frequency: { kind: 'daily' }, minTargetMin: 5 },
+    { id: 'h1', projectId: 'g1', name: 'Coding', icon: 'code', tile: '#E4E0F7', dailyTargetMin: 60, weeklyTargetMin: 300, frequency: { kind: 'daily' }, minTargetMin: 5, kind: 'timed' },
+    { id: 'h2', projectId: 'g1', name: 'LeetCode', icon: 'target', tile: '#D9F2E3', dailyTargetMin: 30, weeklyTargetMin: 150, frequency: { kind: 'daily' }, minTargetMin: 5, kind: 'timed' },
+    { id: 'h3', projectId: 'g1', name: 'Reading', icon: 'book', tile: '#FDE4D5', dailyTargetMin: 30, weeklyTargetMin: 150, frequency: { kind: 'daily' }, minTargetMin: 5, kind: 'timed' },
+    { id: 'h4', projectId: 'g1', name: 'Portfolio', icon: 'briefcase', tile: '#FADCE8', dailyTargetMin: 30, weeklyTargetMin: 120, frequency: { kind: 'daily' }, minTargetMin: 5, kind: 'timed' },
   ];
   const sessions: Session[] = [];
   const nowD = new Date(now);
@@ -80,6 +80,7 @@ export function seed(now: number = Date.now()): PersistedState {
     projects,
     habits,
     sessions,
+    marks: [],
     active: null,
     historyClearedAt: 0,
     plans: {},

@@ -3,7 +3,7 @@
 import { Frequency } from './frequency';
 import { Habit, PersistedState, Session } from './types';
 
-export function habit(id: string, full: number, min: number, frequency: Frequency = { kind: 'daily' }): Habit {
+export function habit(id: string, full: number, min: number, frequency: Frequency = { kind: 'daily' }, extra: Partial<Habit> = {}): Habit {
   return {
     id,
     projectId: 'p1',
@@ -14,6 +14,7 @@ export function habit(id: string, full: number, min: number, frequency: Frequenc
     weeklyTargetMin: full * 7,
     frequency,
     minTargetMin: min,
+    ...extra,
   };
 }
 
@@ -23,10 +24,11 @@ export function sess(id: string, habitId: string, start: number, min: number): S
 
 export function state(habits: Habit[], sessions: Session[] = [], extra: Partial<PersistedState> = {}): PersistedState {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     projects: [{ id: 'p1', name: 'P', weeklyTarget: 8, started: 0 }],
     habits,
     sessions,
+    marks: [],
     active: null,
     historyClearedAt: 0,
     plans: {},

@@ -125,6 +125,25 @@ export function HabitSheet() {
             })}
           </View>
 
+          {/* Timed (a count-up timer) or check-off (tap to complete) */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {(['timed', 'check'] as const).map((k) => {
+              const on = sheet.kind === k;
+              return (
+                <Pressable
+                  key={k}
+                  onPress={() => actions.patchHabitSheet({ kind: k })}
+                  accessibilityRole="button"
+                  accessibilityLabel={k === 'timed' ? 'Timed habit' : 'Check-off habit'}
+                  accessibilityState={{ selected: on }}
+                  style={{ flex: 1, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? config.accent : 'transparent', backgroundColor: colors.screen }}
+                >
+                  <Glyph name={k === 'timed' ? 'clock' : 'done'} size={22} color={on ? config.accent : colors.subtext} bg={colors.screen} />
+                </Pressable>
+              );
+            })}
+          </View>
+
           {/* How often */}
           <View style={{ backgroundColor: colors.screen, borderRadius: radius.md, padding: 12 }}>
             <FrequencyPicker

@@ -14,6 +14,9 @@ import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
 import { activeSec } from '../domain/engine';
 import { nextProjectColor, nextScene, withLooks } from '../domain/look';
+import { addMark, moveMarks, removeMark } from '../domain/marks';
+import type { GlyphName } from '../components/glyphs';
+import { feedback } from '../feedback/feedback';
 import { activeHabits } from '../domain/projects';
 import {
   addToPlan,
@@ -35,6 +38,7 @@ import {
   checkSessionTimes,
   defaultManualStart,
   manualSession,
+  quickSession,
   restoreSession,
   sessionFromTimer,
   subMinuteSessions,
@@ -43,6 +47,7 @@ import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../do
 import {
   CURRENT_SCHEMA_VERSION,
   Habit,
+  HabitKind,
   IconKey,
   PersistedState,
   Session,
@@ -71,6 +76,7 @@ export interface HabitSheetState {
   /** Minimum session length in minutes. */
   minTargetMin: number;
   frequency: Frequency;
+  kind: HabitKind;
 }
 export interface ProjectSheetState {
   id: string | null;
@@ -112,6 +118,12 @@ export interface SessionSheetState {
   confirmLong: boolean;
 }
 
+/** A toast is an icon; the label is spoken, not shown. */
+export interface Toast {
+  glyph: GlyphName;
+  label: string;
+}
+
 export interface UIState {
   screen: Screen;
   timerOpen: boolean;
@@ -133,8 +145,8 @@ export interface UIState {
   undo: Session | null;
   /** Monday dkey of the weekly recap shown in the recap sheet. */
   recapSheet: string | null;
-  /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
-  toast: string | null;
+  /** A brief icon toast (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
+  toast: Toast | null;
   settingsOpen: boolean;
   /** Which half of Stats is showing; kept while switching tabs. */
   statsView: StatsView;
@@ -176,7 +188,7 @@ export const UNDO_MS = 5000;
 const TOAST_MS = 2500;
 
 /** Shown when a stopped timer is discarded for being too short. */
-const SHORT_TIMER_TOAST = 'Under a minute, not saved';
+const SHORT_TIMER_TOAST: Toast = { glyph: 'undo', label: 'Under a minute, not saved' };
 
 export interface StreakActions {
   // navigation
@@ -190,8 +202,15 @@ export interface StreakActions {
   openTimer(): void;
   closeTimer(): void;
   togglePause(): void;
-  /** Save the running timer as a session; `editAfter` then opens it in the edit sheet. */
-  stopTimer(opts?: { editAfter?: boolean }): void;
+  /**
+   * Save the running timer as a session. `done` also marks the habit done for
+   * today (the done button); `editAfter` then opens it in the edit sheet.
+   */
+  stopTimer(opts?: { editAfter?: boolean; done?: boolean }): void;
+  /** Log `minutes` ending now (the +15 / +30 / +60 chips). */
+  quickLog(habitId: string, minutes: number): void;
+  /** Check-off habits: mark done for today, or clear the mark. */
+  toggleCheck(habitId: string): void;
   // heatmap
   openHeatSheet(): void;
   closeHeatSheet(): void;
@@ -283,6 +302,7 @@ function emptyData(now: number): PersistedState {
     projects: [],
     habits: [],
     sessions: [],
+    marks: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -562,6 +582,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         const goal = goalMin ?? storeRef.current.data.habits.find((h) => h.id === habitId)?.dailyTargetMin;
         const timerGoal = goal ? { habitId, min: goal } : null;
         patchUi(discarded ? { timerOpen: true, timerGoal, toast: SHORT_TIMER_TOAST } : { timerOpen: true, timerGoal });
+        feedback(discarded ? 'undo' : 'session_start');
         // Reminder permission is asked on timer start; iOS only prompts the first time.
         if (settingsRef.current.reminderHours > 0) {
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
@@ -592,18 +613,37 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setData((d) => {
           if (!d.active) return d;
           const s = sessionFromTimer(d.active, end);
-          return {
+          const next = {
             ...d,
             sessions: s ? [...d.sessions, s] : d.sessions,
             active: null,
           };
+          return s && opts?.done ? addMark(next, s.habitId, dkey(new Date(end))) : next;
         });
+        if (a && !saved) feedback('undo');
+        else if (saved) feedback('session_complete');
         patchUi(a && !saved ? { timerOpen: false, toast: SHORT_TIMER_TOAST } : { timerOpen: false });
         if (opts?.editAfter && saved) {
           // Wait for the timer modal to finish dismissing: iOS won't present the
           // edit sheet while another modal is animating out.
           setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_DISMISS_MS);
         }
+      },
+
+      quickLog: (habitId, minutes) => {
+        const now = Date.now();
+        setData((d) => {
+          if (!d.habits.some((h) => h.id === habitId)) return d;
+          return { ...d, sessions: [...d.sessions, quickSession('s' + now, habitId, minutes, now)] };
+        });
+        feedback('session_complete');
+      },
+      toggleCheck: (habitId) => {
+        const day = dkey(new Date());
+        const d0 = storeRef.current.data;
+        const on = d0.marks.some((m) => m.habitId === habitId && m.day === day);
+        setData((d) => (on ? removeMark(d, habitId, day) : addMark(d, habitId, day)));
+        feedback(on ? 'undo' : 'session_complete');
       },
 
       openHeatSheet: () => patchUi({ heatSheet: true }),
@@ -629,6 +669,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             dailyTargetMin: 30,
             minTargetMin: defaultMinMin(30),
             frequency: { kind: 'daily' },
+            kind: 'timed',
           },
         }),
       openEditHabit: (habit) =>
@@ -641,6 +682,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             dailyTargetMin: habit.dailyTargetMin,
             minTargetMin: habit.minTargetMin,
             frequency: habit.frequency,
+            kind: habit.kind ?? 'timed',
           },
         }),
       closeHabitSheet: () => patchUi({ habitSheet: null }),
@@ -673,6 +715,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                         weeklyTargetMin,
                         frequency,
                         minTargetMin,
+                        kind: sh.kind,
                       }
                     : h
                 ),
@@ -693,6 +736,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
               weeklyTargetMin,
               frequency,
               minTargetMin,
+              kind: sh.kind,
             };
             return { ...d, habits: [...d.habits, newHabit] };
           });
@@ -703,9 +747,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setData((d) => {
           const habits = d.habits.filter((h) => h.id !== id);
           const sessions = d.sessions.filter((s) => s.habitId !== id);
+          const marks = d.marks.filter((m) => m.habitId !== id);
           const active =
             d.active && d.active.habitId === id ? null : d.active;
-          return { ...d, habits, sessions, active };
+          return { ...d, habits, sessions, marks, active };
         });
         setUi((p) => ({
           ...p,
@@ -723,7 +768,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           let active = d.active;
           if (active && active.habitId === fromId)
             active = { ...active, habitId: intoId };
-          return { ...d, sessions, habits, active };
+          return { ...d, sessions, habits, active, marks: moveMarks(d.marks, fromId, intoId) };
         });
         patchUi({ habitSheet: null });
       },
@@ -786,6 +831,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             .map((h) => h.id);
           const habits = d.habits.filter((h) => h.projectId !== id);
           const sessions = d.sessions.filter((s) => !hids.includes(s.habitId));
+          const marks = d.marks.filter((m) => !hids.includes(m.habitId));
           let active = d.active;
           if (active && hids.includes(active.habitId)) active = null;
           return {
@@ -793,6 +839,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             projects: d.projects.filter((p) => p.id !== id),
             habits,
             sessions,
+            marks,
             active,
           };
         });
