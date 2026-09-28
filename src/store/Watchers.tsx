@@ -43,7 +43,7 @@ function MilestoneWatcher() {
   return null;
 }
 
-/** The day's plan completing while the app is open: jingle, confetti in today's colors, companion cheers. */
+/** The day's plan completing while the app is open: jingle, confetti in today's colors, Ilmek celebrates. */
 function DayWatcher() {
   const data = useData();
   const now = useStoreNow();

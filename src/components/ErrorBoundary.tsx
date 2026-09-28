@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '../theme/ThemeProvider';
-import { Companion } from './Companion';
+import { Ilmek } from './ilmek/Ilmek';
 import { IconButton } from './Glyph';
 
 interface State {
@@ -10,7 +10,7 @@ interface State {
 }
 
 /**
- * If a screen crashes, show the dozing companion and a retry button instead
+ * If a screen crashes, show Ilmek dozing and a retry button instead
  * of a blank app. Data lives in the store above, so retrying loses nothing.
  */
 export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State> {
@@ -34,7 +34,7 @@ function Fallback({ onRetry }: { onRetry(): void }) {
   const { colors } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24, backgroundColor: colors.bg }}>
-      <Companion mood="sleepy" size={120} />
+      <Ilmek state="sleepy" size={120} />
       <IconButton label="Try again" name="undo" size={24} color={colors.onBrand} bg={colors.brand} edge={colors.brandDark} variant="chunky" diameter={60} onPress={onRetry} />
     </View>
   );
