@@ -4,7 +4,7 @@ import { Platform, Pressable, Text, View } from 'react-native';
 
 import { DOWFULL, MONTHS } from '../domain/constants';
 import { pad } from '../domain/time';
-import { colors, radius } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface DateTimeFieldProps {
   label: string;
@@ -21,12 +21,13 @@ interface DateTimeFieldProps {
  * system dialogs.
  */
 export function DateTimeField({ label, value, onChange, max }: DateTimeFieldProps) {
+  const { colors, radius, shadow } = useTheme();
   const date = new Date(value);
   const maximumDate = max === undefined ? undefined : new Date(max);
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.sub }}>{label}</Text>
       {Platform.OS === 'ios' ? (
         <DateTimePicker
           value={date}
@@ -74,10 +75,11 @@ export function DateTimeField({ label, value, onChange, max }: DateTimeFieldProp
 }
 
 function FieldButton({ text, onPress }: { text: string; onPress(): void }) {
+  const { colors, radius, shadow } = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      style={{ backgroundColor: colors.screen, borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 12 }}
+      style={{ backgroundColor: colors.bg, borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 12 }}
     >
       <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{text}</Text>
     </Pressable>

@@ -5,9 +5,10 @@ import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { selectStats } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function ActivityHistorySheet() {
+  const { colors, radius, shadow } = useTheme();
   const { data, ui, now, config, actions } = useStreak();
   const visible = ui.heatSheet;
   // Only run the (heavier) stats selector while the sheet is actually open.
@@ -20,7 +21,7 @@ export function ActivityHistorySheet() {
         <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Full history</Text>
-            <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{model.heatFullRangeLabel}</Text>
+            <Text style={{ fontSize: 12, color: colors.sub, marginTop: 2 }}>{model.heatFullRangeLabel}</Text>
           </View>
           <CloseButton onPress={actions.closeHeatSheet} />
         </View>

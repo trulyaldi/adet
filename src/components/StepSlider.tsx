@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { PanResponder, View } from 'react-native';
 
-import { colors, radius } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface StepSliderProps {
   value: number;
@@ -21,6 +21,7 @@ const THUMB = 26;
  * adjustable control (swipe up / down to step).
  */
 export function StepSlider({ value, min, max, step, onChange, accent, label }: StepSliderProps) {
+  const { colors, radius, shadow } = useTheme();
   const [width, setWidth] = useState(0);
   const widthRef = useRef(0);
   const startX = useRef(0);
@@ -74,7 +75,7 @@ export function StepSlider({ value, min, max, step, onChange, accent, label }: S
       onAccessibilityAction={(e) => set(value + (e.nativeEvent.actionName === 'increment' ? step : -step))}
       style={{ height: 36, justifyContent: 'center' }}
     >
-      <View pointerEvents="none" style={{ height: 6, marginHorizontal: THUMB / 2, borderRadius: radius.pill, backgroundColor: colors.track2 }}>
+      <View pointerEvents="none" style={{ height: 6, marginHorizontal: THUMB / 2, borderRadius: radius.pill, backgroundColor: colors.track }}>
         <View style={{ width: `${t * 100}%`, height: '100%', borderRadius: radius.pill, backgroundColor: accent }} />
       </View>
       <View
@@ -88,7 +89,7 @@ export function StepSlider({ value, min, max, step, onChange, accent, label }: S
           backgroundColor: colors.card,
           borderWidth: 2,
           borderColor: accent,
-          shadowColor: '#17181A',
+          shadowColor: colors.shadow,
           shadowOpacity: 0.12,
           shadowRadius: 3,
           shadowOffset: { width: 0, height: 1 },

@@ -2,6 +2,7 @@
 // Pure: no client import, so it can be unit-tested under node.
 
 import { clampMinMin, defaultMinMin, parseFrequency } from '../domain/frequency';
+import { isIconKey, isProjectColor, isScene } from '../domain/look';
 import { ACTIVE_ID, Change, parseTimestamp, SyncTable } from '../domain/sync';
 import { IconKey } from '../domain/types';
 
@@ -42,6 +43,10 @@ export function changeToRow(c: Change, userId: string): Row {
         weekly_target: r.weeklyTarget,
         started: r.started ?? null,
         archived_at: r.archivedAt ?? null,
+        // Needs migration 005_redesign.
+        color: r.color ?? null,
+        icon: r.icon ?? null,
+        scene: r.scene ?? null,
       };
     }
     case 'habits': {
@@ -96,6 +101,10 @@ export function rowToChange(table: SyncTable, row: Row): Change {
           weeklyTarget: num(row.weekly_target),
           started: optNum(row.started),
           ...(row.archived_at == null ? {} : { archivedAt: num(row.archived_at) }),
+          // Unset (rows from before 005): projectLook() derives them from the id.
+          ...(isProjectColor(row.color) ? { color: row.color } : {}),
+          ...(isIconKey(row.icon) ? { icon: row.icon } : {}),
+          ...(isScene(row.scene) ? { scene: row.scene } : {}),
           updatedAt,
         },
       };

@@ -13,6 +13,7 @@ import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
 import { activeSec } from '../domain/engine';
+import { nextProjectColor, nextScene, withLooks } from '../domain/look';
 import { activeHabits } from '../domain/projects';
 import {
   addToPlan,
@@ -466,6 +467,13 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     );
   }, [ready, wiped, store.data.sessions, settings.shortSessionsReviewed, updateSettings, setData]);
 
+  // Every project gets a color, icon and scene (older projects, and ones
+  // created on devices without looks); the assignment syncs like an edit.
+  useEffect(() => {
+    if (!ready || wiped) return;
+    setData(withLooks);
+  }, [ready, wiped, data.projects, data.habits, setData]);
+
   // Today's plan is fixed the first time the day is shown, so it doesn't
   // reshuffle as habits are done (completing one changes the weekly counts the
   // suggestion is based on). Re-suggested when the budget or cap changes. An
@@ -761,6 +769,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                   name: sh.name.trim(),
                   weeklyTarget: sh.weeklyTarget,
                   started: Date.now(),
+                  color: nextProjectColor(d.projects),
+                  icon: 'target',
+                  scene: nextScene(d.projects),
                 },
               ],
             };

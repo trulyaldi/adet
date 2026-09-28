@@ -6,9 +6,10 @@ import { Sheet } from '../components/Sheet';
 import { changeLabel, recapSummary, weekRecap } from '../domain/recap';
 import { fmtH } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
-import { colors, radius } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function RecapSheet() {
+  const { colors, radius, shadow } = useTheme();
   const { data, ui, actions } = useStreak();
   // Only compute while open.
   const recap = ui.recapSheet ? weekRecap(data, ui.recapSheet) : null;
@@ -22,7 +23,7 @@ export function RecapSheet() {
         <View style={{ gap: 14, paddingTop: 12 }}>
           <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5 }}>WEEKLY RECAP</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sub, letterSpacing: 0.5 }}>WEEKLY RECAP</Text>
               <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink, marginTop: 2 }}>{recap.rangeLabel}</Text>
             </View>
             <CloseButton onPress={actions.closeRecap} />
@@ -44,7 +45,7 @@ export function RecapSheet() {
             {rows.map((p) => (
               <View
                 key={p.projectId}
-                style={{ paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.hairline, gap: 3 }}
+                style={{ paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.line, gap: 3 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '700', color: colors.ink }}>{p.name}</Text>
@@ -55,13 +56,13 @@ export function RecapSheet() {
                   </Text>
                   {/* A met target gets a check; one that wasn't met gets nothing, never a "missed" badge. */}
                   {p.hit === true && (
-                    <View style={{ width: 24, height: 24, borderRadius: radius.pill, backgroundColor: '#E3F5E8', alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ width: 24, height: 24, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center' }}>
                       <Glyph name="done" size={14} color="#1F8A3B" bg="#E3F5E8" label="Target met" />
                     </View>
                   )}
                 </View>
                 {!single && !!changeLabel(p.doneSec, p.prevSec) && (
-                  <Text style={{ fontSize: 12, color: colors.subtext }}>{changeLabel(p.doneSec, p.prevSec)}</Text>
+                  <Text style={{ fontSize: 12, color: colors.sub }}>{changeLabel(p.doneSec, p.prevSec)}</Text>
                 )}
               </View>
             ))}
@@ -73,10 +74,11 @@ export function RecapSheet() {
 }
 
 function Tile({ value, label }: { value: string; label: string }) {
+  const { colors, radius, shadow } = useTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: colors.screen, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 12 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: '800', color: colors.ink }}>{value}</Text>
-      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 11.5, fontWeight: '600', color: colors.subtext, marginTop: 3 }}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 11.5, fontWeight: '600', color: colors.sub, marginTop: 3 }}>{label}</Text>
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdetMark } from './src/components/AdetMark';
@@ -25,25 +26,27 @@ import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
-import { colors } from './src/theme/tokens';
+import { DevicePrefsProvider } from './src/store/devicePrefs';
+import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
 function Root() {
   const { ready, ui, actions } = useStreak();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <AdetMark height={44} />
-        <ActivityIndicator color={colors.ink} />
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <AdetMark height={44} color={colors.brand} />
+        <ActivityIndicator color={colors.sub} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.screen }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Screens scroll below the status bar, never under it. */}
-      <View style={{ height: insets.top, backgroundColor: colors.screen }} />
+      <View style={{ height: insets.top, backgroundColor: colors.bg }} />
       <View style={{ flex: 1 }}>
         {ui.screen === 'today' && <TodayScreen />}
         {ui.screen === 'projects' && <ProjectsScreen />}
@@ -77,12 +80,13 @@ function Root() {
 
 function AuthGate() {
   const { ready, session } = useAuth();
+  const { colors } = useTheme();
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <AdetMark height={44} />
-        <ActivityIndicator color={colors.ink} />
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <AdetMark height={44} color={colors.brand} />
+        <ActivityIndicator color={colors.sub} />
       </View>
     );
   }
@@ -97,13 +101,24 @@ function AuthGate() {
   );
 }
 
+function ThemedStatusBar() {
+  const { dark } = useTheme();
+  return <StatusBar style={dark ? 'light' : 'dark'} />;
+}
+
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="dark" />
-        <AuthGate />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <DevicePrefsProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <ThemedStatusBar />
+              <AuthGate />
+            </AuthProvider>
+          </ThemeProvider>
+        </DevicePrefsProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

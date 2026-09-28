@@ -1,7 +1,8 @@
 import React from 'react';
+import { Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 // The Adet checkmark (the #adet path from adet-logo.html, 100x100 space).
 const MARK =
@@ -13,25 +14,33 @@ const ASPECT = 78.2 / 65.3;
 
 interface AdetMarkProps {
   height: number;
-  /**
-   * Defaults to the ink token. The app is light-only (app.json), so the mark
-   * follows the tokens rather than the system scheme, which would draw it
-   * white on a light screen.
-   */
+  /** Defaults to the theme's ink (dark on light, light on dark). */
   color?: string;
 }
 
 /** The standalone Adet mark. */
-export function AdetMark({ height, color = colors.ink }: AdetMarkProps) {
+export function AdetMark({ height, color }: AdetMarkProps) {
+  const { colors } = useTheme();
   return (
     <Svg width={height * ASPECT} height={height} viewBox={VIEW_BOX} fill="none">
       <Path
         d={MARK}
-        stroke={color}
+        stroke={color ?? colors.ink}
         strokeWidth={8}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
     </Svg>
+  );
+}
+
+/** The logo lockup: the mark and the name. */
+export function AdetLockup({ height = 28 }: { height?: number }) {
+  const { colors } = useTheme();
+  return (
+    <View accessible accessibilityRole="header" accessibilityLabel="Adet" style={{ flexDirection: 'row', alignItems: 'center', gap: height * 0.28 }}>
+      <AdetMark height={height} color={colors.brand} />
+      <Text style={{ fontSize: height * 1.02, fontWeight: '800', letterSpacing: -0.6, color: colors.ink }}>Adet</Text>
+    </View>
   );
 }

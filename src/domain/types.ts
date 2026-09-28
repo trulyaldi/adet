@@ -1,6 +1,7 @@
 // Core data model — ported 1:1 from the Streak v2 design (DCLogic state shape).
 
 import type { Frequency } from './frequency';
+import type { ProjectColor } from './look';
 
 export type { Frequency } from './frequency';
 
@@ -19,7 +20,16 @@ export type IconKey =
   | 'gym'
   | 'meditate'
   | 'walk'
-  | 'art';
+  | 'art'
+  | 'music'
+  | 'pen'
+  | 'leaf'
+  | 'globe'
+  | 'heart'
+  | 'chart';
+
+/** The animated scene behind the focus timer. */
+export type SceneKind = 'plant' | 'orbit' | 'fill' | 'constellation';
 
 export interface Project {
   id: string;
@@ -36,6 +46,10 @@ export interface Project {
   archivedAt?: number | null;
   /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
   updatedAt?: number;
+  /** Used everywhere the project appears (v5; see projectLook for the fallback). */
+  color?: ProjectColor;
+  icon?: IconKey;
+  scene?: SceneKind;
 }
 
 export interface Habit {

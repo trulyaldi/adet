@@ -77,15 +77,15 @@ export const GLYPHS = {
       strokeWidth: 1.8,
     },
   ],
-  /** Week view (seven squares). */
+  /** Week view: a calendar grid of seven day squares, today filled. */
   week: [
-    { d: square(1.6, 6.4, 4.2), fill: true, noStroke: true },
-    { d: square(7.1, 6.4, 4.2), fill: true, noStroke: true },
-    { d: square(12.6, 6.4, 4.2), fill: true, noStroke: true },
-    { d: square(18.1, 6.4, 4.2), fill: true, noStroke: true },
-    { d: square(1.6, 13.4, 4.2), fill: true, noStroke: true },
-    { d: square(7.1, 13.4, 4.2), fill: true, noStroke: true },
-    { d: square(12.6, 13.4, 4.2), fill: true, noStroke: true },
+    { d: square(3, 5, 4), strokeWidth: 1.6 },
+    { d: square(7.7, 5, 4), strokeWidth: 1.6 },
+    { d: square(12.3, 5, 4), strokeWidth: 1.6 },
+    { d: square(17, 5, 4), strokeWidth: 1.6 },
+    { d: square(5.3, 12.5, 4), strokeWidth: 1.6 },
+    { d: square(10, 12.5, 4), fill: true, strokeWidth: 1.6 },
+    { d: square(14.7, 12.5, 4), strokeWidth: 1.6 },
   ],
   /** Day streak (flame). */
   flame: [{ d: 'M12 21c3.9 0 6.5-2.4 6.5-6 0-2.5-1.4-4.7-3-6.5-.3 1-.8 1.9-1.7 2.5C13.6 8.6 13 5.5 10 3c.3 2.5-.7 4.4-2.1 6C6.6 10.6 5.5 12.4 5.5 15c0 3.6 2.6 6 6.5 6z' }],
@@ -128,6 +128,49 @@ export const GLYPHS = {
   chevronLeft: [{ d: 'M15 6l-6 6 6 6' }],
   chevronDown: [{ d: 'M6 9l6 6 6-6' }],
   chevronUp: [{ d: 'M6 15l6-6 6 6' }],
+  /** Stop (rounded square). */
+  stop: [{ d: 'M8 6.5h8A1.5 1.5 0 0 1 17.5 8v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5z', fill: true }],
+  /** Drag handle (six dots). */
+  drag: [
+    { d: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01', strokeWidth: 3 },
+  ],
+  /** Edit (pencil) and settings (gear), by their spoken names. */
+  edit: [{ d: 'M12 20h8M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z' }],
+  /** Sound on / off (speaker). */
+  soundOn: [{ d: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18.2 6.5a7.5 7.5 0 0 1 0 11' }],
+  soundOff: [{ d: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5' }],
+  /** Haptics (phone with waves). */
+  haptic: [{ d: 'M9 4h6a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 15 20H9a1.5 1.5 0 0 1-1.5-1.5v-13A1.5 1.5 0 0 1 9 4zM4.5 9v6M19.5 9v6M2 10.5v3M22 10.5v3' }],
+  /** Stats (bars), by its spoken name. */
+  stats: [{ d: 'M5 20V12M12 20V4M19 20v-6' }],
+  /** Rest (moon), by its spoken name. */
+  moon: [{ d: 'M19.5 14.6A7.9 7.9 0 1 1 9.4 4.5a6.3 6.3 0 0 0 10.1 10.1z' }],
+  /** Sparkle (bonus time, rewards). */
+  sparkle: [{ d: 'M12 3.5l1.9 5.2 5.1 1.9-5.1 1.9L12 17.7l-1.9-5.2L5 10.6l5.1-1.9zM18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z' }],
+  /** Habits (a checked list), for "habits done" counts. */
+  habits: [{ d: 'M11 7h9M11 12h9M11 17h9M3.8 7l1.3 1.3L7.6 5.8M3.8 12l1.3 1.3 2.5-2.5M3.8 17l1.3 1.3 2.5-2.5' }],
+  /** Daily capacity: one, two or three rising bars (light, normal, heavy). */
+  capLight: [{ d: 'M6 19v-3', strokeWidth: 3 }, { d: 'M12 19v-7M18 19V8', strokeWidth: 1.4 }],
+  capNormal: [{ d: 'M6 19v-3M12 19v-7', strokeWidth: 3 }, { d: 'M18 19V8', strokeWidth: 1.4 }],
+  capHeavy: [{ d: 'M6 19v-3M12 19v-7M18 19V8', strokeWidth: 3 }],
+  /** Badge (a medal). */
+  badge: [{ d: circle(12, 14.5, 5.5) }, { d: 'M9 3.5l-1.5 6M15 3.5l1.5 6M12 12.5l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7-1.2-1.2 1.7-.2z' }],
+  /** Appearance (half-filled circle: light and dark). */
+  contrast: [{ d: circle(12, 12, 8.5) }, { d: 'M12 3.5a8.5 8.5 0 0 1 0 17z', fill: true }],
+  /** Motion (three trailing lines). */
+  motion: [{ d: 'M3 8h8M5 12h10M3 16h8M16 6.5l5.5 5.5-5.5 5.5' }],
+  /** Scene (a small landscape). */
+  scene: [{ d: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM3.5 16l5-5 4 4 2.5-2.5 5.5 5' }, { d: circle(16, 9, 1.4) }],
+  /** Palette (color). */
+  palette: [{ d: 'M12 3a9 9 0 1 0 0 18c1.5 0 2.2-.9 2.2-2 0-.6-.2-1-.2-1.6 0-1.1.9-2 2-2h2.1A3.9 3.9 0 0 0 21 12c0-5-4-9-9-9zM7.5 10.5h.01M10.5 7h.01M14.5 7h.01M17 10h.01', strokeWidth: 2 }],
+  /** Week start (calendar with an arrow into the first column). */
+  weekStart: [{ d: 'M6.5 5h11A2.5 2.5 0 0 1 20 7.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-10A2.5 2.5 0 0 1 6.5 5zM4 10h16M8 13v4' }],
+  /** Dim the screen (a low sun). */
+  dim: [{ d: circle(12, 12, 3.5) }, { d: 'M12 4.5v1.5M12 18v1.5M4.5 12H6M18 12h1.5M6.7 6.7l1 1M16.3 16.3l1 1M6.7 17.3l1-1M16.3 7.7l1-1', strokeWidth: 1.6 }],
+  /** Scale down (arrows inward). */
+  shrink: [{ d: 'M4 14h6v6M20 10h-6V4M10 14l-6 6M14 10l6-6' }],
+  /** Raise (arrow up onto a bar). */
+  raise: [{ d: 'M12 20V8M7 12.5L12 7.5l5 5M5 4h14' }],
   /** Info (i in a circle). */
   info: [{ d: circle(12, 12, 8.5) }, { d: 'M12 11v5M12 8h.01' }],
   /** Tabs. */

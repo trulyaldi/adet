@@ -8,9 +8,11 @@ import { activeHabits } from '../domain/projects';
 import { checkSessionTimes } from '../domain/sessions';
 import { fmtHM } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
-import { colors, radius } from '../theme/tokens';
+import { inputStyle } from '../theme/styles';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function EditSessionSheet() {
+  const { colors, radius, shadow } = useTheme();
   const { data, ui, now, actions } = useStreak();
   const sheet = ui.sessionSheet;
   // Validate live so problems show while picking, not only on save.
@@ -62,7 +64,7 @@ export function EditSessionSheet() {
               onChange={(end) => actions.patchSessionSheet({ end })}
             />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Glyph name="clock" size={17} color={colors.subtext} label="Duration" />
+              <Glyph name="clock" size={17} color={colors.sub} label="Duration" />
               <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>
                 {check?.ok ? fmtHM(check.duration) : '—'}
               </Text>
@@ -71,7 +73,7 @@ export function EditSessionSheet() {
 
           {error && <Text style={{ fontSize: 13, fontWeight: '600', color: colors.danger }}>{error}</Text>}
           {confirming && check?.ok && (
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.sub }}>
               {`That's ${fmtHM(check.duration)}, longer than 8 hours. Save it anyway?`}
             </Text>
           )}
@@ -81,26 +83,26 @@ export function EditSessionSheet() {
             value={sheet.note}
             onChangeText={(t) => actions.patchSessionSheet({ note: t })}
             placeholder="Note"
-            placeholderTextColor="#A9ACB3"
+            placeholderTextColor={colors.muted}
             accessibilityLabel="Note, optional"
-            style={inputStyle}
+            style={inputStyle(colors, radius)}
           />
 
           {/* Save; a session over 8 hours asks to be confirmed in words */}
           {confirming && check?.ok ? (
             <Pressable
               onPress={actions.saveSessionSheet}
-              style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.ink }}
+              style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.brand }}
             >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.onBrand }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
             </Pressable>
           ) : (
             <IconButton
               label="Save changes"
               name="done"
               size={24}
-              color="#FFFFFF"
-              bg={colors.ink}
+              color={colors.onBrand}
+              bg={colors.brand}
               disabled={!!error}
               onPress={actions.saveSessionSheet}
               style={{ borderRadius: radius.lg, padding: 14 }}
@@ -114,7 +116,7 @@ export function EditSessionSheet() {
               name="trash"
               size={20}
               color={colors.danger}
-              bg={colors.dangerSoft}
+              bg={colors.dangerBg}
               diameter={44}
               onPress={() => actions.deleteSession(sheet.id)}
             />
@@ -126,6 +128,7 @@ export function EditSessionSheet() {
 }
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): void }) {
+  const { colors, radius, shadow } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -133,22 +136,10 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): v
         borderRadius: radius.pill,
         paddingVertical: 8,
         paddingHorizontal: 14,
-        backgroundColor: on ? colors.ink : colors.screen,
+        backgroundColor: on ? colors.brand : colors.well,
       }}
     >
-      <Text style={{ fontSize: 13, fontWeight: '700', color: on ? '#FFFFFF' : colors.ink }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: on ? colors.onBrand : colors.ink }}>{label}</Text>
     </Pressable>
   );
 }
-
-
-
-const inputStyle = {
-  width: '100%' as const,
-  backgroundColor: colors.screen,
-  borderRadius: radius.md,
-  paddingVertical: 15,
-  paddingHorizontal: 16,
-  fontSize: 16,
-  color: colors.ink,
-};
