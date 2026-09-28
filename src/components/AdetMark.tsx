@@ -1,6 +1,7 @@
 import React from 'react';
-import { useColorScheme } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+
+import { colors } from '../theme/tokens';
 
 // The Adet checkmark (the #adet path from adet-logo.html, 100x100 space).
 const MARK =
@@ -12,18 +13,21 @@ const ASPECT = 78.2 / 65.3;
 
 interface AdetMarkProps {
   height: number;
-  /** Defaults to #1C1C1E, or white in dark mode. */
+  /**
+   * Defaults to the ink token. The app is light-only (app.json), so the mark
+   * follows the tokens rather than the system scheme, which would draw it
+   * white on a light screen.
+   */
   color?: string;
 }
 
 /** The standalone Adet mark. */
-export function AdetMark({ height, color }: AdetMarkProps) {
-  const dark = useColorScheme() === 'dark';
+export function AdetMark({ height, color = colors.ink }: AdetMarkProps) {
   return (
     <Svg width={height * ASPECT} height={height} viewBox={VIEW_BOX} fill="none">
       <Path
         d={MARK}
-        stroke={color ?? (dark ? '#FFFFFF' : '#1C1C1E')}
+        stroke={color}
         strokeWidth={8}
         strokeLinecap="round"
         strokeLinejoin="round"

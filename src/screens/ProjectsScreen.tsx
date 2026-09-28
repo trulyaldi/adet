@@ -27,11 +27,11 @@ export function ProjectsScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
         <Text style={{ flex: 1, fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
           Projects
         </Text>
-        <IconButton label="New project" name="plus" onPress={actions.openNewProject} bg={colors.card} diameter={36} size={18} />
+        <IconButton label="New project" name="plus" onPress={actions.openNewProject} bg={colors.card} diameter={36} size={18} tipBelow />
       </View>
 
       {model.cards.map((pc) => (

@@ -46,7 +46,7 @@ export function PlanPickerSheet() {
       {picker && (
         <View style={{ gap: 14, paddingTop: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Glyph
                 name={picker.mode === 'swap' ? 'swap' : picker.mode === 'add' ? 'plus' : 'bonus'}
                 size={22}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
-import { CloseButton } from '../components/Glyph';
+import { CloseButton, Glyph, IconButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { activeHabits } from '../domain/projects';
 import { checkSessionTimes, fitManualStart, SESSION_MAX_SEC } from '../domain/sessions';
@@ -46,13 +46,15 @@ export function LogTimeSheet() {
       {sheet && (
         <View style={{ gap: 15, paddingTop: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Log time</Text>
+            <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Glyph name="plus" size={20} color={colors.ink} label="Log time" />
+              <Glyph name="clock" size={22} color={colors.ink} />
+            </View>
             <CloseButton onPress={actions.closeLogSheet} />
           </View>
 
           {/* Habit */}
           <View>
-            <Label>Habit</Label>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {activeHabits(data).map((h) => (
                 <Chip
@@ -77,24 +79,26 @@ export function LogTimeSheet() {
           <View style={{ gap: 10 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Chip label="Duration" on={sheet.mode === 'duration'} onPress={() => setMode('duration')} />
-              <Chip label="End time" on={sheet.mode === 'end'} onPress={() => setMode('end')} />
+              <Chip label="End" on={sheet.mode === 'end'} onPress={() => setMode('end')} />
             </View>
             {sheet.mode === 'duration' ? (
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Label noMargin>Duration</Label>
+                  <Glyph name="clock" size={17} color={colors.subtext} label="Duration" />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>{fmtMin(sheet.minutes)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <StepButton
-                    label="−"
+                    label="Shorter"
+                    glyph="minus"
                     onPress={() => setMinutes(Math.max(5, sheet.minutes - stepFor(sheet.minutes)))}
                   />
                   <View style={{ flex: 1, height: 6, borderRadius: radius.pill, backgroundColor: colors.track, overflow: 'hidden' }}>
                     <View style={{ width: `${durPct}%`, height: '100%', borderRadius: radius.pill, backgroundColor: colors.ink }} />
                   </View>
                   <StepButton
-                    label="+"
+                    label="Longer"
+                    glyph="plus"
                     onPress={() => setMinutes(Math.min(MAX_MIN, sheet.minutes + stepFor(sheet.minutes)))}
                   />
                 </View>
@@ -108,7 +112,7 @@ export function LogTimeSheet() {
                   onChange={(end) => actions.patchLogSheet({ end })}
                 />
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Label noMargin>Duration</Label>
+                  <Glyph name="clock" size={17} color={colors.subtext} label="Duration" />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>
                     {check?.ok ? fmtHM(check.duration) : '—'}
                   </Text>
@@ -125,33 +129,35 @@ export function LogTimeSheet() {
           )}
 
           {/* Note */}
-          <View>
-            <Label>Note</Label>
-            <TextInput
-              value={sheet.note}
-              onChangeText={(t) => actions.patchLogSheet({ note: t })}
-              placeholder="Optional"
-              placeholderTextColor="#A9ACB3"
-              style={inputStyle}
-            />
-          </View>
+          <TextInput
+            value={sheet.note}
+            onChangeText={(t) => actions.patchLogSheet({ note: t })}
+            placeholder="Note"
+            placeholderTextColor="#A9ACB3"
+            accessibilityLabel="Note, optional"
+            style={inputStyle}
+          />
 
-          {/* Save */}
-          <Pressable
-            disabled={!valid}
-            onPress={actions.saveLogSheet}
-            style={{
-              borderRadius: radius.lg,
-              padding: 16,
-              alignItems: 'center',
-              backgroundColor: colors.ink,
-              opacity: valid ? 1 : 0.4,
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
-              {confirming && check?.ok ? `Yes, save ${fmtHM(check.duration)}` : 'Save session'}
-            </Text>
-          </Pressable>
+          {/* Save; a session over 8 hours asks to be confirmed in words */}
+          {confirming && check?.ok ? (
+            <Pressable
+              onPress={actions.saveLogSheet}
+              style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.ink }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
+            </Pressable>
+          ) : (
+            <IconButton
+              label="Save session"
+              name="done"
+              size={24}
+              color="#FFFFFF"
+              bg={colors.ink}
+              disabled={!valid}
+              onPress={actions.saveLogSheet}
+              style={{ borderRadius: radius.lg, padding: 14 }}
+            />
+          )}
         </View>
       )}
     </Sheet>
@@ -174,31 +180,10 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): v
   );
 }
 
-function StepButton({ label, onPress }: { label: string; onPress(): void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        width: 40,
-        height: 40,
-        borderRadius: 13,
-        backgroundColor: colors.screen,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text style={{ fontSize: 20, fontWeight: '600', color: colors.ink }}>{label}</Text>
-    </Pressable>
-  );
+function StepButton({ label, glyph, onPress }: { label: string; glyph: 'minus' | 'plus'; onPress(): void }) {
+  return <IconButton label={label} name={glyph} size={18} bg={colors.screen} onPress={onPress} style={{ width: 40, height: 40, borderRadius: 13 }} />;
 }
 
-function Label({ children, noMargin }: { children: React.ReactNode; noMargin?: boolean }) {
-  return (
-    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext, marginBottom: noMargin ? 0 : 8 }}>
-      {children}
-    </Text>
-  );
-}
 
 
 const inputStyle = {

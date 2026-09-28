@@ -42,13 +42,12 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
             const on = i < count;
             const n = i + 1;
             return (
-              <Pressable
+              <IconButton
                 key={i}
                 onPress={() => setTimes(n)}
                 hitSlop={4}
-                accessibilityRole="button"
-                accessibilityLabel={n === 7 ? 'Every day' : n === 1 ? 'Once a week' : `${n} times a week`}
-                accessibilityState={{ selected: !byDays && n === count }}
+                label={n === 7 ? 'Every day' : n === 1 ? 'Once a week' : `${n} times a week`}
+                selected={!byDays && n === count}
                 style={{ padding: 3 }}
               >
                 <View
@@ -61,7 +60,7 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
                     borderColor: on ? accent : colors.faint,
                   }}
                 />
-              </Pressable>
+              </IconButton>
             );
           })}
         </View>

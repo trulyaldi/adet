@@ -176,7 +176,6 @@ export function StatsScreen() {
                   ))}
                   <Text style={{ fontSize: 11, color: colors.muted, marginLeft: 3 }}>More</Text>
                 </View>
-                <Text style={{ fontSize: 11, color: colors.muted }}>time per day</Text>
               </View>
             </View>
 
@@ -200,6 +199,8 @@ export function StatsScreen() {
                   <Pressable
                     key={ci}
                     disabled={!cell.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={cell.key ?? undefined}
                     onPress={() => cell.key && actions.pickHeat(cell.key)}
                     style={{
                       flex: 1,

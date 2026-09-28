@@ -30,7 +30,7 @@ export function TimerOverlay() {
       {model && (
         <View style={{ flex: 1, backgroundColor: colors.screen, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 24) + 16 }}>
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
               <View
                 style={{
@@ -48,7 +48,7 @@ export function TimerOverlay() {
                 {model.name}
               </Text>
             </View>
-            <IconButton label="Hide timer" name="chevronDown" size={20} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.closeTimer} />
+            <IconButton label="Hide timer" name="chevronDown" size={20} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.closeTimer} tipBelow />
           </View>
 
           {/* Ring toward the chosen length, clock inside */}

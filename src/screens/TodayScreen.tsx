@@ -33,7 +33,7 @@ export function TodayScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header: mark, streak and sync; week view and settings */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, zIndex: 10 }}>
         <View style={{ flexShrink: 1, gap: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <AdetMark height={30} />
@@ -52,8 +52,8 @@ export function TodayScreen() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <IconButton label="Week" name="week" size={18} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.openWeek} />
-          <IconButton label="Settings" name="gear" size={18} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.openSettings} />
+          <IconButton label="Week" name="week" size={18} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.openWeek} tipBelow />
+          <IconButton label="Settings" name="gear" size={18} color={colors.subtext} bg={colors.card} diameter={36} onPress={actions.openSettings} tipBelow />
         </View>
       </View>
 

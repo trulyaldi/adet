@@ -20,7 +20,7 @@ export function RecapSheet() {
     <Sheet visible={!!recap} onClose={actions.closeRecap} maxHeightPct={0.8}>
       {recap && (
         <View style={{ gap: 14, paddingTop: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.5 }}>WEEKLY RECAP</Text>
               <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink, marginTop: 2 }}>{recap.rangeLabel}</Text>

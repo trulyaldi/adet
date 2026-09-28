@@ -17,7 +17,7 @@ export function ActivityHistorySheet() {
     <Sheet visible={visible} onClose={actions.closeHeatSheet} maxHeightPct={0.88}>
       {model && (
       <View style={{ paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Full history</Text>
             <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{model.heatFullRangeLabel}</Text>
@@ -45,6 +45,8 @@ export function ActivityHistorySheet() {
               <Pressable
                 key={ci}
                 disabled={!cell.key}
+                accessibilityRole="button"
+                accessibilityLabel={cell.key ?? undefined}
                 onPress={() => cell.key && actions.pickHeat(cell.key)}
                 style={{
                   flex: 1,

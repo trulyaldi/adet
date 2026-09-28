@@ -25,7 +25,7 @@ export function ProjectSheet() {
     <Sheet visible={!!sheet} onClose={actions.closeProjectSheet} maxHeightPct={0.8}>
       {sheet && (
         <View style={{ gap: 15, paddingTop: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Glyph name={isEdit ? 'pencil' : 'plus'} size={22} color={colors.ink} label={isEdit ? 'Edit project' : 'New project'} />
             <CloseButton onPress={actions.closeProjectSheet} />
           </View>

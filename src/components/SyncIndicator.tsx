@@ -16,7 +16,7 @@ export function SyncIndicator() {
         : sync.pending
           ? `Offline, ${sync.pending} pending`
           : 'Offline';
-  const { show, tip } = useTip(label);
+  const { show, tip } = useTip(label, true);
   return (
     <View style={{ position: 'relative' }}>
       <View

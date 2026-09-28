@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, View } from 'react-native';
 
 import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { StepSlider } from '../components/StepSlider';
@@ -30,10 +30,11 @@ export function SettingsSheet() {
             paddingHorizontal: 20,
             paddingTop: 20,
             paddingBottom: 8,
+            zIndex: 10,
           }}
         >
           <Glyph name="gear" size={26} color={colors.ink} label="Settings" />
-          <IconButton label="Done" name="done" size={20} color="#FFFFFF" bg="#0A84FF" diameter={36} onPress={actions.closeSettings} />
+          <IconButton label="Done" name="done" size={20} color="#FFFFFF" bg="#0A84FF" diameter={36} onPress={actions.closeSettings} tipBelow />
         </View>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 12, paddingTop: 12 }}>
           <BudgetCard />
@@ -93,13 +94,12 @@ function CapCard() {
           const n = i + 1;
           const on = n <= settings.planCap;
           return (
-            <Pressable
+            <IconButton
               key={n}
               onPress={() => actions.setPlanCap(n)}
               hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel={`${n} ${n === 1 ? 'habit' : 'habits'} per day`}
-              accessibilityState={{ selected: n === settings.planCap }}
+              label={`${n} ${n === 1 ? 'habit' : 'habits'} per day`}
+              selected={n === settings.planCap}
               style={{ padding: 4 }}
             >
               <View
@@ -112,7 +112,7 @@ function CapCard() {
                   borderColor: on ? config.accent : colors.faint,
                 }}
               />
-            </Pressable>
+            </IconButton>
           );
         })}
       </View>

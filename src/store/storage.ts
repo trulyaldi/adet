@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { hydrate } from '../domain/migrations';
+import { hydrate, persistedSlice } from '../domain/migrations';
 import { Outbox, SyncTable } from '../domain/sync';
 import { PersistedState } from '../domain/types';
 
@@ -63,11 +63,8 @@ export async function clearState(): Promise<void> {
 /** Persist the durable slice and sync bookkeeping in one write. */
 export async function saveState(data: PersistedState, sync: SyncMeta): Promise<void> {
   try {
-    const { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending } =
-      data;
-    const saved = { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending };
     await AsyncStorage.multiSet([
-      [KEY, JSON.stringify(saved)],
+      [KEY, JSON.stringify(persistedSlice(data))],
       [SYNC_KEY, JSON.stringify(sync)],
     ]);
   } catch {

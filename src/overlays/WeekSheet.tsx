@@ -36,7 +36,7 @@ export function WeekSheet() {
     <Sheet visible={ui.weekOpen} onClose={actions.closeWeek} maxHeightPct={0.86}>
       {model && (
         <View style={{ gap: 18, paddingTop: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 10 }}>
             <IconButton
               label="Earlier week"
               name="chevronLeft"

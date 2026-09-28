@@ -55,9 +55,11 @@ const TIP_MS = 1600;
 
 /**
  * A long-press tooltip: touch has no hover, so pressing and holding an
- * icon-only control shows its label under it.
+ * icon-only control shows its label. It opens above the control (drawn over
+ * what came before it); controls on a top edge pass `below`, and their row
+ * sits above what follows (zIndex only orders siblings).
  */
-export function useTip(label: string) {
+export function useTip(label: string, below = false) {
   const [shown, setShown] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -71,7 +73,10 @@ export function useTip(label: string) {
   const tip = shown ? (
     <View
       pointerEvents="none"
-      style={{ position: 'absolute', top: '100%', left: -80, right: -80, alignItems: 'center', marginTop: 6, zIndex: 20 }}
+      style={[
+        { position: 'absolute', left: -80, right: -80, alignItems: 'center', zIndex: 20 },
+        below ? { top: '100%', marginTop: 6 } : { bottom: '100%', marginBottom: 6 },
+      ]}
     >
       <View style={{ backgroundColor: colors.ink, borderRadius: radius.sm, paddingVertical: 5, paddingHorizontal: 9 }}>
         <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
@@ -100,6 +105,8 @@ interface IconButtonProps {
   selected?: boolean;
   hitSlop?: number;
   style?: StyleProp<ViewStyle>;
+  /** Open the tooltip below instead of above (controls on a top edge). */
+  tipBelow?: boolean;
 }
 
 /** An icon-only control with an accessibility label and a long-press tooltip. */
@@ -116,8 +123,9 @@ export function IconButton({
   selected,
   hitSlop = 8,
   style,
+  tipBelow,
 }: IconButtonProps) {
-  const { show, tip } = useTip(label);
+  const { show, tip } = useTip(label, tipBelow);
   return (
     <View style={{ position: 'relative' }}>
       <Pressable
@@ -148,5 +156,5 @@ export function IconButton({
 
 /** The round close button used at the top of sheets. */
 export function CloseButton({ onPress, label = 'Close' }: { onPress(): void; label?: string }) {
-  return <IconButton label={label} name="close" onPress={onPress} size={16} color={colors.subtext} bg={colors.track} diameter={32} />;
+  return <IconButton label={label} name="close" onPress={onPress} size={16} color={colors.subtext} bg={colors.track} diameter={32} tipBelow />;
 }

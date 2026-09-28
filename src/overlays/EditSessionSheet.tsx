@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
-import { CloseButton } from '../components/Glyph';
+import { CloseButton, Glyph, IconButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { activeHabits } from '../domain/projects';
 import { checkSessionTimes } from '../domain/sessions';
@@ -27,14 +27,13 @@ export function EditSessionSheet() {
     <Sheet visible={!!sheet} onClose={actions.closeSessionSheet} maxHeightPct={0.86}>
       {sheet && (
         <View style={{ gap: 15, paddingTop: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink }}>Edit session</Text>
+          <View style={{ zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Glyph name="pencil" size={22} color={colors.ink} label="Edit session" />
             <CloseButton onPress={actions.closeSessionSheet} />
           </View>
 
           {/* Habit */}
           <View>
-            <Label>Habit</Label>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {/* Archived projects' habits aren't offered, except the session's own. */}
               {data.habits.filter((h) => h.id === sheet.habitId || live.has(h.id)).map((h) => (
@@ -63,7 +62,7 @@ export function EditSessionSheet() {
               onChange={(end) => actions.patchSessionSheet({ end })}
             />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Label noMargin>Duration</Label>
+              <Glyph name="clock" size={17} color={colors.subtext} label="Duration" />
               <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>
                 {check?.ok ? fmtHM(check.duration) : '—'}
               </Text>
@@ -78,37 +77,48 @@ export function EditSessionSheet() {
           )}
 
           {/* Note */}
-          <View>
-            <Label>Note</Label>
-            <TextInput
-              value={sheet.note}
-              onChangeText={(t) => actions.patchSessionSheet({ note: t })}
-              placeholder="Optional"
-              placeholderTextColor="#A9ACB3"
-              style={inputStyle}
+          <TextInput
+            value={sheet.note}
+            onChangeText={(t) => actions.patchSessionSheet({ note: t })}
+            placeholder="Note"
+            placeholderTextColor="#A9ACB3"
+            accessibilityLabel="Note, optional"
+            style={inputStyle}
+          />
+
+          {/* Save; a session over 8 hours asks to be confirmed in words */}
+          {confirming && check?.ok ? (
+            <Pressable
+              onPress={actions.saveSessionSheet}
+              style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.ink }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
+            </Pressable>
+          ) : (
+            <IconButton
+              label="Save changes"
+              name="done"
+              size={24}
+              color="#FFFFFF"
+              bg={colors.ink}
+              disabled={!!error}
+              onPress={actions.saveSessionSheet}
+              style={{ borderRadius: radius.lg, padding: 14 }}
+            />
+          )}
+
+          {/* Deleting can be undone from the toast, so it isn't confirmed first. */}
+          <View style={{ alignItems: 'center' }}>
+            <IconButton
+              label="Delete session"
+              name="trash"
+              size={20}
+              color={colors.danger}
+              bg={colors.dangerSoft}
+              diameter={44}
+              onPress={() => actions.deleteSession(sheet.id)}
             />
           </View>
-
-          {/* Save */}
-          <Pressable
-            disabled={!!error}
-            onPress={actions.saveSessionSheet}
-            style={{
-              borderRadius: radius.lg,
-              padding: 16,
-              alignItems: 'center',
-              backgroundColor: colors.ink,
-              opacity: error ? 0.4 : 1,
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
-              {confirming && check?.ok ? `Yes, save ${fmtHM(check.duration)}` : 'Save changes'}
-            </Text>
-          </Pressable>
-
-          <Pressable onPress={() => actions.deleteSession(sheet.id)} style={{ padding: 4, alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.danger }}>Delete session</Text>
-          </Pressable>
         </View>
       )}
     </Sheet>
@@ -131,13 +141,6 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): v
   );
 }
 
-function Label({ children, noMargin }: { children: React.ReactNode; noMargin?: boolean }) {
-  return (
-    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext, marginBottom: noMargin ? 0 : 8 }}>
-      {children}
-    </Text>
-  );
-}
 
 
 const inputStyle = {

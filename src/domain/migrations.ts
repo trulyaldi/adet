@@ -147,3 +147,13 @@ export function hydrate(
     rebalancePending: migrated.rebalancePending === true,
   };
 }
+
+/**
+ * The fields saved to device storage (everything else in memory is derived).
+ * Local-only fields (plans, planSince, the streak carry, the rebalance flag)
+ * are saved here too; they're never synced.
+ */
+export function persistedSlice(data: PersistedState): PersistedState {
+  const { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending } = data;
+  return { schemaVersion, projects, habits, sessions, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending };
+}
