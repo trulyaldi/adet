@@ -11,6 +11,7 @@ import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
 import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
+import { PlanPickerSheet } from './src/overlays/PlanPickerSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
 import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
@@ -65,6 +66,7 @@ function Root() {
       <ActivityDaySheet />
       <RecapSheet />
       <SettingsSheet />
+      <PlanPickerSheet />
     </View>
   );
 }

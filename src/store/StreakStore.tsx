@@ -12,10 +12,20 @@ import { Alert, AppState } from 'react-native';
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
-import { activeSec, recommendedHabitId } from '../domain/engine';
+import { activeSec } from '../domain/engine';
 import { activeHabits } from '../domain/projects';
 import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
-import { clampBudgetMin, clampPlanCap } from '../domain/plan';
+import {
+  addToPlan,
+  clampBudgetMin,
+  clampPlanCap,
+  completionOn,
+  habitDaySec,
+  planFor,
+  PlanSettings,
+  suggestPlan,
+  swapInPlan,
+} from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
 import { dkey } from '../domain/time';
@@ -43,6 +53,12 @@ import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMe
 
 export type Screen = 'today' | 'projects' | 'stats';
 export type StatsView = 'overview' | 'history';
+
+/**
+ * The plan editor on Today: swap a planned habit for another, add one to a
+ * plan with room, or start a bonus habit once the day is done.
+ */
+export type PlanPicker = { mode: 'swap'; habitId: string } | { mode: 'add' } | { mode: 'bonus' };
 
 export interface HabitSheetState {
   id: string | null;
@@ -123,6 +139,10 @@ export interface UIState {
   settingsOpen: boolean;
   /** Which half of Stats is showing; kept while switching tabs. */
   statsView: StatsView;
+  planPicker: PlanPicker | null;
+  /** Bumped when a plan edit is blocked by the budget: budget bars flash amber and shake. */
+  budgetShake: number;
+  weekOpen: boolean;
 }
 
 const INITIAL_UI: UIState = {
@@ -143,6 +163,9 @@ const INITIAL_UI: UIState = {
   toast: null,
   settingsOpen: false,
   statsView: 'overview',
+  planPicker: null,
+  budgetShake: 0,
+  weekOpen: false,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -216,6 +239,17 @@ export interface StreakActions {
   // weekly recap
   openRecap(weekStart: string): void;
   closeRecap(): void;
+  // today's plan
+  openPlanPicker(picker: PlanPicker): void;
+  closePlanPicker(): void;
+  /** Swap a planned habit for another; false (and a budget shake) when it wouldn't fit. */
+  swapPlan(outId: string, inId: string): boolean;
+  removeFromPlan(habitId: string): void;
+  /** Add a habit to today's plan; false (and a budget shake) when it wouldn't fit. */
+  addToPlan(habitId: string): boolean;
+  // week view
+  openWeek(): void;
+  closeWeek(): void;
   dismissRecapCard(): void;
   // device settings
   setReminderHours(hours: number): void;
@@ -442,6 +476,46 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       { cancelable: true, onDismiss: done }
     );
   }, [ready, wiped, store.data.sessions, settings.shortSessionsReviewed, updateSettings, setData]);
+
+  // Today's plan is fixed the first time the day is shown, so it doesn't
+  // reshuffle as habits are done (completing one changes the weekly counts the
+  // suggestion is based on). Re-suggested when the budget or cap changes. An
+  // empty suggestion isn't fixed, so habits added (or synced) later that day
+  // are still picked up; a plan the user emptied stays empty.
+  const today = dkey(new Date(now));
+  const todayPinned = data.plans[today] !== undefined;
+  const planSettings: PlanSettings = useMemo(
+    () => ({ budgetMin: settings.budgetMin, planCap: settings.planCap }),
+    [settings.budgetMin, settings.planCap]
+  );
+  const planSettingsRef = useRef(planSettings);
+  planSettingsRef.current = planSettings;
+  const pinnedWith = useRef<PlanSettings | null>(null);
+  useEffect(() => {
+    if (!ready || wiped) return;
+    const settingsChanged = pinnedWith.current !== null && pinnedWith.current !== planSettings;
+    pinnedWith.current = planSettings;
+    if (todayPinned && !settingsChanged) return;
+    setData((d) => {
+      const days = habitDaySec(d);
+      const suggested = suggestPlan(d, days, today, planSettings);
+      // After a settings change, habits already done today stay in the plan when they still fit.
+      const kept = settingsChanged
+        ? (d.plans[today] ?? []).filter((id) => {
+            const h = d.habits.find((x) => x.id === id);
+            return h && completionOn(h, habitDaySec(d, Date.now()), today);
+          })
+        : [];
+      let plan = kept;
+      for (const id of suggested) plan = addToPlan(plan, id, d, planSettings) ?? plan;
+      if (!plan.length) {
+        if (d.plans[today] === undefined) return d;
+        const { [today]: _dropped, ...rest } = d.plans;
+        return { ...d, plans: rest };
+      }
+      return { ...d, plans: { ...d.plans, [today]: plan } };
+    });
+  }, [ready, wiped, today, todayPinned, planSettings, data.habits, setData]);
 
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
@@ -760,8 +834,15 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       closeStageSheet: () => patchUi({ stageSheet: null }),
 
       openLogSheet: () => {
-        const def =
-          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ?? activeHabits(data)[0]?.id ?? null;
+        // Default to the first planned habit not done yet today.
+        const now = Date.now();
+        const day = dkey(new Date(now));
+        const days = habitDaySec(data, now);
+        const next = planFor(data, days, day, planSettingsRef.current).find((id) => {
+          const h = data.habits.find((x) => x.id === id);
+          return h && !completionOn(h, days, day);
+        });
+        const def = next ?? activeHabits(data)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {
@@ -876,6 +957,44 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
       closeRecap: () => patchUi({ recapSheet: null }),
       dismissRecapCard: () => patchUi({ recapCard: null }),
+
+      openPlanPicker: (planPicker) => patchUi({ planPicker }),
+      closePlanPicker: () => patchUi({ planPicker: null }),
+      swapPlan: (outId, inId) => {
+        const d = storeRef.current.data;
+        const day = dkey(new Date());
+        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
+        const next = swapInPlan(current, outId, inId, d, planSettingsRef.current);
+        if (!next) {
+          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
+          return false;
+        }
+        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
+        patchUi({ planPicker: null });
+        return true;
+      },
+      removeFromPlan: (habitId) => {
+        const day = dkey(new Date());
+        setData((d) => {
+          const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
+          return { ...d, plans: { ...d.plans, [day]: current.filter((id) => id !== habitId) } };
+        });
+      },
+      addToPlan: (habitId) => {
+        const d = storeRef.current.data;
+        const day = dkey(new Date());
+        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
+        const next = addToPlan(current, habitId, d, planSettingsRef.current);
+        if (!next) {
+          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
+          return false;
+        }
+        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
+        patchUi({ planPicker: null });
+        return true;
+      },
+      openWeek: () => patchUi({ weekOpen: true }),
+      closeWeek: () => patchUi({ weekOpen: false }),
 
       setReminderHours: (hours) => {
         const next = updateSettings({ reminderHours: clampReminderHours(hours) });
