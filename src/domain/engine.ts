@@ -473,6 +473,8 @@ export interface HeatSelSession {
   note: string;
   /** The habit's completion that day (see dayMarks). */
   mark: Completion | null;
+  /** Done that day outside its plan. */
+  bonus: boolean;
 }
 export interface DistRow {
   name: string;
@@ -490,6 +492,8 @@ export interface HistoryRow {
   note: string;
   /** The habit's completion that day (see dayMarks). */
   mark: Completion | null;
+  /** Done that day outside its plan. */
+  bonus: boolean;
 }
 /** Recent sessions that started on one local day, newest first. */
 export interface HistoryDay {
@@ -549,17 +553,21 @@ export function weekVsLastWeek(weekSec: number, lastWeekSec: number, iconPath = 
 
 /**
  * A habit-day's completion goes on one of its rows only (the first one given
- * for that habit and day), so a day with several sessions shows it once.
+ * for that habit and day), so a day with several sessions shows it once. It's
+ * a bonus when that day had a plan without the habit (days from before plans
+ * existed have none, so they show no bonus badge).
  */
 function dayMarks(data: PersistedState, days: HabitDays) {
   const seen = new Set<string>();
-  return (habitId: string, start: number): Completion | null => {
+  return (habitId: string, start: number): { mark: Completion | null; bonus: boolean } => {
     const k = dkey(new Date(start));
     const key = habitId + '|' + k;
-    if (seen.has(key)) return null;
+    if (seen.has(key)) return { mark: null, bonus: false };
     seen.add(key);
     const h = data.habits.find((x) => x.id === habitId);
-    return h ? completionOf(h, days.get(h.id)?.get(k) ?? 0) : null;
+    const mark = h ? completionOf(h, days.get(h.id)?.get(k) ?? 0) : null;
+    const plan = data.plans[k];
+    return { mark, bonus: !!mark && !!plan && !plan.includes(habitId) };
   };
 }
 
@@ -698,7 +706,7 @@ export function selectStats(
               name: h.name,
               sub: sessionLine(s),
               note: s.notes ?? '',
-              mark: markSel(s.habitId, s.start),
+              ...markSel(s.habitId, s.start),
             }
           : null;
       })
@@ -803,7 +811,7 @@ export function selectStats(
       name: h.name,
       sub: sessionLine(s),
       note: s.notes ?? '',
-      mark: markRow(s.habitId, s.start),
+      ...markRow(s.habitId, s.start),
     });
   }
   const historyRows: HistoryRow[] = historyDays.flatMap((d) => d.rows);

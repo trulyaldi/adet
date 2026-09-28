@@ -111,6 +111,10 @@ test('manual sessions show a "logged manually" marker and their note in history'
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
@@ -144,6 +148,10 @@ test('selected heatmap day lists each session in time order with its start, dura
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: '2026-07-08' });
@@ -171,6 +179,10 @@ test('activity heatmap: inline card caps at base weeks, full history extends bac
     sessions: [mk(1, 's1'), mk(200, 's2')], // ~28+ weeks of span
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
@@ -210,6 +222,10 @@ test('stats insights: one card, each fact once', () => {
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
 
   const texts = (d: PersistedState) => selectStats(d, DEFAULT_CONFIG, NOW, { heatSel: null }).insights.map((i) => i.text);
@@ -265,6 +281,10 @@ test('project pace uses local Monday-start weeks across the New York DST switch'
       ],
       active: null,
       historyClearedAt: 0,
+      plans: {},
+      planSince: '2026-01-01',
+      streakCarry: null,
+      rebalancePending: false,
     };
     const wed = at(2, 11, 12, 0);
     assert.equal(selectProjects(data, DEFAULT_CONFIG, wed).cards[0].paceLabel, '6h left · ~1.2h/day for 5 days');
@@ -287,6 +307,10 @@ test('project streaks on Projects and Stats use freezes and the given now', () =
     sessions: [s('a', 10), s('b', 11), s('c', 13), s('d', 14)],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const now = new Date(2026, 8, 15, 9, 0).getTime();
   assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d streak');
@@ -309,6 +333,10 @@ test('Projects: target-week streak, and never a nudge when the day streak is at 
     sessions,
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   });
   const wed = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16
 
@@ -355,6 +383,10 @@ test('Projects card: each number once; habit share only with two or more habits'
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const wed = new Date(2026, 8, 16, 12, 0).getTime();
   const [two, one] = selectProjects(data, DEFAULT_CONFIG, wed).cards;
@@ -395,6 +427,10 @@ test('recent sessions are grouped by day with Today / Yesterday / date headers',
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const m = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
   assert.deepEqual(
@@ -441,6 +477,10 @@ test('day sheet: total only when it adds to the session rows', () => {
     ],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
   };
   const day = (d: PersistedState, key: string) => selectStats(d, DEFAULT_CONFIG, NOW, { heatSel: key });
 

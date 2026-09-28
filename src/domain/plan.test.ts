@@ -20,45 +20,12 @@ import {
   swapInPlan,
 } from './plan';
 import { selectPlanToday } from './today';
-import { Habit, PersistedState, Session } from './types';
+import { habit, sess, state } from './testkit';
+import { PersistedState } from './types';
 
 // Monday Sep 28, 2026, noon.
 const MON = new Date(2026, 8, 28, 12, 0).getTime();
 const at = (month: number, day: number, h = 9) => new Date(2026, month, day, h, 0).getTime();
-
-export function habit(id: string, full: number, min: number, frequency: Frequency = { kind: 'daily' }): Habit {
-  return {
-    id,
-    projectId: 'p1',
-    name: id.toUpperCase(),
-    icon: 'book',
-    tile: '#fff',
-    dailyTargetMin: full,
-    weeklyTargetMin: full * 7,
-    frequency,
-    minTargetMin: min,
-  };
-}
-
-export function sess(id: string, habitId: string, start: number, min: number): Session {
-  return { id, habitId, start, end: start + min * 60_000, duration: min * 60 };
-}
-
-export function state(habits: Habit[], sessions: Session[] = [], extra: Partial<PersistedState> = {}): PersistedState {
-  return {
-    schemaVersion: 4,
-    projects: [{ id: 'p1', name: 'P', weeklyTarget: 8, started: 0 }],
-    habits,
-    sessions,
-    active: null,
-    historyClearedAt: 0,
-    plans: {},
-    planSince: '2026-01-01',
-    streakCarry: null,
-    rebalancePending: false,
-    ...extra,
-  };
-}
 
 test('completion: the minimum counts as done, the full length as full', () => {
   const h = habit('a', 30, 5);

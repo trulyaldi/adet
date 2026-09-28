@@ -282,7 +282,7 @@ export function StatsScreen() {
                         <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{hr.note}</Text>
                       ) : null}
                     </View>
-                    <CompletionMark mark={hr.mark} />
+                    <CompletionMark mark={hr.mark} bonus={hr.bonus} />
                     <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
                   </Pressable>
                 ))}

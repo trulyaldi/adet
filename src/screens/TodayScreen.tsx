@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { AdetMark } from '../components/AdetMark';
 import { BudgetBar } from '../components/BudgetBar';
+import { DayCompleteCard } from '../components/DayCompleteCard';
 import { DayRing } from '../components/DayRing';
 import { Glyph, IconButton } from '../components/Glyph';
 import { PlanCard } from '../components/PlanCard';
@@ -19,6 +20,13 @@ export function TodayScreen() {
   const { data, ui, now, config, settings, actions } = useStreak();
   const model = selectPlanToday(data, { budgetMin: settings.budgetMin, planCap: settings.planCap }, now);
   const streak = dailyStreak(daySecMap(data, now), now).current;
+  // A finished day (or one with nothing due) collapses to a single card. It
+  // animates in when the day finishes on screen, not when Today opens on a
+  // day that was already finished.
+  const finished = model.complete || model.free;
+  const opened = useRef({ day: model.day, finished });
+  const animateIn = !(opened.current.finished && opened.current.day === model.day);
+  const running = [...model.plan, ...model.bonus].filter((c) => c.running);
 
   return (
     <ScrollView
@@ -67,18 +75,51 @@ export function TodayScreen() {
         <>
           {/* Progress ring, budget under it */}
           <View style={{ alignItems: 'center', marginTop: 18, gap: 14 }}>
-            <DayRing total={model.plan.length} done={model.doneCount} accent={config.accent} />
+            <DayRing
+              total={model.plan.length}
+              done={model.doneCount}
+              complete={finished}
+              day={model.day}
+              accent={config.accent}
+            />
             <View style={{ width: 220 }}>
               <BudgetBar usedMin={model.plannedMin} budgetMin={model.budgetMin} accent={config.accent} shakeKey={ui.budgetShake} />
             </View>
           </View>
 
-          {model.plan.map((c) => (
-            <PlanCard key={c.habitId} card={c} editable />
-          ))}
+          {finished ? (
+            <>
+              <DayCompleteCard
+                plan={model.plan}
+                bonus={model.bonus}
+                habits={model.doneTodayCount}
+                minutes={model.trackedMin}
+                accent={config.accent}
+                animateIn={animateIn}
+              />
+              {/* A timer still running (e.g. going on past the minimum) keeps its card. */}
+              {running.map((c) => (
+                <PlanCard key={c.habitId} card={c} bonus={!model.plan.some((p) => p.habitId === c.habitId)} />
+              ))}
+              {/* Extra habits, never required: they count toward weekly targets. */}
+              <View style={{ alignItems: 'center', marginTop: 14 }}>
+                <IconButton
+                  label="Log a bonus habit"
+                  name="bonus"
+                  size={22}
+                  color={colors.subtext}
+                  bg={colors.card}
+                  diameter={44}
+                  onPress={() => actions.openPlanPicker({ mode: 'bonus' })}
+                />
+              </View>
+            </>
+          ) : (
+            model.plan.map((c) => <PlanCard key={c.habitId} card={c} editable />)
+          )}
 
           {/* Room for one more: an empty slot */}
-          {model.canAdd && !model.complete && (
+          {model.canAdd && !finished && (
             <View
               style={{
                 marginTop: 12,
@@ -102,9 +143,7 @@ export function TodayScreen() {
             </View>
           )}
 
-          {model.bonus.map((c) => (
-            <PlanCard key={c.habitId} card={c} bonus />
-          ))}
+          {!finished && model.bonus.map((c) => <PlanCard key={c.habitId} card={c} bonus />)}
         </>
       )}
 
