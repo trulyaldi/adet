@@ -2,7 +2,7 @@
 // a start/end pair and building the resulting Session record.
 
 import { fmtHM } from './time';
-import { PersistedState, Session } from './types';
+import { ActiveTimer, PersistedState, Session } from './types';
 
 /** Durations above this need an explicit confirmation. */
 export const SESSION_CONFIRM_SEC = 8 * 3600;
@@ -100,6 +100,27 @@ export function restoreSession(data: PersistedState, session: Session): Persiste
   if (data.sessions.some((s) => s.id === session.id)) return data;
   if (!data.habits.some((h) => h.id === session.habitId)) return data;
   return { ...data, sessions: [...data.sessions, { ...session }] };
+}
+
+/**
+ * The session a stopped timer produces at `end`, or null when it ran for less
+ * than SESSION_MIN_SEC (such timers are discarded, not saved).
+ */
+export function sessionFromTimer(active: ActiveTimer, end: number): Session | null {
+  const dur = Math.round(active.baseSec + (active.startedAt ? (end - active.startedAt) / 1000 : 0));
+  if (dur < SESSION_MIN_SEC) return null;
+  return {
+    id: 's' + end,
+    habitId: active.habitId,
+    start: end - dur * 1000,
+    end,
+    duration: dur,
+  };
+}
+
+/** Saved sessions shorter than SESSION_MIN_SEC (left over from before the stop rule). */
+export function subMinuteSessions(sessions: Session[]): Session[] {
+  return sessions.filter((s) => s.duration < SESSION_MIN_SEC);
 }
 
 const FIVE_MIN_MS = 5 * 60 * 1000;

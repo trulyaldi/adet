@@ -10,9 +10,15 @@ export interface AppSettings {
   reminderHours: number;
   /** Monday dkey of the last weekly recap seen or dismissed on this device. */
   recapSeenWeek: string | null;
+  /** The one-time "remove sessions under a minute" prompt was answered on this device. */
+  shortSessionsReviewed: boolean;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = { reminderHours: DEFAULT_REMINDER_HOURS, recapSeenWeek: null };
+export const DEFAULT_SETTINGS: AppSettings = {
+  reminderHours: DEFAULT_REMINDER_HOURS,
+  recapSeenWeek: null,
+  shortSessionsReviewed: false,
+};
 
 export async function loadSettings(): Promise<AppSettings> {
   try {
@@ -25,6 +31,7 @@ export async function loadSettings(): Promise<AppSettings> {
         typeof saved.recapSeenWeek === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.recapSeenWeek)
           ? saved.recapSeenWeek
           : null,
+      shortSessionsReviewed: saved.shortSessionsReviewed === true,
     };
   } catch {
     return DEFAULT_SETTINGS;

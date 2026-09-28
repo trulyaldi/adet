@@ -3,6 +3,7 @@ import { Alert, Modal, Pressable, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
+import { MessageToast } from '../components/UndoToast';
 import { activeSec, selectTimer } from '../domain/engine';
 import { longSessionSec } from '../domain/reminder';
 import { fmtClock, fmtHM } from '../domain/time';
@@ -115,6 +116,12 @@ export function TimerOverlay() {
                 </Text>
               </View>
             )}
+          </View>
+
+          {/* Starting another habit discards a too-short running timer and opens
+              this modal, which covers the app's toast, so it shows here too. */}
+          <View style={{ marginBottom: 12 }}>
+            <MessageToast />
           </View>
 
           {/* Controls */}
