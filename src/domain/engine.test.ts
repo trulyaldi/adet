@@ -324,14 +324,18 @@ test('streaks on Today, Projects and Stats use freezes and the given now', () =>
   assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
 });
 
-test('Today project line: compact streaks, weekly part hidden at 0, at-risk nudge', () => {
+test('Today project line: compact streak only, at-risk nudge, hidden with a single project', () => {
   const at = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
-  const s = (id: string, d: number, sec = 1800) => ({ id, habitId: 'h1', start: at(d), end: at(d) + sec * 1000, duration: sec });
+  const s = (id: string, d: number, sec = 1800, habitId = 'h1') => ({ id, habitId, start: at(d), end: at(d) + sec * 1000, duration: sec });
   const base = (sessions: ReturnType<typeof s>[], weeklyTarget = 8): PersistedState => ({
     schemaVersion: 3,
-    projects: [{ id: 'p1', name: 'Practice', weeklyTarget, started: at(1) }],
+    projects: [
+      { id: 'p1', name: 'Practice', weeklyTarget, started: at(1) },
+      { id: 'p2', name: 'Other', weeklyTarget: 2, started: at(1) },
+    ],
     habits: [
       { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+      { id: 'h2', projectId: 'p2', name: 'Other', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
     ],
     sessions,
     active: null,
@@ -342,21 +346,48 @@ test('Today project line: compact streaks, weekly part hidden at 0, at-risk nudg
   // Weeks of Sep 7 and Sep 14 both reach 1h against a 1h target; Sep 14–16 tracked.
   const met = base([s('a', 8, 3600), s('b', 14, 1800), s('c', 15, 1800), s('d', 16, 600)], 1);
   const g = selectToday(met, DEFAULT_CONFIG, wed).groups[0];
-  assert.match(g.consistencyLabel, /^3d streak · 2w target · [↑↓] /);
+  // No target-week streak and no "vs last week" delta on Today.
+  assert.equal(g.streakLabel, '3d streak');
   assert.equal(g.streakAtRisk, false);
   const card = selectProjects(met, DEFAULT_CONFIG, wed).cards[0];
   assert.equal(card.weekStreakLabel, '2w');
   assert.equal(card.streakAtRisk, false);
 
-  // No week met: the weekly part is hidden.
-  const none = selectToday(base([s('a', 15), s('b', 16)]), DEFAULT_CONFIG, wed).groups[0];
-  assert.match(none.consistencyLabel, /^2d streak · [↑↓] /);
+  // No streak: nothing shown.
+  assert.equal(selectToday(base([]), DEFAULT_CONFIG, wed).groups[0].streakLabel, '');
 
   // Sep 13–14 tracked, Sep 15 (yesterday) missed, today untracked: at risk.
   const risky = selectToday(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).groups[0];
-  assert.equal(risky.consistencyLabel, '2d streak · track today to keep it');
+  assert.equal(risky.streakLabel, '2d streak · track today');
   assert.equal(risky.streakAtRisk, true);
   assert.equal(selectProjects(base([s('a', 13), s('b', 14)]), DEFAULT_CONFIG, wed).cards[0].streakAtRisk, true);
+
+  // A single project's streak is the header chip's, so it isn't repeated.
+  const one = base([s('a', 15), s('b', 16)]);
+  one.projects = one.projects.slice(0, 1);
+  one.habits = one.habits.slice(0, 1);
+  const solo = selectToday(one, DEFAULT_CONFIG, wed);
+  assert.equal(solo.streakLabel, '2 days');
+  assert.equal(solo.groups[0].streakLabel, '');
+});
+
+test('Today rows: running and paused timers replace the today label; Up next never on the running habit', () => {
+  const data = seed(NOW);
+  const running: PersistedState = { ...data, active: { habitId: 'h1', startedAt: NOW - 125_000, baseSec: 0 } };
+  const rows = selectToday(running, DEFAULT_CONFIG, NOW).groups[0].rows;
+  const r = rows.find((x) => x.habitId === 'h1')!;
+  assert.equal(r.running, true);
+  assert.equal(r.sub, 'Running');
+  assert.equal(r.elapsedSec, 125);
+  assert.equal(r.recommended, false);
+  const others = rows.filter((x) => x.habitId !== 'h1');
+  assert.ok(others.every((x) => !x.running && x.elapsedSec === 0));
+
+  const paused: PersistedState = { ...data, active: { habitId: 'h1', startedAt: null, baseSec: 90 } };
+  const p = selectToday(paused, DEFAULT_CONFIG, NOW).groups[0].rows.find((x) => x.habitId === 'h1')!;
+  assert.equal(p.paused, true);
+  assert.equal(p.sub, 'Paused');
+  assert.equal(p.elapsedSec, 90);
 });
 
 test('Today header chip shows freezes left, or a nudge when the streak is at risk', () => {

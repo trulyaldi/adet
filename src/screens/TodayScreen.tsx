@@ -5,9 +5,10 @@ import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
 import { RecapCard } from '../components/RecapCard';
 import { SyncIndicator } from '../components/SyncIndicator';
-import { selectToday } from '../domain/engine';
+import { selectToday, TodayRow } from '../domain/engine';
 import { fmtClock } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
+import { useStopTimer } from '../store/useStopTimer';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
 const FLAME =
@@ -86,108 +87,45 @@ export function TodayScreen() {
         </View>
       )}
 
-      {/* Project groups */}
+      {/* One card per project: week progress and pace, then its habits */}
       {model.groups.map((g) => (
-        <View key={g.projectId} style={{ marginTop: 26 }}>
-          <View style={[{ backgroundColor: colors.card, borderRadius: radius.xl, padding: 18 }, shadowCard]}>
-            <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '800', color: colors.ink }}>
-              {g.name}
-            </Text>
-            <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.subtext, marginTop: 7 }}>
-              {g.weekLabel}
-            </Text>
-            <View style={{ marginTop: 12 }}>
+        <View
+          key={g.projectId}
+          style={[{ marginTop: 16, backgroundColor: colors.card, borderRadius: radius.xl, paddingTop: 16, paddingBottom: 6 }, shadowCard]}
+        >
+          <View style={{ paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+              <Text numberOfLines={2} style={{ flex: 1, fontSize: 16, fontWeight: '800', color: colors.ink }}>
+                {g.name}
+              </Text>
+              <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.subtext }}>{g.weekLabel}</Text>
+            </View>
+            <View style={{ marginTop: 10 }}>
               <ProgressBar pct={g.weekPct} color={g.barColor} />
             </View>
-            {!!g.paceLabel && (
-              <Text style={{ fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink, marginTop: 9 }}>
-                {g.paceLabel}
-              </Text>
+            {(!!g.paceLabel || !!g.streakLabel) && (
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
+                <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink }}>
+                  {g.paceLabel}
+                </Text>
+                {!!g.streakLabel && (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: g.streakAtRisk ? '600' : '500',
+                      color: g.streakAtRisk ? colors.warn : colors.muted,
+                    }}
+                  >
+                    {g.streakLabel}
+                  </Text>
+                )}
+              </View>
             )}
-            <Text
-              numberOfLines={1}
-              style={{ fontSize: 12, color: g.streakAtRisk ? colors.warn : colors.muted, fontWeight: g.streakAtRisk ? '600' : '400', marginTop: 4 }}
-            >
-              {g.consistencyLabel}
-            </Text>
           </View>
 
-          <View style={{ marginTop: 10, gap: 10 }}>
+          <View style={{ marginTop: 10 }}>
             {g.rows.map((r) => (
-              <Pressable
-                key={r.habitId}
-                onPress={() => actions.startTimer(r.habitId)}
-                style={({ pressed }) => [
-                  {
-                    backgroundColor: colors.card,
-                    borderRadius: radius.lg,
-                    borderWidth: 1.5,
-                    borderColor: r.cardBorder,
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 13,
-                    transform: [{ scale: pressed ? 0.985 : 1 }],
-                  },
-                  shadowCard,
-                ]}
-              >
-                <View
-                  style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: radius.md,
-                    backgroundColor: r.tile,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon path={r.iconPath} size={22} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                    <Text
-                      numberOfLines={1}
-                      style={{ flexShrink: 1, fontSize: 15, fontWeight: '700', color: colors.ink }}
-                    >
-                      {r.name}
-                    </Text>
-                    {r.recommended && (
-                      <Text
-                        style={{
-                          fontSize: 9.5,
-                          fontWeight: '800',
-                          color: config.accent,
-                          backgroundColor: config.accent + '1C',
-                          borderRadius: radius.pill,
-                          paddingVertical: 2.5,
-                          paddingHorizontal: 7,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        UP NEXT
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={{ fontSize: 12.5, color: colors.subtext, marginTop: 4 }}>
-                    {r.sub}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => (r.running ? actions.openTimer() : actions.startTimer(r.habitId))}
-                  style={{
-                    borderRadius: radius.pill,
-                    paddingVertical: 9,
-                    paddingHorizontal: 15,
-                    backgroundColor: r.btnBg,
-                  }}
-                >
-                  <Text style={{ fontSize: 13.5, fontWeight: '700', color: r.btnFg }}>
-                    {r.btnLabelSec > 0 ? fmtClock(r.btnLabelSec) : r.btnLabel}
-                  </Text>
-                </Pressable>
-              </Pressable>
+              <HabitRow key={r.habitId} row={r} />
             ))}
           </View>
         </View>
@@ -208,5 +146,125 @@ export function TodayScreen() {
         </View>
       )}
     </ScrollView>
+  );
+}
+
+const PAUSE = 'M9 6v12M15 6v12';
+const PLAY = 'M8 5.5v13l10-6.5z';
+const STOP = 'M7 7h10v10H7z';
+
+/** A habit inside its project card: tap to start (or open the running timer). */
+function HabitRow({ row: r }: { row: TodayRow }) {
+  const { config, actions } = useStreak();
+  const stop = useStopTimer();
+  const highlight = r.running ? config.accent + '12' : r.recommended ? config.accent + '0A' : 'transparent';
+
+  return (
+    <Pressable
+      onPress={() => (r.running ? actions.openTimer() : actions.startTimer(r.habitId))}
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? colors.soft : highlight,
+        borderTopWidth: 1,
+        borderTopColor: colors.hairline,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+      })}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: r.tile, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon path={r.iconPath} size={20} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {r.recommended && (
+              <View
+                accessibilityLabel="Up next"
+                style={{ width: 7, height: 7, borderRadius: radius.pill, backgroundColor: config.accent }}
+              />
+            )}
+            <Text numberOfLines={2} style={{ flex: 1, fontSize: 15, fontWeight: '700', color: colors.ink }}>
+              {r.name}
+            </Text>
+          </View>
+          <Text
+            style={{
+              fontSize: 12.5,
+              marginTop: 2,
+              color: r.running ? (r.paused ? '#C77800' : config.accent) : colors.subtext,
+              fontWeight: r.running ? '700' : '400',
+            }}
+          >
+            {r.recommended && !r.running ? 'Up next · ' + r.sub : r.sub}
+          </Text>
+        </View>
+        {!r.running && (
+          <Pressable
+            onPress={() => actions.startTimer(r.habitId)}
+            hitSlop={6}
+            style={{
+              borderRadius: radius.pill,
+              paddingVertical: 9,
+              paddingHorizontal: 16,
+              backgroundColor: r.recommended ? config.accent : colors.track,
+            }}
+          >
+            <Text style={{ fontSize: 13.5, fontWeight: '700', color: r.recommended ? '#FFFFFF' : config.accent }}>
+              {r.btnLabel}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Running timer: elapsed time and controls stay on the row */}
+      {r.running && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingLeft: 52 }}>
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 22,
+              fontWeight: '800',
+              color: r.paused ? colors.subtext : colors.ink,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {fmtClock(r.elapsedSec)}
+          </Text>
+          <ControlButton
+            label={r.paused ? 'Resume' : 'Pause'}
+            icon={r.paused ? PLAY : PAUSE}
+            onPress={actions.togglePause}
+            bg={colors.card}
+            fg={colors.ink}
+          />
+          <ControlButton label="Stop" icon={STOP} onPress={stop} bg={colors.dangerSoft} fg={colors.danger} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+function ControlButton({ label, icon, onPress, bg, fg }: { label: string; icon: string; onPress(): void; bg: string; fg: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={4}
+      accessibilityLabel={label}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderRadius: radius.pill,
+        paddingVertical: 8,
+        paddingHorizontal: 13,
+        backgroundColor: bg,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
+    >
+      <Icon path={icon} size={13} color={fg} strokeWidth={2.4} />
+      <Text style={{ fontSize: 13, fontWeight: '700', color: fg }}>{label}</Text>
+    </Pressable>
   );
 }

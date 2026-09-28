@@ -220,28 +220,29 @@ export interface TodayRow {
   iconPath: string;
   tile: string;
   name: string;
-  /** Time tracked today, e.g. "45m today". */
+  /** "45m today" / "Not tracked today"; "Running" / "Paused" while its timer is on. */
   sub: string;
+  /** The "Up next" suggestion (see recommendedHabitId). */
   recommended: boolean;
   running: boolean;
   paused: boolean;
-  cardBorder: string;
-  btnLabelSec: number; // seconds to render as clock when running
+  /** The running timer's elapsed seconds; 0 when not running. */
+  elapsedSec: number;
+  /** "Start" or "Continue" (something already tracked today). */
   btnLabel: string;
-  btnBg: string;
-  btnFg: string;
 }
 export interface TodayGroup {
   projectId: string;
   name: string;
+  /** e.g. "3.5h / 8h this week". */
   weekLabel: string;
   weekPct: number;
   barColor: string;
   /** e.g. "5.5h left · ~1.1h/day for 5 days" (see weekPace); "" without a target. */
   paceLabel: string;
   paceMet: boolean;
-  /** e.g. "5d streak · 3w target · ↑ 1h", or the at-risk nudge. */
-  consistencyLabel: string;
+  /** e.g. "5d streak", "5d streak · track today" when at risk, "" with no streak. */
+  streakLabel: string;
   /** The project's daily streak survives only if something is tracked today. */
   streakAtRisk: boolean;
   rows: TodayRow[];
@@ -278,7 +279,6 @@ export function selectToday(
   now: number
 ): TodayModel {
   const ctx = buildContext(data, now);
-  const stages = stagesFor(config);
   const global = dailyStreak(daySecMap(data, now), now);
   const globalStreak = global.current;
   const todayD = ctx.todayD;
@@ -288,10 +288,7 @@ export function selectToday(
 
   const groups: TodayGroup[] = shown.map((p) => {
     const ps = ctx.projStats[p.id];
-    const pDays = daySecMap(data, now, ps.habits.map((h) => h.id));
-    const streak = dailyStreak(pDays, now);
-    const weeks = weeklyTargetStreak(pDays, p.weeklyTarget, now);
-    const trend = trendOf(ps);
+    const streak = dailyStreak(daySecMap(data, now, ps.habits.map((h) => h.id)), now);
     const pace = weekPace(ps.week, p.weeklyTarget, now);
     const pct = pace.targetSec ? Math.min(100, Math.round((ps.week / pace.targetSec) * 100)) : 0;
     return {
@@ -304,11 +301,8 @@ export function selectToday(
       barColor: pct >= 100 ? '#34C759' : '#17181A',
       paceLabel: pace.kind === 'noTarget' ? '' : pace.label,
       paceMet: pace.kind === 'met',
-      consistencyLabel: streak.atRisk
-        ? streak.current + 'd streak · track today to keep it'
-        : [streak.current + 'd streak', weeks > 0 ? weeks + 'w target' : '', trend.label]
-            .filter(Boolean)
-            .join(' · '),
+      streakLabel:
+        streak.current > 0 ? streak.current + 'd streak' + (streak.atRisk ? ' · track today' : '') : '',
       streakAtRisk: streak.atRisk,
       rows: ps.habits.map((h) => {
         const stt = ctx.habitStats[h.id];
@@ -322,19 +316,25 @@ export function selectToday(
           iconPath: iconPath(h.icon),
           tile: h.tile,
           name: h.name,
-          sub: tracked ? fmtHM(Math.floor(stt.day)) + ' today' : 'Not tracked today',
+          sub: running
+            ? paused
+              ? 'Paused'
+              : 'Running'
+            : tracked
+            ? fmtHM(Math.floor(stt.day)) + ' today'
+            : 'Not tracked today',
           recommended: rec,
           running,
           paused,
-          cardBorder: running ? config.accent : 'transparent',
-          btnLabelSec: running && !paused ? activeSec(active, now) : 0,
-          btnLabel: running ? (paused ? 'Resume' : '') : tracked ? 'Continue' : 'Start',
-          btnBg: running ? (paused ? '#FFF4E5' : '#FFECEB') : rec ? config.accent : '#F1F2F5',
-          btnFg: running ? (paused ? '#C77800' : '#FF3B30') : rec ? '#FFFFFF' : config.accent,
+          elapsedSec: running ? activeSec(active, now) : 0,
+          btnLabel: tracked ? 'Continue' : 'Start',
         };
       }),
     };
   });
+
+  // With one project its streak is the header chip's; show it once.
+  if (groups.length === 1) groups[0].streakLabel = '';
 
   const summary = weekSummary(
     shown.map((p) => {
