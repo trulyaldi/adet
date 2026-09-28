@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
 import { Sheet } from '../components/Sheet';
+import { activeHabits } from '../domain/projects';
 import { checkSessionTimes } from '../domain/sessions';
 import { fmtHM } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
@@ -15,6 +16,7 @@ export function EditSessionSheet() {
   const check = sheet ? checkSessionTimes(sheet.start, sheet.end, now, { existing: true }) : null;
   const error = sheet?.error ?? (check && !check.ok ? check.error : null);
   const confirming = !!(sheet?.confirmLong && check?.ok);
+  const live = new Set(activeHabits(data).map((h) => h.id));
   // Picker cap: end of today, stable all day (a per-second value would re-render
   // the open native picker). checkSessionTimes rejects the rest of today's future.
   const today = new Date(now);
@@ -33,7 +35,8 @@ export function EditSessionSheet() {
           <View>
             <Label>Habit</Label>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {data.habits.map((h) => (
+              {/* Archived projects' habits aren't offered, except the session's own. */}
+              {data.habits.filter((h) => h.id === sheet.habitId || live.has(h.id)).map((h) => (
                 <Chip
                   key={h.id}
                   label={h.name}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { daysLeftInWeek, weekPace } from './weeks';
+import { daysLeftInWeek, todayPaceSec, weekPace, weekSummary } from './weeks';
 
 const H = 3600;
 
@@ -103,4 +103,56 @@ test('no usable target shows only the hours done', () => {
     assert.equal(p.targetSec, null);
     assert.equal(p.label, '4.5h this week');
   }
+});
+
+test("today's pace is an even share of what was left this morning, less today's time", () => {
+  inTZ('Asia/Almaty', () => {
+    const wed = new Date(2026, 8, 23, 12, 0).getTime(); // 5 days left
+    // 8h target, 3h before today: 5h over 5 days = 1h today.
+    assert.equal(todayPaceSec(3 * H, 0, 8, wed), H);
+    // 20m tracked today: 40m still to do (not 5h20m spread over 5 days).
+    assert.equal(todayPaceSec(3 * H + 1200, 1200, 8, wed), 2400);
+    // Today's share done, or more.
+    assert.equal(todayPaceSec(4 * H, H, 8, wed), 0);
+    assert.equal(todayPaceSec(5 * H, 2 * H, 8, wed), 0);
+    // Target met, or no target.
+    assert.equal(todayPaceSec(9 * H, 0, 8, wed), 0);
+    assert.equal(todayPaceSec(0, 0, 0, wed), 0);
+    assert.equal(todayPaceSec(0, 0, NaN, wed), 0);
+    // Rounded up to whole minutes: 7h / 6 days = 70m exactly; 1h / 7 days ≈ 8.57m → 9m.
+    assert.equal(todayPaceSec(H, 0, 8, new Date(2026, 8, 22, 9, 0).getTime()), 70 * 60);
+    assert.equal(todayPaceSec(0, 0, 1, new Date(2026, 8, 21, 9, 0).getTime()), 9 * 60);
+    // Sunday: everything left.
+    assert.equal(todayPaceSec(6 * H, 0, 8, new Date(2026, 8, 27, 9, 0).getTime()), 2 * H);
+  });
+});
+
+test('week summary adds projects with a target: time, targets and today’s pace', () => {
+  inTZ('Asia/Almaty', () => {
+    const wed = new Date(2026, 8, 23, 12, 0).getTime();
+    const s = weekSummary(
+      [
+        { weekSec: 3 * H, todaySec: 0, targetHours: 8 }, // 1h today
+        { weekSec: 2 * H, todaySec: 1800, targetHours: 4.5 }, // (4.5-1.5)/5 = 36m, less 30m = 6m
+        { weekSec: 5 * H, todaySec: 0, targetHours: 0 }, // no target: not counted
+      ],
+      wed
+    );
+    assert.equal(s.projects, 2);
+    assert.equal(s.doneSec, 5 * H);
+    assert.equal(s.targetSec, 12.5 * H);
+    assert.equal(s.todaySec, H + 6 * 60);
+    assert.equal(s.allMet, false);
+    assert.equal(s.weekLabel, '5h / 12.5h this week');
+    assert.equal(s.todayLabel, '1.1h more today to stay on pace');
+
+    const onPace = weekSummary([{ weekSec: 4 * H, todaySec: H, targetHours: 8 }, { weekSec: 9 * H, todaySec: 0, targetHours: 8 }], wed);
+    assert.equal(onPace.todayLabel, 'On pace for today');
+    const met = weekSummary([{ weekSec: 8 * H, todaySec: 0, targetHours: 8 }, { weekSec: 9 * H, todaySec: 0, targetHours: 8 }], wed);
+    assert.equal(met.allMet, true);
+    assert.equal(met.todayLabel, 'All targets met');
+    const empty = weekSummary([], wed);
+    assert.equal(empty.projects, 0);
+    assert.equal(empty.allMet, false);
+  });
 });

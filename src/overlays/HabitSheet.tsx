@@ -4,7 +4,8 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { ICONS, ICON_KEYS } from '../domain/constants';
-import { fmtMin, stepFor } from '../domain/time';
+import { activeHabits, isArchived } from '../domain/projects';
+import { fmtMin } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
 
@@ -20,6 +21,9 @@ export function HabitSheet() {
         )
       : null;
   const valid = !!(sheet && sheet.name.trim() && !dup);
+  // Archived projects' habits aren't listed in Projects, so say where it is.
+  const dupProject = dup ? data.projects.find((p) => p.id === dup.projectId) : undefined;
+  const dupArchivedIn = dupProject && isArchived(dupProject) ? dupProject : null;
 
   return (
     <Sheet visible={!!sheet} onClose={actions.closeHabitSheet} maxHeightPct={0.78}>
@@ -44,7 +48,9 @@ export function HabitSheet() {
             />
             {!!dup && (
               <Text style={{ fontSize: 12.5, color: colors.warn, marginTop: 7 }}>
-                "{dup.name}" already exists — open it from Projects instead of creating a duplicate.
+                {dupArchivedIn
+                  ? `"${dup.name}" already exists in the archived project "${dupArchivedIn.name}". Unarchive it from Projects to use it again.`
+                  : `"${dup.name}" already exists — open it from Projects instead of creating a duplicate.`}
               </Text>
             )}
           </View>
@@ -81,7 +87,7 @@ export function HabitSheet() {
           <View>
             <Label>Project</Label>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {data.projects.map((p) => {
+              {data.projects.filter((p) => !isArchived(p) || p.id === sheet.projectId).map((p) => {
                 const on = sheet.projectId === p.id;
                 return (
                   <Pressable
@@ -103,65 +109,9 @@ export function HabitSheet() {
             </View>
           </View>
 
-          {/* Targets */}
+          {/* Target. The habit's daily target is still stored and synced
+              (older app versions show it) but no longer shown or edited. */}
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: colors.screen,
-                borderRadius: 14,
-                padding: 12,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.subtext }}>
-                Daily target
-              </Text>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  marginTop: 8,
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Pressable
-                  onPress={() =>
-                    actions.patchHabitSheet({
-                      dailyTargetMin: Math.max(
-                        5,
-                        sheet.dailyTargetMin - stepFor(sheet.dailyTargetMin)
-                      ),
-                    })
-                  }
-                  style={stepButtonStyle}
-                >
-                  <Text style={stepButtonTextStyle}>−</Text>
-                </Pressable>
-                <Text
-                  style={{
-                    fontWeight: '800',
-                    color: colors.ink,
-                    fontVariant: ['tabular-nums'],
-                  }}
-                >
-                  {fmtMin(sheet.dailyTargetMin)}
-                </Text>
-                <Pressable
-                  onPress={() =>
-                    actions.patchHabitSheet({
-                      dailyTargetMin: Math.min(
-                        480,
-                        sheet.dailyTargetMin + stepFor(sheet.dailyTargetMin)
-                      ),
-                    })
-                  }
-                  style={stepButtonStyle}
-                >
-                  <Text style={stepButtonTextStyle}>+</Text>
-                </Pressable>
-              </View>
-            </View>
-
             <View
               style={{
                 flex: 1,
@@ -222,7 +172,7 @@ export function HabitSheet() {
                 All sessions move to the chosen habit. History is preserved.
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {data.habits
+                {activeHabits(data)
                   .filter((h) => h.id !== sheet.id)
                   .map((h) => (
                     <Pressable

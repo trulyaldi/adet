@@ -32,7 +32,16 @@ export function changeToRow(c: Change, userId: string): Row {
   switch (c.table) {
     case 'projects': {
       const r = c.record;
-      return { ...meta, id: r.id, name: r.name, weekly_target: r.weeklyTarget, started: r.started ?? null };
+      // archived_at is always sent (null when active) so an unarchive clears it
+      // on the server. Needs migration 003_archive.
+      return {
+        ...meta,
+        id: r.id,
+        name: r.name,
+        weekly_target: r.weeklyTarget,
+        started: r.started ?? null,
+        archived_at: r.archivedAt ?? null,
+      };
     }
     case 'habits': {
       const r = c.record;
@@ -82,6 +91,7 @@ export function rowToChange(table: SyncTable, row: Row): Change {
           name: String(row.name),
           weeklyTarget: num(row.weekly_target),
           started: optNum(row.started),
+          ...(row.archived_at == null ? {} : { archivedAt: num(row.archived_at) }),
           updatedAt,
         },
       };

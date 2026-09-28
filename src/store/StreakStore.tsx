@@ -7,11 +7,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
+import { activeHabits } from '../domain/projects';
 import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
@@ -21,10 +22,11 @@ import {
   defaultManualStart,
   manualSession,
   restoreSession,
+  sessionFromTimer,
+  subMinuteSessions,
 } from '../domain/sessions';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import {
-  ActiveTimer,
   CURRENT_SCHEMA_VERSION,
   Habit,
   IconKey,
@@ -37,6 +39,7 @@ import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './set
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
 export type Screen = 'today' | 'projects' | 'stats';
+export type StatsView = 'overview' | 'history';
 
 export interface HabitSheetState {
   id: string | null;
@@ -103,6 +106,11 @@ export interface UIState {
   recapSheet: string | null;
   /** Monday dkey of the recap card on Today; stays up for this app session until dismissed. */
   recapCard: string | null;
+  /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
+  toast: string | null;
+  settingsOpen: boolean;
+  /** Which half of Stats is showing; kept while switching tabs. */
+  statsView: StatsView;
 }
 
 const INITIAL_UI: UIState = {
@@ -119,6 +127,9 @@ const INITIAL_UI: UIState = {
   undo: null,
   recapSheet: null,
   recapCard: null,
+  toast: null,
+  settingsOpen: false,
+  statsView: 'overview',
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -127,9 +138,18 @@ const MODAL_DISMISS_MS = 450;
 /** How long the "Session deleted · Undo" toast stays up. */
 export const UNDO_MS = 5000;
 
+/** How long a plain message toast stays up. */
+const TOAST_MS = 2500;
+
+/** Shown when a stopped timer is discarded for being too short. */
+const SHORT_TIMER_TOAST = 'Under a minute, not saved';
+
 export interface StreakActions {
   // navigation
   setScreen(s: Screen): void;
+  openSettings(): void;
+  closeSettings(): void;
+  setStatsView(view: StatsView): void;
   // timer
   startTimer(habitId: string): void;
   openTimer(): void;
@@ -161,6 +181,9 @@ export interface StreakActions {
   patchProjectSheet(patch: Partial<ProjectSheetState>): void;
   saveProjectSheet(): void;
   deleteProject(id: string): void;
+  /** Archive (hide) a project; a timer running on one of its habits is stopped and saved first. */
+  archiveProject(id: string): void;
+  unarchiveProject(id: string): void;
   // stage sheet
   openStageSheet(projectId: string): void;
   closeStageSheet(): void;
@@ -208,21 +231,6 @@ const EMPTY_DATA: PersistedState = {
   active: null,
   historyClearedAt: 0,
 };
-
-/** Build a completed session from the active timer (mirrors saveActive()). */
-function sessionFromActive(active: ActiveTimer, end: number): Session {
-  const dur = Math.max(
-    1,
-    Math.round(active.baseSec + (active.startedAt ? (end - active.startedAt) / 1000 : 0))
-  );
-  return {
-    id: 's' + end,
-    habitId: active.habitId,
-    start: end - dur * 1000,
-    end,
-    duration: dur,
-  };
-}
 
 interface StoreState {
   data: PersistedState;
@@ -381,12 +389,47 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     updateSettings({ recapSeenWeek: recap.weekStart });
   }, [ready, wiped, lastWeek, store.data, settings.recapSeenWeek, updateSettings]);
 
+  // Once per device: offer to remove sessions under a minute left over from
+  // before the stop rule. Re-checked as data arrives (e.g. the first pull on a
+  // new device) until answered; the ref keeps it to one alert per app session.
+  const shortPromptOpen = useRef(false);
+  useEffect(() => {
+    if (!ready || wiped || settings.shortSessionsReviewed || shortPromptOpen.current) return;
+    const short = subMinuteSessions(store.data.sessions);
+    if (!short.length) return;
+    shortPromptOpen.current = true;
+    const ids = new Set(short.map((s) => s.id));
+    const done = () => updateSettings({ shortSessionsReviewed: true });
+    Alert.alert(
+      'Remove short sessions?',
+      `Found ${short.length} session${short.length === 1 ? '' : 's'} under a minute. Remove ${short.length === 1 ? 'it' : 'them'}?`,
+      [
+        { text: 'Keep', style: 'cancel', onPress: done },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            // Removing them locally queues synced deletes (soft deletes on the server).
+            setData((d) => ({ ...d, sessions: d.sessions.filter((s) => !ids.has(s.id)) }));
+            done();
+          },
+        },
+      ],
+      { cancelable: true, onDismiss: done }
+    );
+  }, [ready, wiped, store.data.sessions, settings.shortSessionsReviewed, updateSettings, setData]);
+
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
     if (!ui.undo) return;
     const t = setTimeout(() => setUi((p) => (p.undo === ui.undo ? { ...p, undo: null } : p)), UNDO_MS);
     return () => clearTimeout(t);
   }, [ui.undo]);
+  useEffect(() => {
+    if (!ui.toast) return;
+    const t = setTimeout(() => setUi((p) => (p.toast === ui.toast ? { ...p, toast: null } : p)), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [ui.toast]);
 
   // 1s tick drives the running timer + "Start" button clocks.
   useEffect(() => {
@@ -403,19 +446,25 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
     return {
       setScreen: (screen) => patchUi({ screen }),
+      openSettings: () => patchUi({ settingsOpen: true }),
+      closeSettings: () => patchUi({ settingsOpen: false }),
+      setStatsView: (statsView) => patchUi({ statsView }),
 
       startTimer: (habitId) => {
+        const now = Date.now();
+        const prev = storeRef.current.data.active;
+        // Switching habits stops the running timer first (same rule as Stop).
+        const discarded = !!prev && prev.habitId !== habitId && !sessionFromTimer(prev, now);
         setData((d) => {
           if (d.active && d.active.habitId === habitId) return d; // already running
-          let sessions = d.sessions;
-          if (d.active) sessions = [...sessions, sessionFromActive(d.active, Date.now())];
+          const saved = d.active ? sessionFromTimer(d.active, now) : null;
           return {
             ...d,
-            sessions,
-            active: { habitId, startedAt: Date.now(), baseSec: 0 },
+            sessions: saved ? [...d.sessions, saved] : d.sessions,
+            active: { habitId, startedAt: now, baseSec: 0 },
           };
         });
-        patchUi({ timerOpen: true });
+        patchUi(discarded ? { timerOpen: true, toast: SHORT_TIMER_TOAST } : { timerOpen: true });
         // Reminder permission is asked on timer start; iOS only prompts the first time.
         if (settingsRef.current.reminderHours > 0) {
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
@@ -442,20 +491,21 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       stopTimer: (opts) => {
         const end = Date.now();
         const a = storeRef.current.data.active;
+        const saved = a ? sessionFromTimer(a, end) : null;
         setData((d) => {
           if (!d.active) return d;
+          const s = sessionFromTimer(d.active, end);
           return {
             ...d,
-            sessions: [...d.sessions, sessionFromActive(d.active, end)],
+            sessions: s ? [...d.sessions, s] : d.sessions,
             active: null,
           };
         });
-        patchUi({ timerOpen: false });
-        if (opts?.editAfter && a) {
-          const id = sessionFromActive(a, end).id;
+        patchUi(a && !saved ? { timerOpen: false, toast: SHORT_TIMER_TOAST } : { timerOpen: false });
+        if (opts?.editAfter && saved) {
           // Wait for the timer modal to finish dismissing: iOS won't present the
           // edit sheet while another modal is animating out.
-          setTimeout(() => actionsRef.current?.openSessionSheet(id), MODAL_DISMISS_MS);
+          setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_DISMISS_MS);
         }
       },
 
@@ -639,13 +689,43 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         patchUi({ projectSheet: null });
       },
 
+      archiveProject: (id) => {
+        const now = Date.now();
+        const a = storeRef.current.data.active;
+        const onIt = !!a && storeRef.current.data.habits.some((h) => h.id === a.habitId && h.projectId === id);
+        setData((d) => {
+          let { sessions, active } = d;
+          if (active && d.habits.some((h) => h.id === active!.habitId && h.projectId === id)) {
+            const saved = sessionFromTimer(active, now);
+            if (saved) sessions = [...sessions, saved];
+            active = null;
+          }
+          return {
+            ...d,
+            sessions,
+            active,
+            projects: d.projects.map((p) => (p.id === id ? { ...p, archivedAt: now } : p)),
+          };
+        });
+        const discarded = onIt && !sessionFromTimer(a!, now);
+        patchUi({
+          projectSheet: null,
+          ...(onIt ? { timerOpen: false } : {}),
+          ...(discarded ? { toast: SHORT_TIMER_TOAST } : {}),
+        });
+      },
+      unarchiveProject: (id) =>
+        setData((d) => ({
+          ...d,
+          projects: d.projects.map((p) => (p.id === id ? { ...p, archivedAt: null } : p)),
+        })),
+
       openStageSheet: (projectId) => patchUi({ stageSheet: projectId }),
       closeStageSheet: () => patchUi({ stageSheet: null }),
 
       openLogSheet: () => {
         const def =
-          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ??
-          (data.habits[0] ? data.habits[0].id : null);
+          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ?? activeHabits(data)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {

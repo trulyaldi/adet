@@ -63,3 +63,77 @@ export function weekPace(doneSec: number, targetHours: number, now: number): Wee
     label: fmtH(leftSec) + ' left · ~' + fmtH(perDaySec) + '/day for ' + daysLeft + ' days',
   };
 }
+
+/** A usable weekly target in seconds, or null (see weekPace). */
+function targetSecOf(targetHours: number): number | null {
+  return Number.isFinite(targetHours) && targetHours > 0 ? targetHours * 3600 : null;
+}
+
+/**
+ * Time still to track today to stay on pace: today's even share of what was
+ * left when the day began, less what's already tracked today. Rounded up to
+ * whole minutes; 0 once today's share is done, the target is met, or there is
+ * no target. On Sunday the share is everything left.
+ */
+export function todayPaceSec(weekSec: number, todaySec: number, targetHours: number, now: number): number {
+  const targetSec = targetSecOf(targetHours);
+  if (targetSec === null) return 0;
+  const today = Math.max(0, todaySec);
+  const before = Math.max(0, weekSec - today);
+  const share = Math.max(0, targetSec - before) / daysLeftInWeek(now);
+  return Math.ceil(Math.max(0, share - today) / 60) * 60;
+}
+
+export interface WeekSummaryItem {
+  weekSec: number;
+  todaySec: number;
+  targetHours: number;
+}
+
+export interface WeekSummary {
+  /** Projects with a usable target; only these count. */
+  projects: number;
+  doneSec: number;
+  targetSec: number;
+  /** Sum of each project's todayPaceSec. */
+  todaySec: number;
+  /** Every counted project has met its target. */
+  allMet: boolean;
+  /** e.g. "12.5h / 20h this week". */
+  weekLabel: string;
+  /** e.g. "1.2h more today to stay on pace", "On pace for today", "All targets met". */
+  todayLabel: string;
+}
+
+/** This week across projects: time vs. the sum of targets, and today's pace. */
+export function weekSummary(items: WeekSummaryItem[], now: number): WeekSummary {
+  let projects = 0;
+  let doneSec = 0;
+  let targetSec = 0;
+  let todaySec = 0;
+  let allMet = true;
+  for (const it of items) {
+    const t = targetSecOf(it.targetHours);
+    if (t === null) continue;
+    projects++;
+    const done = Math.max(0, it.weekSec);
+    doneSec += done;
+    targetSec += t;
+    todaySec += todayPaceSec(done, it.todaySec, it.targetHours, now);
+    if (done < t) allMet = false;
+  }
+  allMet = allMet && projects > 0;
+  return {
+    projects,
+    doneSec,
+    targetSec,
+    todaySec,
+    allMet,
+    weekLabel: fmtH(doneSec) + ' / ' + fmtH(targetSec) + ' this week',
+    todayLabel: allMet
+      ? 'All targets met'
+      : todaySec > 0
+      ? fmtH(todaySec) + ' more today to stay on pace'
+      : 'On pace for today',
+  };
+}

@@ -32,3 +32,15 @@ export function UndoToast() {
     </View>
   );
 }
+
+/** A brief message from the store (ui.toast), e.g. a timer that wasn't saved. */
+export function MessageToast() {
+  const { ui } = useStreak();
+  if (!ui.toast) return null;
+
+  return (
+    <View style={{ backgroundColor: colors.ink, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 16 }}>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>{ui.toast}</Text>
+    </View>
+  );
+}

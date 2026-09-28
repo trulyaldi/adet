@@ -10,6 +10,8 @@ import {
   restoreSession,
   SESSION_CONFIRM_SEC,
   SESSION_MAX_SEC,
+  sessionFromTimer,
+  subMinuteSessions,
 } from './sessions';
 import { CURRENT_SCHEMA_VERSION, PersistedState, Session } from './types';
 
@@ -182,4 +184,25 @@ test('fitManualStart keeps the start unless the session would end in the future'
   // 14:05 + 60m would end at 15:05, so it becomes 13:35–14:35.
   const late = new Date(2026, 6, 10, 14, 5).getTime();
   assert.equal(fitManualStart(late, 60, now), new Date(2026, 6, 10, 13, 35).getTime());
+});
+
+test('a stopped timer under a minute produces no session', () => {
+  assert.equal(sessionFromTimer({ habitId: 'h1', startedAt: NOW - 59 * 1000, baseSec: 0 }, NOW), null);
+  assert.equal(sessionFromTimer({ habitId: 'h1', startedAt: null, baseSec: 59.4 }, NOW), null, 'paused, rounds to 59s');
+  assert.equal(sessionFromTimer({ habitId: 'h1', startedAt: NOW - 30 * 1000, baseSec: 29.4 }, NOW), null);
+});
+
+test('a stopped timer of a minute or more is saved, ending now', () => {
+  const s = sessionFromTimer({ habitId: 'h1', startedAt: NOW - 40 * 1000, baseSec: 20 }, NOW);
+  assert.deepEqual(s, { id: 's' + NOW, habitId: 'h1', start: NOW - 60 * 1000, end: NOW, duration: 60 });
+  const paused = sessionFromTimer({ habitId: 'h1', startedAt: null, baseSec: 45 * 60 }, NOW);
+  assert.equal(paused?.duration, 45 * 60);
+  assert.equal(paused?.start, NOW - 45 * MIN);
+});
+
+test('cleanup selects only sessions under a minute', () => {
+  const mk = (id: string, duration: number): Session => ({ id, habitId: 'h1', start: NOW - duration * 1000, end: NOW, duration });
+  const sessions = [mk('a', 0), mk('b', 1), mk('c', 59), mk('d', 60), mk('e', 3600)];
+  assert.deepEqual(subMinuteSessions(sessions).map((s) => s.id), ['a', 'b', 'c']);
+  assert.deepEqual(subMinuteSessions([mk('d', 60)]), []);
 });

@@ -1,8 +1,10 @@
 // Weekly recap: a finished week's hours per project against its target, the
 // change from the week before, the best day, and the session count. Computed
 // from local data on demand; judged against each project's current target.
+// Archived projects count toward totals but have no target.
 
 import { DOWFULL, MONTHS } from './constants';
+import { isArchived } from './projects';
 import { addDays, dkey, fmtH, monday, pkey } from './time';
 import { PersistedState } from './types';
 
@@ -80,9 +82,11 @@ export function weekRecap(data: PersistedState, weekStart: string): WeekRecap {
     }
   }
 
-  const projects: ProjectRecap[] = data.projects.map((p) => {
+  // Archived projects have no target here; they're listed only if they have time this week.
+  const listed = data.projects.filter((p) => !isArchived(p) || (week[p.id] || 0) > 0);
+  const projects: ProjectRecap[] = listed.map((p) => {
     const doneSec = week[p.id] || 0;
-    const hasTarget = Number.isFinite(p.weeklyTarget) && p.weeklyTarget > 0;
+    const hasTarget = !isArchived(p) && Number.isFinite(p.weeklyTarget) && p.weeklyTarget > 0;
     const targetSec = hasTarget ? p.weeklyTarget * 3600 : null;
     return {
       projectId: p.id,
@@ -145,13 +149,17 @@ export function changeLabel(sec: number, prevSec: number): string {
   return (d > 0 ? 'up ' : 'down ') + fmtH(Math.abs(d)) + ' on the week before';
 }
 
-/** One-line summary, e.g. "Hit 2 of 3 targets · 14.5h tracked · up 2h on the week before". */
-export function recapSummary(r: WeekRecap): string {
+/**
+ * One-line summary, e.g. "Hit 2 of 3 targets · 14.5h tracked · up 2h on the
+ * week before". `tracked: false` leaves out the total, for views that show it
+ * on its own.
+ */
+export function recapSummary(r: WeekRecap, opts: { tracked?: boolean } = {}): string {
   const parts: string[] = [];
   if (r.targetCount > 0) {
     parts.push(`Hit ${r.hitCount} of ${r.targetCount} target${r.targetCount === 1 ? '' : 's'}`);
   }
-  parts.push(fmtH(r.totalSec) + ' tracked');
+  if (opts.tracked !== false) parts.push(fmtH(r.totalSec) + ' tracked');
   parts.push(changeLabel(r.totalSec, r.prevTotalSec));
   return parts.join(' · ');
 }

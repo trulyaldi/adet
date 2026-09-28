@@ -14,7 +14,7 @@ export function ProjectSheet() {
   const targetPct = sheet ? Math.min(100, Math.round((sheet.weeklyTarget / 40) * 100)) : 0;
 
   return (
-    <Sheet visible={!!sheet} onClose={actions.closeProjectSheet} maxHeightPct={0.7}>
+    <Sheet visible={!!sheet} onClose={actions.closeProjectSheet} maxHeightPct={0.8}>
       {sheet && (
         <View style={{ gap: 15, paddingTop: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -80,6 +80,18 @@ export function ProjectSheet() {
               {isEdit ? 'Save changes' : 'Create project'}
             </Text>
           </Pressable>
+
+          {isEdit && (
+            <Pressable
+              onPress={() => actions.archiveProject(sheet.id!)}
+              style={{ borderRadius: radius.lg, padding: 14, alignItems: 'center', backgroundColor: colors.screen }}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.ink }}>Archive project</Text>
+              <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 3, textAlign: 'center' }}>
+                Hides it from Today and Projects. Its history stays in Stats.
+              </Text>
+            </Pressable>
+          )}
 
           {isEdit && (
             <Pressable onPress={() => actions.deleteProject(sheet.id!)} style={{ padding: 4, alignItems: 'center' }}>

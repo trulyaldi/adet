@@ -4,6 +4,7 @@ import Svg, { Line, Rect } from 'react-native-svg';
 
 import { HEAT_SCALE } from '../domain/constants';
 import { heatLevel, timeOfDay, Trends, weeklyTrends } from '../domain/insights';
+import { activeProjects } from '../domain/projects';
 import { dkey, fmtH, monday } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
@@ -11,7 +12,8 @@ import { colors, radius, shadowCard } from '../theme/tokens';
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 /**
- * When time is tracked, for all projects or one, over the last 12 weeks.
+ * When time is tracked, for all projects or one, over the last 12 weeks. Its
+ * one-line summary lives in the Insights card.
  * Computed from finished sessions only and recomputed when data or the week
  * changes, not on every tick.
  */
@@ -19,11 +21,13 @@ export function PatternsCard() {
   const { data, now } = useStreak();
   const [projectId, setProjectId] = useState<string | null>(null);
   // A single project is always the scope (so its target shows); a selected
-  // project deleted here or via sync falls back to all projects.
+  // project deleted, archived, or removed via sync falls back to all projects.
+  // Archived projects get no chip, but their history stays in "All".
+  const chips = activeProjects(data);
   const scope =
     data.projects.length === 1
       ? data.projects[0].id
-      : projectId !== null && data.projects.some((p) => p.id === projectId)
+      : projectId !== null && chips.some((p) => p.id === projectId)
       ? projectId
       : null;
   const week = dkey(monday(new Date(now)));
@@ -39,7 +43,7 @@ export function PatternsCard() {
       {data.projects.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ gap: 8 }}>
           <Chip label="All" on={scope === null} onPress={() => setProjectId(null)} />
-          {data.projects.map((p) => (
+          {chips.map((p) => (
             <Chip key={p.id} label={p.name} on={scope === p.id} onPress={() => setProjectId(p.id)} />
           ))}
         </ScrollView>
@@ -75,9 +79,6 @@ export function PatternsCard() {
           <Text style={{ fontSize: 11, color: colors.muted, marginTop: 6 }}>
             {tod.columns[0].end - tod.columns[0].start === 2 ? 'Hours of the day, in 2-hour blocks' : 'Hours of the day'}
           </Text>
-          {tod.insight && (
-            <Text style={{ fontSize: 13.5, fontWeight: '600', color: colors.ink, marginTop: 10 }}>{tod.insight}</Text>
-          )}
         </View>
       ) : (
         <Empty text="Track a few more sessions to see your patterns." />
@@ -96,7 +97,6 @@ function TrendChart({ trends }: { trends: Trends }) {
   const gap = 4;
   const barW = width > 0 ? (width - gap * (n - 1)) / n : 0;
   const y = (sec: number) => CHART_H - (trends.max > 0 ? (sec / trends.max) * (CHART_H - 4) : 0);
-  const last = trends.bars[n - 1];
   const mid = trends.bars[Math.floor((n - 1) / 2)];
 
   return (
@@ -141,7 +141,7 @@ function TrendChart({ trends }: { trends: Trends }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
         <Text style={{ fontSize: 10, color: colors.muted }}>{trends.bars[0].label}</Text>
         <Text style={{ fontSize: 10, color: colors.muted }}>{mid.label}</Text>
-        <Text style={{ fontSize: 10, color: colors.muted }}>This week{last.sec > 0 ? ' · ' + fmtH(last.sec) : ''}</Text>
+        <Text style={{ fontSize: 10, color: colors.muted }}>This week</Text>
       </View>
     </View>
   );

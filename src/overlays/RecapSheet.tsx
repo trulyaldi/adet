@@ -11,6 +11,9 @@ export function RecapSheet() {
   const { data, ui, actions } = useStreak();
   // Only compute while open.
   const recap = ui.recapSheet ? weekRecap(data, ui.recapSheet) : null;
+  const single = !!recap && recap.projects.length === 1;
+  // A lone project without a target would add nothing.
+  const rows = recap ? recap.projects.filter((p) => !single || p.targetSec !== null) : [];
 
   return (
     <Sheet visible={!!recap} onClose={actions.closeRecap} maxHeightPct={0.8}>
@@ -29,7 +32,10 @@ export function RecapSheet() {
             </Pressable>
           </View>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink, lineHeight: 20 }}>{recapSummary(recap)}</Text>
+          {/* The Tracked tile shows the total, so the summary leaves it out. */}
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink, lineHeight: 20 }}>
+            {recapSummary(recap, { tracked: false })}
+          </Text>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Tile value={fmtH(recap.totalSec)} label="Tracked" />
@@ -37,8 +43,9 @@ export function RecapSheet() {
             <Tile value={recap.bestDay ? recap.bestDay.label.slice(0, 3) : '—'} label={recap.bestDay ? 'Best day · ' + fmtH(recap.bestDay.sec) : 'Best day'} />
           </View>
 
+          {/* With one project its time and change are the tiles' and summary's; only its target is new. */}
           <View>
-            {recap.projects.map((p) => (
+            {rows.map((p) => (
               <View
                 key={p.projectId}
                 style={{ paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.hairline, gap: 3 }}
@@ -46,8 +53,9 @@ export function RecapSheet() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '700', color: colors.ink }}>{p.name}</Text>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>
-                    {fmtH(p.doneSec)}
-                    {p.targetSec !== null ? ' / ' + fmtH(p.targetSec) : ''}
+                    {single
+                      ? 'Target ' + fmtH(p.targetSec!)
+                      : fmtH(p.doneSec) + (p.targetSec !== null ? ' / ' + fmtH(p.targetSec) : '')}
                   </Text>
                   {p.hit !== null && (
                     <Text
@@ -66,7 +74,7 @@ export function RecapSheet() {
                     </Text>
                   )}
                 </View>
-                <Text style={{ fontSize: 12, color: colors.subtext }}>{changeLabel(p.doneSec, p.prevSec)}</Text>
+                {!single && <Text style={{ fontSize: 12, color: colors.subtext }}>{changeLabel(p.doneSec, p.prevSec)}</Text>}
               </View>
             ))}
           </View>
@@ -80,7 +88,7 @@ function Tile({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.screen, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: '800', color: colors.ink }}>{value}</Text>
-      <Text numberOfLines={1} style={{ fontSize: 11.5, fontWeight: '600', color: colors.subtext, marginTop: 3 }}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 11.5, fontWeight: '600', color: colors.subtext, marginTop: 3 }}>{label}</Text>
     </View>
   );
 }

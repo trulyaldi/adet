@@ -1,42 +1,31 @@
 import React from 'react';
-import { Alert, Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
-import { activeSec, selectTimer } from '../domain/engine';
-import { longSessionSec } from '../domain/reminder';
-import { fmtClock, fmtHM } from '../domain/time';
+import { MessageToast } from '../components/UndoToast';
+import { selectTimer } from '../domain/engine';
+import { fmtClock } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
+import { useStopTimer } from '../store/useStopTimer';
 import { colors, radius } from '../theme/tokens';
 
 const R = 124;
 const CIRC = 2 * Math.PI * R;
 
 export function TimerOverlay() {
-  const { data, ui, now, config, settings, actions } = useStreak();
+  const { data, ui, now, config, actions } = useStreak();
   const model = selectTimer(data, config, now);
   const open = ui.timerOpen && !!model;
 
-  // An unusually long session offers a trim before it's saved. Asked while this
-  // modal is still up, since iOS can't show an alert over a dismissing modal.
-  const stop = () => {
-    const secs = activeSec(data.active, Date.now());
-    if (secs <= longSessionSec(settings.reminderHours)) {
-      actions.stopTimer();
-      return;
-    }
-    const tracked = fmtHM(secs);
-    Alert.alert('Long session', `You tracked ${tracked}. Keep it, or set the end time?`, [
-      { text: `Keep ${tracked}`, onPress: () => actions.stopTimer() },
-      { text: 'Set end time', onPress: () => actions.stopTimer({ editAfter: true }) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const stop = useStopTimer();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={open} animationType="fade" transparent={false} onRequestClose={actions.closeTimer}>
       {model && (
-        <View style={{ flex: 1, backgroundColor: colors.screen, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40 }}>
+        <View style={{ flex: 1, backgroundColor: colors.screen, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 24) + 16 }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
@@ -115,6 +104,12 @@ export function TimerOverlay() {
                 </Text>
               </View>
             )}
+          </View>
+
+          {/* Starting another habit discards a too-short running timer and opens
+              this modal, which covers the app's toast, so it shows here too. */}
+          <View style={{ marginBottom: 12 }}>
+            <MessageToast />
           </View>
 
           {/* Controls */}
