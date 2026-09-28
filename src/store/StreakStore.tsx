@@ -6,13 +6,13 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { Alert, AppState } from 'react-native';
 
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
-import { activeSec } from '../domain/engine';
 import { clampCapacity, DEFAULT_PREFS, raiseCapacityToFit, scaleTargetsToFit, targetCheck } from '../domain/capacity';
 import { missingLogs } from '../domain/dailyLog';
 import { selectToday } from '../domain/day';
@@ -195,7 +195,13 @@ const INITIAL_UI: UIState = {
   bursts: [],
 };
 
-/** Time for a full-screen modal to finish its dismiss animation. */
+/** Whether any sheet or the focus view is up (full-screen celebrations wait for them). */
+export function anyModalOpen(ui: UIState): boolean {
+  return (
+    ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix ||
+    !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet
+  );
+}
 
 /** How long the "Session deleted · Undo" toast stays up. */
 export const UNDO_MS = 5000;
@@ -315,21 +321,53 @@ export interface StreakActions {
   setPlanCap(cap: number): void;
 }
 
-interface StreakContextValue {
+/**
+ * UI state lives outside React state so each overlay subscribes to just its
+ * slice (useUi): typing in one sheet doesn't re-render every other one.
+ */
+interface UiStore {
+  get(): UIState;
+  set(fn: (prev: UIState) => UIState): void;
+  subscribe(listener: () => void): () => void;
+}
+
+function createUiStore(): UiStore {
+  let state = INITIAL_UI;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => state,
+    set: (fn) => {
+      const next = fn(state);
+      if (next === state) return;
+      state = next;
+      listeners.forEach((l) => l());
+    },
+    subscribe: (l) => {
+      listeners.add(l);
+      return () => {
+        listeners.delete(l);
+      };
+    },
+  };
+}
+
+/** What never (or only once) changes: actions are stable for the provider's life. */
+interface StaticValue {
   ready: boolean;
-  data: PersistedState;
-  ui: UIState;
-  now: number;
   config: AppConfig;
-  /** Device-only preferences (not synced). */
-  settings: AppSettings;
   actions: StreakActions;
-  sync: SyncStatus;
+  uiStore: UiStore;
   /** Stop syncing and erase this device's data and sync state (before sign-out). */
   clearLocalData(): Promise<void>;
 }
 
-const StreakContext = createContext<StreakContextValue | null>(null);
+// One context per kind of change, so a component re-renders only for what it reads.
+const StaticContext = createContext<StaticValue | null>(null);
+const DataContext = createContext<PersistedState | null>(null);
+const NowContext = createContext<number>(0);
+/** Device-only preferences (not synced). */
+const SettingsContext = createContext<AppSettings>(DEFAULT_SETTINGS);
+const SyncContext = createContext<SyncStatus>({ state: 'syncing', pending: 0, settled: false });
 
 function emptyData(now: number): PersistedState {
   return {
@@ -392,7 +430,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     activeRev: 0,
   }));
   const data = store.data;
-  const [ui, setUi] = useState<UIState>(INITIAL_UI);
+  const [uiStore] = useState(createUiStore);
+  const setUi = uiStore.set;
   const [now, setNow] = useState(() => Date.now());
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const settingsRef = useRef(settings);
@@ -560,16 +599,18 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   }, [ready, wiped, sync.settled, data.projects, data.habits, setData]);
 
   // The undo toast expires on its own; a newer delete restarts the clock.
+  const undo = useSyncExternalStore(uiStore.subscribe, () => uiStore.get().undo);
+  const toast = useSyncExternalStore(uiStore.subscribe, () => uiStore.get().toast);
   useEffect(() => {
-    if (!ui.undo) return;
-    const t = setTimeout(() => setUi((p) => (p.undo === ui.undo ? { ...p, undo: null } : p)), UNDO_MS);
+    if (!undo) return;
+    const t = setTimeout(() => setUi((p) => (p.undo === undo ? { ...p, undo: null } : p)), UNDO_MS);
     return () => clearTimeout(t);
-  }, [ui.undo]);
+  }, [undo, setUi]);
   useEffect(() => {
-    if (!ui.toast) return;
-    const t = setTimeout(() => setUi((p) => (p.toast === ui.toast ? { ...p, toast: null } : p)), TOAST_MS);
+    if (!toast) return;
+    const t = setTimeout(() => setUi((p) => (p.toast === toast ? { ...p, toast: null } : p)), TOAST_MS);
     return () => clearTimeout(t);
-  }, [ui.toast]);
+  }, [toast, setUi]);
 
   // A slow tick keeps minute-level views (today's total, the day turning)
   // current; live clocks tick on their own (useNow), so a running timer
@@ -792,8 +833,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setUi((p) => ({
           ...p,
           habitSheet: null,
-          timerOpen:
-            data.active && data.active.habitId === id ? false : p.timerOpen,
+          timerOpen: storeRef.current.data.active?.habitId === id ? false : p.timerOpen,
         }));
       },
       mergeHabit: (fromId, intoId) => {
@@ -924,8 +964,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       openLogSheet: (habitId) => {
         // Default to the given habit, else the first planned one not done yet today.
         const now = Date.now();
-        const next = selectToday(data, now).items.find((i) => !i.done && i.kind === 'timed')?.habitId;
-        const def = habitId ?? next ?? activeHabits(data)[0]?.id ?? null;
+        const d = storeRef.current.data;
+        const next = selectToday(d, now).items.find((i) => !i.done && i.kind === 'timed')?.habitId;
+        const def = habitId ?? next ?? activeHabits(d)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {
@@ -1022,7 +1063,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         });
       },
       deleteSession: (id) => {
-        const deleted = data.sessions.find((s) => s.id === id) ?? null;
+        const deleted = storeRef.current.data.sessions.find((s) => s.id === id) ?? null;
         setData((d) => ({
           ...d,
           sessions: d.sessions.filter((s) => s.id !== id),
@@ -1121,27 +1162,79 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
       setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
     };
-    // A few actions read `data` directly (deleteHabit's timerOpen decision,
-    // openLogSheet, deleteSession's undo copy); the rest use
-    // functional updates. Recreate when data identity changes so reads are fresh.
-  }, [data, setData, updateSettings]);
+    // Reads go through storeRef (the latest committed data), so actions never
+    // change identity and memoized children don't re-render for them.
+  }, [setData, setUi, updateSettings]);
   actionsRef.current = actions;
 
-  const value = useMemo<StreakContextValue>(
-    () => ({ ready, data, ui, now, config: DEFAULT_CONFIG, settings, actions, sync, clearLocalData }),
-    [ready, data, ui, now, settings, actions, sync, clearLocalData]
+  const staticValue = useMemo<StaticValue>(
+    () => ({ ready, config: DEFAULT_CONFIG, actions, uiStore, clearLocalData }),
+    [ready, actions, uiStore, clearLocalData]
   );
 
-  return <StreakContext.Provider value={value}>{children}</StreakContext.Provider>;
+  return (
+    <StaticContext.Provider value={staticValue}>
+      <DataContext.Provider value={data}>
+        <NowContext.Provider value={now}>
+          <SettingsContext.Provider value={settings}>
+            <SyncContext.Provider value={sync}>{children}</SyncContext.Provider>
+          </SettingsContext.Provider>
+        </NowContext.Provider>
+      </DataContext.Provider>
+    </StaticContext.Provider>
+  );
 }
 
-export function useStreak(): StreakContextValue {
-  const ctx = useContext(StreakContext);
-  if (!ctx) throw new Error('useStreak must be used within StreakProvider');
+function useStatic(): StaticValue {
+  const ctx = useContext(StaticContext);
+  if (!ctx) throw new Error('Streak hooks must be used within StreakProvider');
   return ctx;
 }
 
-/** Convenience: current active-timer seconds (unused-safe helper for screens). */
-export function currentActiveSec(data: PersistedState, now: number): number {
-  return activeSec(data.active, now);
+/** The store's actions; stable, so reading them never re-renders. */
+export function useActions(): StreakActions {
+  return useStatic().actions;
+}
+
+/** True once persisted data is loaded. */
+export function useReady(): boolean {
+  return useStatic().ready;
+}
+
+export function useConfig(): AppConfig {
+  return useStatic().config;
+}
+
+export function useClearLocalData(): () => Promise<void> {
+  return useStatic().clearLocalData;
+}
+
+/** Synced data; re-renders on any data change. */
+export function useData(): PersistedState {
+  const d = useContext(DataContext);
+  if (!d) throw new Error('useData must be used within StreakProvider');
+  return d;
+}
+
+/** The store's slow clock (every STORE_TICK_MS, on data changes and on foreground). */
+export function useStoreNow(): number {
+  return useContext(NowContext);
+}
+
+/** Device-only preferences (not synced). */
+export function useSettings(): AppSettings {
+  return useContext(SettingsContext);
+}
+
+export function useSyncStatus(): SyncStatus {
+  return useContext(SyncContext);
+}
+
+/**
+ * A slice of UI state; re-renders only when the selected value changes
+ * (by identity), so select a field, not a new object.
+ */
+export function useUi<T>(select: (ui: UIState) => T): T {
+  const { uiStore } = useStatic();
+  return useSyncExternalStore(uiStore.subscribe, () => select(uiStore.get()));
 }

@@ -7,14 +7,16 @@ import { Sheet } from '../components/Sheet';
 import { activeHabits } from '../domain/projects';
 import { checkSessionTimes } from '../domain/sessions';
 import { fmtHM } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
 
 export function EditSessionSheet() {
   const { colors, radius, shadow } = useTheme();
-  const { data, ui, now, actions } = useStreak();
-  const sheet = ui.sessionSheet;
+  const data = useData();
+  const now = useStoreNow();
+  const actions = useActions();
+  const sheet = useUi((u) => u.sessionSheet);
   // Validate live so problems show while picking, not only on save.
   const check = sheet ? checkSessionTimes(sheet.start, sheet.end, now, { existing: true }) : null;
   const error = sheet?.error ?? (check && !check.ok ? check.error : null);

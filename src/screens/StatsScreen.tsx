@@ -16,7 +16,7 @@ import { STREAK_MILESTONES } from '../domain/milestones';
 import { sessionWhen } from '../domain/projectsView';
 import { badgeCollection, projectTotals, weeklyByProject } from '../domain/stats';
 import { fmtDur, sayDur } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useStoreNow } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -24,7 +24,9 @@ import { useTheme } from '../theme/ThemeProvider';
 export function StatsScreen() {
   const t = useTheme();
   const { colors } = t;
-  const { data, now, actions } = useStreak();
+  const data = useData();
+  const now = useStoreNow();
+  const actions = useActions();
   const streak = useDayStreak();
   const weeks = useMemo(() => weeklyByProject(data, now), [data, Math.floor(now / 3_600_000)]);
   const totals = useMemo(() => projectTotals(data), [data]);

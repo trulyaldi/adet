@@ -4,7 +4,7 @@ import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
 import { fmtClock, sayDur } from '../../domain/time';
-import { useStreak } from '../../store/StreakStore';
+import { useActions } from '../../store/StreakStore';
 import { useActiveProgress } from '../../store/useActiveProgress';
 import { useStopTimer } from '../../store/useStopTimer';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -20,7 +20,7 @@ import { ProgressRing } from '../motion/ProgressRing';
 export function ActiveSessionCard({ item }: { item: TodayItem }) {
   const t = useTheme();
   const { colors, radius } = t;
-  const { actions } = useStreak();
+  const actions = useActions();
   const reduced = useReducedMotion();
   const stop = useStopTimer();
   const sw = t.swatch(item.color);

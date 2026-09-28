@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 
 import { feedback } from '../feedback/feedback';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useUi } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
 import { Glyph, IconButton } from './Glyph';
@@ -15,10 +15,11 @@ function useToastIn() {
 
 /** A deleted session, offered for undo until the store clears it (UNDO_MS). */
 export function UndoToast() {
-  const { ui, actions } = useStreak();
+  const undo = useUi((u) => u.undo);
+  const actions = useActions();
   const { colors, radius } = useTheme();
   const entering = useToastIn();
-  if (!ui.undo) return null;
+  if (!undo) return null;
 
   return (
     <Animated.View
@@ -56,20 +57,20 @@ export function UndoToast() {
 
 /** A brief icon toast from the store (ui.toast); its label is spoken, not shown. */
 export function MessageToast() {
-  const { ui } = useStreak();
+  const toast = useUi((u) => u.toast);
   const { colors, radius } = useTheme();
   const entering = useToastIn();
-  if (!ui.toast) return null;
+  if (!toast) return null;
 
   return (
     <Animated.View entering={entering} exiting={FadeOut.duration(150)} style={{ alignSelf: 'center' }}>
       <View
         accessible
         accessibilityRole="alert"
-        accessibilityLabel={ui.toast.label}
+        accessibilityLabel={toast.label}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 10, paddingHorizontal: 16 }}
       >
-        <Glyph name={ui.toast.glyph} size={20} color={colors.bg} bg={colors.ink} />
+        <Glyph name={toast.glyph} size={20} color={colors.bg} bg={colors.ink} />
         <Glyph name="clock" size={16} color={colors.muted} bg={colors.ink} />
       </View>
     </Animated.View>

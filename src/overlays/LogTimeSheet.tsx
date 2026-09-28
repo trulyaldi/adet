@@ -7,7 +7,7 @@ import { Sheet } from '../components/Sheet';
 import { activeHabits } from '../domain/projects';
 import { checkSessionTimes, fitManualStart, SESSION_MAX_SEC } from '../domain/sessions';
 import { fmtHM, fmtMin, stepFor } from '../domain/time';
-import { logSheetEnd, useStreak } from '../store/StreakStore';
+import { logSheetEnd, useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -15,8 +15,10 @@ const MAX_MIN = SESSION_MAX_SEC / 60;
 
 export function LogTimeSheet() {
   const { colors, radius, shadow } = useTheme();
-  const { data, ui, now, actions } = useStreak();
-  const sheet = ui.logSheet;
+  const data = useData();
+  const now = useStoreNow();
+  const actions = useActions();
+  const sheet = useUi((u) => u.logSheet);
   // Validate live so problems show while picking, not only on save.
   const check = sheet ? checkSessionTimes(sheet.start, logSheetEnd(sheet), now) : null;
   const error = sheet?.error ?? (check && !check.ok ? check.error : null);

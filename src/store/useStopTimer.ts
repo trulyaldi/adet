@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { activeSec } from '../domain/engine';
 import { longSessionSec } from '../domain/reminder';
 import { fmtHM } from '../domain/time';
-import { useStreak } from './StreakStore';
+import { useActions, useData, useSettings } from './StreakStore';
 
 /**
  * Stop the running timer. An unusually long session offers a trim before it's
@@ -11,7 +11,9 @@ import { useStreak } from './StreakStore';
  * since iOS can't show an alert over a dismissing modal.
  */
 export function useStopTimer(): () => void {
-  const { data, settings, actions } = useStreak();
+  const data = useData();
+  const settings = useSettings();
+  const actions = useActions();
   return () => {
     const secs = activeSec(data.active, Date.now());
     if (secs <= longSessionSec(settings.reminderHours)) {

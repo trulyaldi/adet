@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { ActiveProgress, activeProgress } from '../domain/day';
-import { useStreak } from './StreakStore';
+import { useData } from './StreakStore';
 import { useNow } from './useNow';
 
 /**
@@ -10,7 +10,7 @@ import { useNow } from './useNow';
  * advance from the timer's timestamps, so this stays cheap every tick.
  */
 export function useActiveProgress(enabled = true): ActiveProgress | null {
-  const { data } = useStreak();
+  const data = useData();
   const running = !!data.active?.startedAt;
   const now = useNow(1000, enabled && running);
   const base = useMemo(() => {

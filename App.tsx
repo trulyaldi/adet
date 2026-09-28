@@ -23,7 +23,7 @@ import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
-import { StreakProvider, useStreak } from './src/store/StreakStore';
+import { StreakProvider, useActions, useReady, useUi } from './src/store/StreakStore';
 import { Watchers } from './src/store/Watchers';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
 import { WelcomeFlow } from './src/overlays/WelcomeFlow';
@@ -35,7 +35,9 @@ import { DevicePrefsProvider } from './src/store/devicePrefs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
 function Root() {
-  const { ready, ui, actions } = useStreak();
+  const ready = useReady();
+  const screen = useUi((u) => u.screen);
+  const actions = useActions();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -48,11 +50,11 @@ function Root() {
       {/* Screens scroll below the status bar, never under it. */}
       <View style={{ height: insets.top, backgroundColor: colors.bg }} />
       <View style={{ flex: 1 }}>
-        <ErrorBoundary key={ui.screen}>
+        <ErrorBoundary key={screen}>
           <ScreenIn>
-            {ui.screen === 'today' && <TodayScreen />}
-            {ui.screen === 'projects' && <ProjectsScreen />}
-            {ui.screen === 'stats' && <StatsScreen />}
+            {screen === 'today' && <TodayScreen />}
+            {screen === 'projects' && <ProjectsScreen />}
+            {screen === 'stats' && <StatsScreen />}
           </ScreenIn>
         </ErrorBoundary>
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
@@ -61,7 +63,7 @@ function Root() {
         </View>
       </View>
 
-      <TabBar active={ui.screen} onChange={actions.setScreen} />
+      <TabBar active={screen} onChange={actions.setScreen} />
 
       {/* Overlays (each is a Modal, safe to always mount) */}
       <FocusView />

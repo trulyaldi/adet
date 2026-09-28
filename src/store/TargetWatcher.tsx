@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import { useStreak } from './StreakStore';
+import { useActions } from './StreakStore';
 import { useActiveProgress } from './useActiveProgress';
 
 /**
@@ -9,7 +9,7 @@ import { useActiveProgress } from './useActiveProgress';
  * already past it). Renders nothing; ticks only while a timer runs.
  */
 export function TargetWatcher() {
-  const { actions } = useStreak();
+  const actions = useActions();
   const p = useActiveProgress();
   const last = useRef<{ key: string; sec: number } | null>(null);
   useEffect(() => {

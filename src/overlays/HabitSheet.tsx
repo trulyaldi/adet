@@ -10,7 +10,7 @@ import { ICONS, ICON_KEYS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { activeHabits, isArchived } from '../domain/projects';
 import { fmtDur, stepFor } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -24,8 +24,9 @@ const MAX_TARGET_MIN = 240;
 export function HabitSheet() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, actions } = useStreak();
-  const sheet = ui.habitSheet;
+  const data = useData();
+  const actions = useActions();
+  const sheet = useUi((u) => u.habitSheet);
   const isEdit = !!sheet?.id;
   const dup = sheet && !sheet.id ? data.habits.find((h) => h.name.trim().toLowerCase() === sheet.name.trim().toLowerCase()) : null;
   const valid = !!(sheet && sheet.name.trim() && !dup);

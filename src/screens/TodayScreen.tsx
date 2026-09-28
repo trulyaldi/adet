@@ -18,7 +18,7 @@ import { StreakPill } from '../components/today/StreakPill';
 import { SummaryCard } from '../components/today/SummaryCard';
 import { selectToday, TodayItem } from '../domain/day';
 import { fmtDur } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -28,7 +28,10 @@ const GAP = 10;
 export function TodayScreen() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, now, settings, actions } = useStreak();
+  const data = useData();
+  const now = useStoreNow();
+  const settings = useSettings();
+  const actions = useActions();
   const model = useMemo(() => selectToday(data, now), [data, now]);
   const streak = useDayStreak().current;
   // Only a day that finishes on screen animates into the check.
@@ -173,14 +176,14 @@ export function TodayScreen() {
 
 /** The companion hops up beside the ring for a moment when the day completes. */
 function DayCheer() {
-  const { ui } = useStreak();
+  const confetti = useUi((u) => u.confetti);
   const [on, setOn] = useState(false);
   useEffect(() => {
-    if (!ui.confetti) return;
+    if (!confetti) return;
     setOn(true);
     const tm = setTimeout(() => setOn(false), 3800);
     return () => clearTimeout(tm);
-  }, [ui.confetti]);
+  }, [confetti]);
   if (!on) return null;
   return (
     <Animated.View entering={ZoomIn.springify().damping(12)} exiting={FadeOut} pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: -6 }}>

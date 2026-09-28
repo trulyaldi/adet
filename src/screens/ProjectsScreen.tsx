@@ -13,12 +13,15 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { ICONS } from '../domain/constants';
 import { ProjectView, selectProjectsView, sessionWhen } from '../domain/projectsView';
 import { fmtDur, sayDur } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useSettings, useStoreNow } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
 
 export function ProjectsScreen() {
   const { colors } = useTheme();
-  const { data, now, settings, actions } = useStreak();
+  const data = useData();
+  const now = useStoreNow();
+  const settings = useSettings();
+  const actions = useActions();
   const model = useMemo(() => selectProjectsView(data, now), [data, now]);
   const [open, setOpen] = useState<string | null>(null);
   const showCheck = model.check.over && settings.targetCheckDismissed !== model.check.signature;
@@ -74,7 +77,7 @@ export function ProjectsScreen() {
 function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: boolean; onToggle(): void }) {
   const t = useTheme();
   const { colors, radius } = t;
-  const { actions } = useStreak();
+  const actions = useActions();
   const layout = useLayoutMotion();
   const sw = t.swatch(pc.look.color);
   const ink = t.dark ? sw.base : sw.dark;
@@ -186,7 +189,7 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
 function Archived({ items }: { items: { projectId: string; name: string; lifetimeSec: number; look: ProjectView['look'] }[] }) {
   const t = useTheme();
   const { colors, radius } = t;
-  const { actions } = useStreak();
+  const actions = useActions();
   const [open, setOpen] = useState(false);
   return (
     <View style={{ marginTop: 24 }}>

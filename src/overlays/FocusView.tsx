@@ -19,7 +19,7 @@ import { projectLook } from '../domain/look';
 import { fmtClock, fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
 import { useDevicePrefs } from '../store/devicePrefs';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useUi } from '../store/StreakStore';
 import { useActiveProgress } from '../store/useActiveProgress';
 import { useStopTimer } from '../store/useStopTimer';
 import { springs } from '../theme/motion';
@@ -36,8 +36,10 @@ const DIM_OFFER_MS = 2 * 60_000;
  * running. The screen stays awake while it's open.
  */
 export function FocusView() {
-  const { data, ui, actions } = useStreak();
-  const open = ui.timerOpen && !!data.active;
+  const data = useData();
+  const timerOpen = useUi((u) => u.timerOpen);
+  const actions = useActions();
+  const open = timerOpen && !!data.active;
   return (
     <Modal visible={open} animationType="slide" onRequestClose={actions.closeTimer} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>{open && <FocusContent />}</GestureHandlerRootView>
@@ -49,7 +51,10 @@ function FocusContent() {
   useKeepAwake();
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, actions } = useStreak();
+  const data = useData();
+  const targetHits = useUi((u) => u.targetHits);
+  const cheerUntil = useUi((u) => u.cheerUntil);
+  const actions = useActions();
   const { prefs, setPrefs } = useDevicePrefs();
   const reduced = useReducedMotion();
   const appActive = useAppActive();
@@ -94,7 +99,7 @@ function FocusContent() {
   const frac = p.sec / p.targetSec;
   const ringSize = Math.min(290, width - 70);
   const cy = insets.top + 70 + (height - insets.top - insets.bottom - 250) / 2;
-  const cheering = ui.cheerUntil > Date.now();
+  const cheering = cheerUntil > Date.now();
   const mood = p.paused ? 'sleepy' : cheering ? 'cheer' : 'idle';
   const earlier = p.sec - p.sessionSec;
 
@@ -121,7 +126,7 @@ function FocusContent() {
           progress={frac}
           sessionSec={p.sessionSec}
           swatch={sw}
-          payoff={ui.targetHits}
+          payoff={targetHits}
           moving={!reduced && appActive && !dimmed}
           reduced={reduced}
           dark={t.dark}
