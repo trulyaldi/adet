@@ -14,7 +14,6 @@ import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
 import { activeSec } from '../domain/engine';
 import { activeHabits } from '../domain/projects';
-import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
 import {
   addToPlan,
   clampBudgetMin,
@@ -133,8 +132,6 @@ export interface UIState {
   undo: Session | null;
   /** Monday dkey of the weekly recap shown in the recap sheet. */
   recapSheet: string | null;
-  /** Monday dkey of the recap card on Today; stays up for this app session until dismissed. */
-  recapCard: string | null;
   /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
   toast: string | null;
   settingsOpen: boolean;
@@ -160,7 +157,6 @@ const INITIAL_UI: UIState = {
   sessionSheet: null,
   undo: null,
   recapSheet: null,
-  recapCard: null,
   toast: null,
   settingsOpen: false,
   statsView: 'overview',
@@ -256,7 +252,6 @@ export interface StreakActions {
    * frequencies (habit id → frequency), or keeping everything as is (null).
    */
   finishRebalance(chosen: Record<string, Frequency> | null): void;
-  dismissRecapCard(): void;
   // device settings
   setReminderHours(hours: number): void;
   /** Daily time budget in minutes (15..180, 15-minute steps). */
@@ -440,18 +435,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     if (!ready) return;
     syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
   }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
-
-  // Last week's recap card: the first time it's offered it is recorded as seen
-  // on this device, so it appears once per week; it stays up for this session
-  // until dismissed. Re-checked when data changes, e.g. last week arriving via sync.
-  const lastWeek = lastCompletedWeekStart(now);
-  useEffect(() => {
-    if (!ready || wiped) return;
-    const recap = recapToShow(store.data, Date.now(), settings.recapSeenWeek);
-    if (!recap) return;
-    setUi((p) => ({ ...p, recapCard: recap.weekStart }));
-    updateSettings({ recapSeenWeek: recap.weekStart });
-  }, [ready, wiped, lastWeek, store.data, settings.recapSeenWeek, updateSettings]);
 
   // Once per device: offer to remove sessions under a minute left over from
   // before the stop rule. Re-checked as data arrives (e.g. the first pull on a
@@ -962,7 +945,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
       openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
       closeRecap: () => patchUi({ recapSheet: null }),
-      dismissRecapCard: () => patchUi({ recapCard: null }),
 
       openPlanPicker: (planPicker) => patchUi({ planPicker }),
       closePlanPicker: () => patchUi({ planPicker: null }),

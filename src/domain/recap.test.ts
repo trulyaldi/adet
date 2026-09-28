@@ -164,19 +164,19 @@ test('pastRecaps lists recent finished weeks with data, newest first', () => {
   });
 });
 
-test('changeLabel says up, down, or same compared with the week before', () => {
+test('changeLabel says up or same compared with the week before; a quieter week says nothing', () => {
   assert.equal(changeLabel(5 * H, 3 * H), 'up 2h on the week before');
-  assert.equal(changeLabel(1 * H, 1.5 * H), 'down 30m on the week before');
+  assert.equal(changeLabel(1 * H, 1.5 * H), '');
   assert.equal(changeLabel(H, H + 30), 'same as the week before');
 });
 
 test('recapSummary counts targets hit and total time', () => {
   inTZ('Asia/Almaty', () => {
     const d = data([sess('h1', at(8, 22), 5 * H), sess('h2', at(8, 23), 1 * H), sess('h1', at(8, 15), 4 * H)]);
-    assert.equal(recapSummary(weekRecap(d, '2026-09-21')), 'Hit 1 of 2 targets · 6h tracked · up 2h on the week before');
+    assert.equal(recapSummary(weekRecap(d, '2026-09-21')), '1 target met · 6h tracked · up 2h on the week before');
     const noTargets = data([sess('h1', at(8, 22), H)], { p1: 0, p2: 0 });
     assert.equal(recapSummary(weekRecap(noTargets, '2026-09-21')), '1h tracked · up 1h on the week before');
-    assert.equal(recapSummary(weekRecap(d, '2026-09-21'), { tracked: false }), 'Hit 1 of 2 targets · up 2h on the week before');
+    assert.equal(recapSummary(weekRecap(d, '2026-09-21'), { tracked: false }), '1 target met · up 2h on the week before');
   });
 });
 
@@ -207,4 +207,9 @@ test('archived projects drop out of recap targets but their time still counts', 
       ]
     );
   });
+});
+
+test('a quieter week with no target met is just its total: no shortfall, no "of N"', () => {
+  const r = { weekStart: '2026-09-21', rangeLabel: '', projects: [], totalSec: 2 * H, prevTotalSec: 5 * H, bestDay: null, sessions: 3, hitCount: 0, targetCount: 2 };
+  assert.equal(recapSummary(r), '2h tracked');
 });

@@ -422,7 +422,7 @@ export function selectStageSheet(
       wk <= 1
         ? 'About a week away at your current pace'
         : '~' + Math.ceil(wk) + ' weeks away at ' + paceH.toFixed(1) + 'h / week';
-  } else etaLabel = 'Log some time this week to start closing the gap';
+  } else etaLabel = '';
 
   const ladder: StageLadderRow[] = stages.map(([name, hrs]) => ({
     name,

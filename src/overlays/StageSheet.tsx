@@ -45,10 +45,12 @@ export function StageSheet() {
               <View style={{ marginTop: 11 }}>
                 <ProgressBar pct={model.progressPct} color={config.accent} track={colors.track3} height={8} />
               </View>
+              {!!model.etaLabel && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 13 }}>
                 <Icon path={SUN} size={16} color={config.accent} strokeWidth={2} />
                 <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.ink }}>{model.etaLabel}</Text>
               </View>
+              )}
             </View>
           )}
 

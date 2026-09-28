@@ -327,14 +327,15 @@ function PastWeeksCard() {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{r.rangeLabel}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 3 }}>
-              {r.targetCount > 0 && (
+              {/* Only met targets are counted; never a shortfall tally. */}
+              {r.hitCount > 0 && (
                 <View
                   accessible
-                  accessibilityLabel={`${r.hitCount} of ${r.targetCount} targets met`}
+                  accessibilityLabel={`${r.hitCount} ${r.hitCount === 1 ? 'target' : 'targets'} met`}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                 >
                   <Glyph name="done" size={12} color={colors.subtext} />
-                  <Text style={{ fontSize: 12, color: colors.subtext, fontVariant: ['tabular-nums'] }}>{`${r.hitCount}/${r.targetCount}`}</Text>
+                  <Text style={{ fontSize: 12, color: colors.subtext, fontVariant: ['tabular-nums'] }}>{r.hitCount}</Text>
                 </View>
               )}
               <View accessible accessibilityLabel={`${r.sessions} sessions`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

@@ -60,7 +60,9 @@ export function RecapSheet() {
                     </View>
                   )}
                 </View>
-                {!single && <Text style={{ fontSize: 12, color: colors.subtext }}>{changeLabel(p.doneSec, p.prevSec)}</Text>}
+                {!single && !!changeLabel(p.doneSec, p.prevSec) && (
+                  <Text style={{ fontSize: 12, color: colors.subtext }}>{changeLabel(p.doneSec, p.prevSec)}</Text>
+                )}
               </View>
             ))}
           </View>

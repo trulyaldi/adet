@@ -7,7 +7,6 @@ import { DayCompleteCard } from '../components/DayCompleteCard';
 import { DayRing } from '../components/DayRing';
 import { Glyph, IconButton } from '../components/Glyph';
 import { PlanCard } from '../components/PlanCard';
-import { RecapCard } from '../components/RecapCard';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { selectPlanToday } from '../domain/today';
 import { useStreak } from '../store/StreakStore';
@@ -145,9 +144,6 @@ export function TodayScreen() {
           {!finished && model.bonus.map((c) => <PlanCard key={c.habitId} card={c} bonus />)}
         </>
       )}
-
-      {/* Last week's recap, once per week */}
-      <RecapCard />
     </ScrollView>
   );
 }
