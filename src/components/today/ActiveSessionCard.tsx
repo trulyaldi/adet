@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
-import { activeProgress, TodayItem } from '../../domain/day';
+import { TodayItem } from '../../domain/day';
 import { fmtClock, sayDur } from '../../domain/time';
 import { useStreak } from '../../store/StreakStore';
-import { useNow } from '../../store/useNow';
+import { useActiveProgress } from '../../store/useActiveProgress';
 import { useStopTimer } from '../../store/useStopTimer';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
@@ -20,12 +20,11 @@ import { ProgressRing } from '../motion/ProgressRing';
 export function ActiveSessionCard({ item }: { item: TodayItem }) {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, actions } = useStreak();
+  const { actions } = useStreak();
   const reduced = useReducedMotion();
-  const now = useNow(1000);
   const stop = useStopTimer();
   const sw = t.swatch(item.color);
-  const p = useMemo(() => activeProgress(data, now), [data, now]);
+  const p = useActiveProgress();
   if (!p) return null;
   const frac = p.sec / p.targetSec;
 

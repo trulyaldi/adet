@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { AdetLockup } from '../components/AdetMark';
+import { Companion } from '../components/Companion';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Appear } from '../components/motion/Appear';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -56,7 +57,7 @@ export function TodayScreen() {
 
       {model.noHabits ? (
         <View style={{ alignItems: 'center', paddingVertical: 48, gap: 20 }}>
-          <Glyph name="moon" size={56} color={colors.muted} label="Nothing here yet" />
+          <Companion mood="idle" size={120} />
           <IconButton
             label="Add a project and habits"
             name="plus"
@@ -192,7 +193,10 @@ function FreeDay({ trackedSec, onBonus }: { trackedSec: number; onBonus(): void 
   const { colors } = useTheme();
   return (
     <View style={{ alignItems: 'center', paddingTop: 36, gap: 12 }}>
-      <Glyph name="moon" size={64} color={colors.muted} label="Nothing planned today, rest easy" />
+      <View accessible accessibilityLabel="Nothing planned today, rest easy">
+        <Companion mood="sleepy" size={130} />
+      </View>
+      <Glyph name="moon" size={22} color={colors.muted} />
       {trackedSec > 0 && <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>{fmtDur(trackedSec)}</Text>}
       <BonusButton onPress={onBonus} />
     </View>

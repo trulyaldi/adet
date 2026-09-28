@@ -19,13 +19,14 @@ import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { StartSheet } from './src/overlays/StartSheet';
-import { TimerOverlay } from './src/overlays/TimerOverlay';
+import { FocusView } from './src/overlays/FocusView';
 import { WeekSheet } from './src/overlays/WeekSheet';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
+import { TargetWatcher } from './src/store/TargetWatcher';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
 import { preloadSounds } from './src/feedback/audio';
 import { DevicePrefsProvider } from './src/store/devicePrefs';
@@ -65,7 +66,8 @@ function Root() {
       <TabBar active={ui.screen} onChange={actions.setScreen} />
 
       {/* Overlays (each is a Modal, safe to always mount) */}
-      <TimerOverlay />
+      <FocusView />
+      <TargetWatcher />
       <HabitSheet />
       <ProjectSheet />
       <StageSheet />

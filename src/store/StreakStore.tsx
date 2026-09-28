@@ -142,6 +142,10 @@ export interface UIState {
   weekOpen: boolean;
   /** The "+" sheet: start any project's habit, planned or not. */
   startSheet: boolean;
+  /** Bumped when the running session reaches its target (scene payoff, companion cheer). */
+  targetHits: number;
+  /** Epoch ms until which the companion cheers. */
+  cheerUntil: number;
 }
 
 const INITIAL_UI: UIState = {
@@ -163,6 +167,8 @@ const INITIAL_UI: UIState = {
   statsView: 'overview',
   weekOpen: false,
   startSheet: false,
+  targetHits: 0,
+  cheerUntil: 0,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -247,6 +253,8 @@ export interface StreakActions {
   // week view
   openWeek(): void;
   openStartSheet(): void;
+  /** The running session just reached its target. */
+  targetReached(habitId: string): void;
   closeStartSheet(): void;
   closeWeek(): void;
   /**
@@ -993,6 +1001,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
       openWeek: () => patchUi({ weekOpen: true }),
       openStartSheet: () => patchUi({ startSheet: true }),
+      targetReached: () => {
+        feedback('target_reached');
+        setUi((p) => ({ ...p, targetHits: p.targetHits + 1, cheerUntil: Date.now() + 4000 }));
+      },
       closeStartSheet: () => patchUi({ startSheet: false }),
       closeWeek: () => patchUi({ weekOpen: false }),
       finishRebalance: (chosen) => setData((d) => finishRebalance(d, chosen, dkey(new Date()))),
