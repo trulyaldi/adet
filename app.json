@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Streak",
+    "name": "Adet",
     "slug": "streak",
     "version": "2.0.0",
     "orientation": "portrait",
@@ -8,7 +8,11 @@
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "com.trulyaldi.streak",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": {
+        "light": "./assets/icon-ios-light.png",
+        "dark": "./assets/icon-ios-dark.png"
+      }
     },
     "android": {
       "adaptiveIcon": {

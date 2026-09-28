@@ -1,4 +1,4 @@
-# Streak
+# Adet
 
 A local-first habit & time tracker for iOS/Android, built with **Expo (SDK 57) + React Native 0.86 + React 19.2 + TypeScript**. Ported from the `Streak v2` Claude Design file. All data lives on the device (AsyncStorage) — no backend, works fully offline.
 

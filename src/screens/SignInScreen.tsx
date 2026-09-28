@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { AdetMark } from '../components/AdetMark';
 import { supabase } from '../sync/supabase';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
@@ -86,6 +87,9 @@ export function SignInScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: colors.screen, justifyContent: 'center', paddingHorizontal: 20 }}
     >
+      <View style={{ marginBottom: 16 }}>
+        <AdetMark height={36} />
+      </View>
       <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
         {step === 'email' ? 'Sign in' : 'Check your email'}
       </Text>
