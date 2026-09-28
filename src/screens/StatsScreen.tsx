@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, ScrollView, Text, View } from 'react-nativ
 import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
+import { CompletionMark } from '../components/CompletionMark';
 import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { PatternsCard } from '../components/PatternsCard';
@@ -281,6 +282,7 @@ export function StatsScreen() {
                         <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{hr.note}</Text>
                       ) : null}
                     </View>
+                    <CompletionMark mark={hr.mark} />
                     <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
                   </Pressable>
                 ))}

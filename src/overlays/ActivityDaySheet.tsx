@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { CompletionMark } from '../components/CompletionMark';
 import { Glyph } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
@@ -56,6 +57,7 @@ export function ActivityDaySheet() {
                     <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{s.note}</Text>
                   ) : null}
                 </View>
+                <CompletionMark mark={s.mark} />
                 <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
               </Pressable>
             ))}

@@ -8,6 +8,7 @@ import { dailyStreak, weeklyTargetStreak } from './streaks';
 import { timeOfDay } from './insights';
 import { activeHabits, activeProjects, archivedProjects, isArchived } from './projects';
 import { weekPace, weekSummary, WeekSummary } from './weeks';
+import { Completion, completionOf, habitDaySec, HabitDays } from './plan';
 import {
   ActiveTimer,
   Habit,
@@ -649,6 +650,8 @@ export interface HeatSelSession {
   sub: string;
   /** The session note, shown on its own line; "" when none. */
   note: string;
+  /** The habit's completion that day (see dayMarks). */
+  mark: Completion | null;
 }
 export interface DistRow {
   name: string;
@@ -664,6 +667,8 @@ export interface HistoryRow {
   sub: string;
   /** The session note, shown on its own line; "" when none. */
   note: string;
+  /** The habit's completion that day (see dayMarks). */
+  mark: Completion | null;
 }
 /** Recent sessions that started on one local day, newest first. */
 export interface HistoryDay {
@@ -719,6 +724,22 @@ export function weekVsLastWeek(weekSec: number, lastWeekSec: number, iconPath = 
   if (d > 0) return { iconPath, bg: '#D9F2E3', text: 'You’re ' + fmtH(d) + ' past last week’s total.' };
   // Behind last week is never framed as a shortfall to make up.
   return null;
+}
+
+/**
+ * A habit-day's completion goes on one of its rows only (the first one given
+ * for that habit and day), so a day with several sessions shows it once.
+ */
+function dayMarks(data: PersistedState, days: HabitDays) {
+  const seen = new Set<string>();
+  return (habitId: string, start: number): Completion | null => {
+    const k = dkey(new Date(start));
+    const key = habitId + '|' + k;
+    if (seen.has(key)) return null;
+    seen.add(key);
+    const h = data.habits.find((x) => x.id === habitId);
+    return h ? completionOf(h, days.get(h.id)?.get(k) ?? 0) : null;
+  };
 }
 
 export function selectStats(
@@ -842,9 +863,10 @@ export function selectStats(
     heatSelEmpty = tot <= 0;
     // A lone session's time is already on its row; a running timer has no row.
     heatSelInfo = parts.length >= 2 || running ? fmtHM(Math.floor(tot)) + ' total' : '';
+    const markSel = dayMarks(data, habitDaySec(data, now));
     heatSelSessions = data.sessions
       .filter((s) => dkey(new Date(s.start)) === ui.heatSel)
-      .sort((a, b) => a.start - b.start)
+      .sort((a, b) => b.start - a.start)
       .map((s) => {
         const h = data.habits.find((x) => x.id === s.habitId);
         return h
@@ -855,10 +877,13 @@ export function selectStats(
               name: h.name,
               sub: sessionLine(s),
               note: s.notes ?? '',
+              mark: markSel(s.habitId, s.start),
             }
           : null;
       })
-      .filter((x): x is HeatSelSession => !!x);
+      .filter((x): x is HeatSelSession => !!x)
+      // Marked newest-first (the day's last session), listed oldest first.
+      .reverse();
   }
 
   // longest streak across all history (freezes included, see dailyStreak)
@@ -941,6 +966,7 @@ export function selectStats(
     .sort((a, b) => b.start - a.start)
     .slice(0, 10);
   const historyDays: HistoryDay[] = [];
+  const markRow = dayMarks(data, habitDaySec(data, now));
   for (const s of recent) {
     const h = data.habits.find((x) => x.id === s.habitId)!;
     const key = dkey(new Date(s.start));
@@ -956,6 +982,7 @@ export function selectStats(
       name: h.name,
       sub: sessionLine(s),
       note: s.notes ?? '',
+      mark: markRow(s.habitId, s.start),
     });
   }
   const historyRows: HistoryRow[] = historyDays.flatMap((d) => d.rows);
@@ -1019,34 +1046,52 @@ export interface TimerModel {
   name: string;
   iconPath: string;
   tile: string;
-  projectLabel: string;
   tracking: boolean;
   displaySec: number;
-  ringProgress: number; // 0..1 over the current 30-min cycle
+  /** The session length aimed for, in minutes (full or minimum). */
+  goalMin: number;
+  /** Whether the goal is the minimum (half circle) rather than the full length. */
+  goalIsMin: boolean;
+  /** 0..1 toward the goal, counting today's earlier time on the habit. */
+  ringProgress: number;
+  /** Today's time on the habit reached the goal: the timer keeps running, but the ring shows done. */
+  reached: boolean;
   ringColor: string;
 }
 
+/**
+ * The running timer. `goalMin` is the length chosen at start; without one
+ * (a timer resumed after a restart, or from another device) it's the full
+ * length. Progress counts today's earlier sessions too, since completion is
+ * judged on the day's total.
+ */
 export function selectTimer(
   data: PersistedState,
   config: AppConfig,
-  now: number
+  now: number,
+  goalMin?: number
 ): TimerModel | null {
   const active = data.active;
   const habit = active ? data.habits.find((h) => h.id === active.habitId) : null;
   if (!active || !habit) return null;
-  const project = data.projects.find((p) => p.id === habit.projectId);
   const tracking = !!active.startedAt;
   const secs = activeSec(active, now);
+  const today = dkey(new Date(now));
+  const earlier = habitSec(data, now, habit.id, (s) => dkey(new Date(s.start)) === today) - secs;
+  const goal = Math.max(1, goalMin ?? habit.dailyTargetMin);
+  const progress = Math.min(1, (earlier + secs) / (goal * 60));
   return {
     open: true,
     habitId: habit.id,
     name: habit.name,
     iconPath: iconPath(habit.icon),
     tile: habit.tile,
-    projectLabel: project ? project.name : '',
     tracking,
     displaySec: secs,
-    ringProgress: (secs % 1800) / 1800,
+    goalMin: goal,
+    goalIsMin: goal < habit.dailyTargetMin,
+    ringProgress: progress,
+    reached: progress >= 1,
     ringColor: tracking ? config.accent : '#C9CBD1',
   };
 }

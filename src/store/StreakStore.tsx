@@ -97,6 +97,12 @@ export interface SessionSheetState {
 export interface UIState {
   screen: Screen;
   timerOpen: boolean;
+  /**
+   * The length the running timer is aiming for (full or minimum), in minutes.
+   * UI-only: a timer resumed after a restart or from another device aims for
+   * the habit's full length.
+   */
+  timerGoal: { habitId: string; min: number } | null;
   heatSel: string | null;
   heatSheet: boolean;
   clearArmed: boolean;
@@ -121,6 +127,7 @@ export interface UIState {
 const INITIAL_UI: UIState = {
   screen: 'today',
   timerOpen: false,
+  timerGoal: null,
   heatSel: null,
   heatSheet: false,
   clearArmed: false,
@@ -156,7 +163,8 @@ export interface StreakActions {
   closeSettings(): void;
   setStatsView(view: StatsView): void;
   // timer
-  startTimer(habitId: string): void;
+  /** Start (or switch to) a habit's timer, aiming for `goalMin` minutes (default: its full length). */
+  startTimer(habitId: string, goalMin?: number): void;
   openTimer(): void;
   closeTimer(): void;
   togglePause(): void;
@@ -461,7 +469,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       closeSettings: () => patchUi({ settingsOpen: false }),
       setStatsView: (statsView) => patchUi({ statsView }),
 
-      startTimer: (habitId) => {
+      startTimer: (habitId, goalMin) => {
         const now = Date.now();
         const prev = storeRef.current.data.active;
         // Switching habits stops the running timer first (same rule as Stop).
@@ -475,7 +483,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             active: { habitId, startedAt: now, baseSec: 0 },
           };
         });
-        patchUi(discarded ? { timerOpen: true, toast: SHORT_TIMER_TOAST } : { timerOpen: true });
+        const goal = goalMin ?? storeRef.current.data.habits.find((h) => h.id === habitId)?.dailyTargetMin;
+        const timerGoal = goal ? { habitId, min: goal } : null;
+        patchUi(discarded ? { timerOpen: true, timerGoal, toast: SHORT_TIMER_TOAST } : { timerOpen: true, timerGoal });
         // Reminder permission is asked on timer start; iOS only prompts the first time.
         if (settingsRef.current.reminderHours > 0) {
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
