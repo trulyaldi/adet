@@ -1,5 +1,5 @@
 import { useKeepAwake } from 'expo-keep-awake';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -8,6 +8,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '../components/Button';
+import { Burst } from '../components/celebrate/Burst';
 import { Companion } from '../components/Companion';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
@@ -58,6 +59,9 @@ function FocusContent() {
   const p = useActiveProgress();
   const [dimOffer, setDimOffer] = useState(false);
   const [dimmed, setDimmed] = useState(false);
+  const [burst, setBurst] = useState<{ x: number; y: number } | null>(null);
+  const doneRef = useRef<View>(null);
+  const finishing = useRef(false);
   useEffect(() => {
     const tm = setTimeout(() => setDimOffer(true), DIM_OFFER_MS);
     return () => clearTimeout(tm);
@@ -188,8 +192,26 @@ function FocusContent() {
             onPress={actions.togglePause}
             style={{ flex: 1 }}
           />
-          <Button icon="done" label="Done" swatch={sw} onPress={stop} quiet style={{ flex: 1 }} />
+          <View ref={doneRef} collapsable={false} style={{ flex: 1 }}>
+            <Button
+              icon="done"
+              label="Done"
+              swatch={sw}
+              quiet
+              onPress={() => {
+                if (finishing.current) return;
+                finishing.current = true;
+                doneRef.current?.measureInWindow((x, yy, w, h) => setBurst({ x: x + w / 2, y: yy + h / 2 }));
+                // Let the burst play, then save (and close).
+                setTimeout(stop, reduced ? 0 : 520);
+                // A long-session question may be cancelled; allow another try.
+                setTimeout(() => (finishing.current = false), 1500);
+              }}
+            />
+          </View>
         </View>
+
+        {burst && !reduced && <Burst x={burst.x} y={burst.y} color={sw.base} />}
 
         {dimmed && (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>

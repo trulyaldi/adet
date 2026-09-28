@@ -26,7 +26,10 @@ import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
-import { TargetWatcher } from './src/store/TargetWatcher';
+import { Watchers } from './src/store/Watchers';
+import { CelebrationHost } from './src/overlays/CelebrationHost';
+import { BurstHost } from './src/components/celebrate/Burst';
+import { ConfettiHost } from './src/components/celebrate/Confetti';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
 import { preloadSounds } from './src/feedback/audio';
 import { DevicePrefsProvider } from './src/store/devicePrefs';
@@ -67,7 +70,10 @@ function Root() {
 
       {/* Overlays (each is a Modal, safe to always mount) */}
       <FocusView />
-      <TargetWatcher />
+      <CelebrationHost />
+      <Watchers />
+      <ConfettiHost />
+      <BurstHost />
       <HabitSheet />
       <ProjectSheet />
       <StageSheet />

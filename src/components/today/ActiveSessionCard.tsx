@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
@@ -25,6 +25,7 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
   const stop = useStopTimer();
   const sw = t.swatch(item.color);
   const p = useActiveProgress();
+  const doneRef = useRef<View>(null);
   if (!p) return null;
   const frac = p.sec / p.targetSec;
 
@@ -60,7 +61,23 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
             diameter={46}
             onPress={actions.togglePause}
           />
-          <IconButton label="Done" name="done" size={22} color={sw.dark} bg={colors.card} edge={sw.dark} variant="chunky" diameter={46} quiet onPress={stop} />
+          <View ref={doneRef} collapsable={false}>
+            <IconButton
+              label="Done"
+              name="done"
+              size={22}
+              color={sw.dark}
+              bg={colors.card}
+              edge={sw.dark}
+              variant="chunky"
+              diameter={46}
+              quiet
+              onPress={() => {
+                doneRef.current?.measureInWindow((x, y, w, h) => actions.burst(x + w / 2, y + h / 2, sw.base));
+                stop();
+              }}
+            />
+          </View>
         </View>
       </Pressable>
     </Animated.View>

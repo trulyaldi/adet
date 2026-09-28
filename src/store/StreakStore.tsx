@@ -18,6 +18,7 @@ import { missingLogs } from '../domain/dailyLog';
 import { selectToday } from '../domain/day';
 import { nextProjectColor, nextScene, withLooks } from '../domain/look';
 import { addMark, moveMarks, removeMark } from '../domain/marks';
+import { award, celebrationOrder, enqueueCelebrations } from '../domain/milestones';
 import type { GlyphName } from '../components/glyphs';
 import { feedback } from '../feedback/feedback';
 import { activeHabits } from '../domain/projects';
@@ -146,6 +147,19 @@ export interface UIState {
   targetHits: number;
   /** Epoch ms until which the companion cheers. */
   cheerUntil: number;
+  /** Full-screen milestone celebrations waiting (badge ids); only the first shows. */
+  celebrations: string[];
+  /** Confetti in these colors (a new key each time the day completes). */
+  confetti: { key: number; colors: string[] } | null;
+  /** Particle bursts from a point (session complete). */
+  bursts: Burst[];
+}
+
+export interface Burst {
+  key: number;
+  x: number;
+  y: number;
+  color: string;
 }
 
 const INITIAL_UI: UIState = {
@@ -169,6 +183,9 @@ const INITIAL_UI: UIState = {
   startSheet: false,
   targetHits: 0,
   cheerUntil: 0,
+  celebrations: [],
+  confetti: null,
+  bursts: [],
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -255,6 +272,12 @@ export interface StreakActions {
   openStartSheet(): void;
   /** The running session just reached its target. */
   targetReached(habitId: string): void;
+  /** Record newly earned badges; `celebrate` queues their full-screen cards. */
+  earnBadges(ids: string[], celebrate: boolean): void;
+  dismissCelebration(): void;
+  /** The day's plan just completed on screen. */
+  dayCompleted(colors: string[]): void;
+  burst(x: number, y: number, color: string): void;
   closeStartSheet(): void;
   closeWeek(): void;
   /**
@@ -313,6 +336,7 @@ function emptyData(now: number): PersistedState {
     marks: [],
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
+    badges: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -320,6 +344,8 @@ function emptyData(now: number): PersistedState {
     streakCarry: null,
     rebalancePending: false,
     days: {},
+    // Set once history is here (see MilestoneWatcher).
+    badgesPrimed: false,
   };
 }
 
@@ -1001,6 +1027,21 @@ export function StreakProvider({ userId, children }: { userId: string; children:
 
       openWeek: () => patchUi({ weekOpen: true }),
       openStartSheet: () => patchUi({ startSheet: true }),
+      earnBadges: (ids, celebrate) => {
+        const now = Date.now();
+        setData((d) => ({ ...award(d, ids, now), badgesPrimed: true }));
+        if (celebrate && ids.length) setUi((p) => ({ ...p, celebrations: enqueueCelebrations(p.celebrations, celebrationOrder(ids)) }));
+      },
+      dismissCelebration: () => setUi((p) => ({ ...p, celebrations: p.celebrations.slice(1) })),
+      dayCompleted: (colors) => {
+        feedback('day_complete');
+        setUi((p) => ({ ...p, confetti: { key: Date.now(), colors }, cheerUntil: Date.now() + 4000 }));
+      },
+      burst: (x, y, color) => {
+        const key = Date.now() + Math.random();
+        setUi((p) => ({ ...p, bursts: [...p.bursts, { key, x, y, color }] }));
+        setTimeout(() => setUi((p) => ({ ...p, bursts: p.bursts.filter((b) => b.key !== key) })), 1200);
+      },
       targetReached: () => {
         feedback('target_reached');
         setUi((p) => ({ ...p, targetHits: p.targetHits + 1, cheerUntil: Date.now() + 4000 }));

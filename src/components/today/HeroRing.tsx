@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -131,11 +132,24 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
   const lap1 = useAnimatedProps(() => ({ strokeDashoffset: capCirc * (1 - Math.max(0, Math.min(1, cap.value))) }));
   const lap2 = useAnimatedProps(() => ({ strokeDashoffset: capCirc * (1 - Math.max(0, Math.min(1, cap.value - 1))) }));
 
+  // Time added in a jump (a saved session, a quick log) counts up into the
+  // total and the ring gives a little pulse.
+  const shownSec = useCountUp(trackedSec, reduced);
+  const pulse = useSharedValue(1);
+  const lastSec = useRef(trackedSec);
+  useEffect(() => {
+    if (trackedSec - lastSec.current >= 60 && !reduced) {
+      pulse.value = withSequence(withSpring(1.06, springs.bounce), withSpring(1, springs.appear));
+    }
+    lastSec.current = trackedSec;
+  }, [trackedSec, reduced, pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   const markH = size * 0.42;
   const doneCount = segments.filter((s) => s.frac >= 1).length;
 
   return (
-    <View
+    <Animated.View
       accessible
       accessibilityRole="image"
       accessibilityLabel={
@@ -143,7 +157,7 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
           ? `Day complete, ${sayDur(trackedSec)}`
           : `${sayDur(trackedSec)} today, ${doneCount} of ${segments.length} done`
       }
-      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+      style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, pulseStyle]}
     >
       <Animated.View style={[{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center' }, ringStyle]}>
         <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -173,7 +187,7 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
           adjustsFontSizeToFit
           style={{ fontSize: size * 0.17, fontWeight: '800', letterSpacing: -0.5, color: colors.ink, fontVariant: ['tabular-nums'], maxWidth: rSeg * 1.5 }}
         >
-          {fmtDur(trackedSec)}
+          {fmtDur(shownSec)}
         </Text>
       </Animated.View>
 
@@ -192,6 +206,31 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
           </Svg>
         </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
+}
+
+/** A number that counts up to jumps over ~0.7s (JS-side; it's a few frames of text). */
+function useCountUp(value: number, reduced: boolean): number {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = from.current;
+    from.current = value;
+    if (reduced || value - start < 60) {
+      setShown(value);
+      return;
+    }
+    const t0 = Date.now();
+    let raf = 0;
+    const step = () => {
+      const k = Math.min(1, (Date.now() - t0) / 700);
+      const e = 1 - (1 - k) ** 3;
+      setShown(start + (value - start) * e);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, reduced]);
+  return shown;
 }

@@ -84,6 +84,7 @@ export function seed(now: number = Date.now()): PersistedState {
     marks: [],
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
+    badges: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -91,6 +92,7 @@ export function seed(now: number = Date.now()): PersistedState {
     streakCarry: null,
     rebalancePending: false,
     days: {},
+    badgesPrimed: true,
   };
 }
 

@@ -3,7 +3,7 @@ import { seed } from './seed';
 import { dailyStreak } from './streaks';
 import { addDays, dkey } from './time';
 import { DEFAULT_PREFS, parsePrefs } from './capacity';
-import { CURRENT_SCHEMA_VERSION, DailyLog, DayOverride, Mark, PersistedState, StreakCarry } from './types';
+import { Badge, CURRENT_SCHEMA_VERSION, DailyLog, DayOverride, Mark, PersistedState, StreakCarry } from './types';
 
 /**
  * The streak under the pre-v4 rule (any tracked time, monthly freezes), kept
@@ -78,7 +78,10 @@ export const MIGRATIONS: Array<(s: any, now: number) => any> = [
     marks: Array.isArray(s.marks) ? s.marks : [],
     prefs: s.prefs ?? DEFAULT_PREFS,
     dailyLogs: Array.isArray(s.dailyLogs) ? s.dailyLogs : [],
+    badges: Array.isArray(s.badges) ? s.badges : [],
     days: s.days && typeof s.days === 'object' ? s.days : {},
+    // Milestones already reached are recorded quietly on first load.
+    badgesPrimed: false,
   }),
 ];
 
@@ -112,6 +115,12 @@ function marksOf(v: unknown): Mark[] {
 function logsOf(v: unknown): DailyLog[] {
   if (!Array.isArray(v)) return [];
   return v.filter((l): l is DailyLog => !!l && typeof l.id === 'string' && Array.isArray(l.items));
+}
+
+/** Saved badges, with anything malformed dropped. */
+function badgesOf(v: unknown): Badge[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((b): b is Badge => !!b && typeof b.id === 'string' && typeof b.earnedAt === 'number');
 }
 
 /** Local per-day overrides, keeping only well-formed recent ones. */
@@ -184,6 +193,7 @@ export function hydrate(
     marks: marksOf(migrated.marks),
     prefs: parsePrefs(migrated.prefs),
     dailyLogs: logsOf(migrated.dailyLogs),
+    badges: badgesOf(migrated.badges),
     active: migrated.active || null,
     historyClearedAt: migrated.historyClearedAt || 0,
     plans: plansOf(migrated.plans),
@@ -194,6 +204,7 @@ export function hydrate(
         : null,
     rebalancePending: migrated.rebalancePending === true,
     days: daysOf(migrated.days),
+    badgesPrimed: migrated.badgesPrimed !== false,
   };
 }
 
@@ -203,7 +214,24 @@ export function hydrate(
  * are saved here too; they're never synced.
  */
 export function persistedSlice(data: PersistedState): PersistedState {
-  const { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending, days } =
-    data;
-  return { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending, days };
+  const { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, badges, active, historyClearedAt } = data;
+  const { plans, planSince, streakCarry, rebalancePending, days, badgesPrimed } = data;
+  return {
+    schemaVersion,
+    projects,
+    habits,
+    sessions,
+    marks,
+    prefs,
+    dailyLogs,
+    badges,
+    active,
+    historyClearedAt,
+    plans,
+    planSince,
+    streakCarry,
+    rebalancePending,
+    days,
+    badgesPrimed,
+  };
 }

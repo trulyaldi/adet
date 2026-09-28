@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 
 import { AdetLockup } from '../components/AdetMark';
 import { Companion } from '../components/Companion';
@@ -91,6 +92,7 @@ export function TodayScreen() {
                 complete={model.complete}
                 day={model.day}
               />
+              <DayCheer />
             </View>
           )}
 
@@ -166,6 +168,24 @@ export function TodayScreen() {
         </>
       )}
     </ScrollView>
+  );
+}
+
+/** The companion hops up beside the ring for a moment when the day completes. */
+function DayCheer() {
+  const { ui } = useStreak();
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!ui.confetti) return;
+    setOn(true);
+    const tm = setTimeout(() => setOn(false), 3800);
+    return () => clearTimeout(tm);
+  }, [ui.confetti]);
+  if (!on) return null;
+  return (
+    <Animated.View entering={ZoomIn.springify().damping(12)} exiting={FadeOut} pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: -6 }}>
+      <Companion mood="cheer" size={76} />
+    </Animated.View>
   );
 }
 

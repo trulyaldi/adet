@@ -171,6 +171,14 @@ export interface DailyLog {
   updatedAt?: number;
 }
 
+/** An earned milestone (synced, id = the badge key, e.g. "streak-7"). */
+export interface Badge {
+  id: string;
+  /** Epoch ms it was earned. */
+  earnedAt: number;
+  updatedAt?: number;
+}
+
 /** How heavy a day feels, tapped on first open: 0.5×, 1× or 1.5× capacity. */
 export type DayLevel = 'light' | 'normal' | 'heavy';
 
@@ -197,6 +205,8 @@ export interface PersistedState {
   prefs: UserPrefs;
   /** v5: plan vs actual per finished day (synced). */
   dailyLogs: DailyLog[];
+  /** v5: earned milestones (synced). */
+  badges: Badge[];
   active: ActiveTimer | null;
   historyClearedAt: number;
   // Local-only (not synced), like historyClearedAt:
@@ -212,6 +222,11 @@ export interface PersistedState {
   rebalancePending: boolean;
   /** v5, local-only: per-day edits to the plan (order, set aside, capacity tap). */
   days: Record<string, DayOverride>;
+  /**
+   * v5, local-only: milestones already reached at the update were recorded
+   * quietly (so upgrading doesn't set off a pile of celebrations).
+   */
+  badgesPrimed: boolean;
 }
 
 /** A [name, thresholdHours] stage tuple. */
