@@ -55,6 +55,8 @@ export const GLYPHS = {
   bonus: [{ d: circle(12, 12, 8) }, { d: 'M12 8.6v6.8M8.6 12h6.8' }],
   /** Time / budget (clock). */
   clock: [{ d: circle(12, 12, 8.5) }, { d: 'M12 7.6V12l3 1.9' }],
+  /** Log time by hand (a clock with a plus). */
+  logTime: [{ d: circle(10, 13, 7) }, { d: 'M10 9.6V13l2.4 1.5' }, { d: 'M19 3v5M16.5 5.5h5' }],
   /** Frequency (calendar). */
   calendar: [{ d: 'M6.5 5h11A2.5 2.5 0 0 1 20 7.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-10A2.5 2.5 0 0 1 6.5 5zM8 3v3.5M16 3v3.5M4 10h16' }],
   /** Weekly progress (dots: two done, one to go). */

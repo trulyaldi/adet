@@ -107,7 +107,7 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
               <Icon path={item.iconPath} size={22} color={sw.on} />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>
+              <Text numberOfLines={2} style={{ fontSize: 16, lineHeight: 19, fontWeight: '800', color: colors.ink }}>
                 {item.name}
               </Text>
               <WeekDotsRow week={item.week} color={sw.base} size={7} />
@@ -150,7 +150,8 @@ export function DoneRow({ item, onPress, bonus }: { item: TodayItem; onPress(): 
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        height: 50,
+        minHeight: 50,
+        paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: radius.lg,
         backgroundColor: sw.light,
@@ -159,7 +160,7 @@ export function DoneRow({ item, onPress, bonus }: { item: TodayItem; onPress(): 
       <View style={{ width: 30, height: 30, borderRadius: radius.sm, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
         <Icon path={item.iconPath} size={16} color={sw.on} />
       </View>
-      <Text numberOfLines={1} style={{ flex: 1, fontSize: 14.5, fontWeight: '800', color: colors.ink }}>
+      <Text numberOfLines={2} style={{ flex: 1, fontSize: 14.5, fontWeight: '800', color: colors.ink }}>
         {item.name}
       </Text>
       {item.sec > 0 && <Text style={{ fontSize: 13, fontWeight: '800', color: t.dark ? colors.ink : sw.dark, fontVariant: ['tabular-nums'] }}>{fmtDur(item.sec)}</Text>}
