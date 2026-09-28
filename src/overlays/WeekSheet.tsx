@@ -9,7 +9,7 @@ import { Sheet } from '../components/Sheet';
 import { DOWS } from '../domain/constants';
 import { fmtDur, sayDur } from '../domain/time';
 import { selectWeekView, WeekDayState } from '../domain/weekView';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -33,19 +33,23 @@ const SAY: Record<WeekDayState, string> = {
 export function WeekSheet() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, now, settings, actions } = useStreak();
+  const data = useData();
+  const open = useUi((u) => u.weekOpen);
+  const now = useStoreNow();
+  const settings = useSettings();
+  const actions = useActions();
   const streak = useDayStreak();
   const [offset, setOffset] = useState(0);
   useEffect(() => {
-    if (ui.weekOpen) setOffset(0);
-  }, [ui.weekOpen]);
+    if (open) setOffset(0);
+  }, [open]);
   const model = useMemo(
-    () => (ui.weekOpen ? selectWeekView(data, now, offset, streak.marks, settings.learnedDismissed) : null),
-    [ui.weekOpen, data, now, offset, streak.marks, settings.learnedDismissed]
+    () => (open ? selectWeekView(data, now, offset, streak.marks, settings.learnedDismissed) : null),
+    [open, data, now, offset, streak.marks, settings.learnedDismissed]
   );
 
   return (
-    <Sheet visible={ui.weekOpen} onClose={actions.closeWeek} maxHeightPct={0.88}>
+    <Sheet visible={open} onClose={actions.closeWeek} maxHeightPct={0.88}>
       {model && (
         <View style={{ gap: 18, paddingTop: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 10 }}>

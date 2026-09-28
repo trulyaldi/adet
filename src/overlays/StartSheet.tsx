@@ -9,7 +9,7 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { isCheck } from '../domain/marks';
 import { activeProjects, projectWeekSec } from '../domain/projects';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -20,7 +20,10 @@ import { useTheme } from '../theme/ThemeProvider';
 export function StartSheet() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, now, actions } = useStreak();
+  const data = useData();
+  const open = useUi((u) => u.startSheet);
+  const now = useStoreNow();
+  const actions = useActions();
   const projects = activeProjects(data);
   const weekSec = (pid: string) => projectWeekSec(data, pid, now);
   const start = (habitId: string) => {
@@ -32,7 +35,7 @@ export function StartSheet() {
   };
 
   return (
-    <Sheet visible={ui.startSheet} onClose={actions.closeStartSheet} maxHeightPct={0.85}>
+    <Sheet visible={open} onClose={actions.closeStartSheet} maxHeightPct={0.85}>
       <View style={{ gap: 12, paddingTop: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
           <Glyph name="play" size={22} color={colors.ink} label="Start something" />

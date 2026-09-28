@@ -7,7 +7,7 @@ import { AnimatedBar } from '../components/motion/AnimatedBar';
 import { Sheet } from '../components/Sheet';
 import { targetCheck } from '../domain/capacity';
 import { fmtDur } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useUi } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
 
 /**
@@ -18,7 +18,9 @@ import { useTheme } from '../theme/ThemeProvider';
 export function CapacityFixSheet() {
   const t = useTheme();
   const { colors } = t;
-  const { data, ui, actions } = useStreak();
+  const data = useData();
+  const open = useUi((u) => u.capacityFix);
+  const actions = useActions();
   const chk = targetCheck(data);
   const close = () => {
     actions.dismissTargetCheck(chk.signature);
@@ -27,7 +29,7 @@ export function CapacityFixSheet() {
   const max = Math.max(chk.targetMin, chk.capacityMin, 1);
 
   return (
-    <Sheet visible={ui.capacityFix} onClose={close}>
+    <Sheet visible={open} onClose={close}>
       <View style={{ gap: 16, paddingTop: 10 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
           <Glyph name="clock" size={24} color={colors.amber} label="Weekly targets and capacity" />

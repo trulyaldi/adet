@@ -36,6 +36,8 @@ export function preloadSounds(): void {
 }
 
 export function playSound(name: FeedbackEvent): void {
+  // A tap before the deferred preload (see App) loads everything now.
+  if (!started) preloadSounds();
   const p = players[name];
   if (!p) return;
   try {

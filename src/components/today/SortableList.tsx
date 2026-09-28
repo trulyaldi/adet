@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureType } from 'react-native-gesture-handler';
 import Animated, {
@@ -92,7 +92,10 @@ function SortableRow({
   onDrop(p: Positions): void;
   children(drag: GestureType): React.ReactNode;
 }) {
-  const top = useSharedValue((positions.value[id] ?? 0) * slot);
+  // Read once, on mount: reading a shared value on later renders makes
+  // Reanimated warn (and the reaction below keeps `top` current anyway).
+  const [initialTop] = useState(() => (positions.value[id] ?? 0) * slot);
+  const top = useSharedValue(initialTop);
   const dragging = useSharedValue(false);
   const start = useSharedValue(0);
 

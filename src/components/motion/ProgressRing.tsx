@@ -27,10 +27,12 @@ interface ProgressRingProps {
   bonusColor?: string;
   track?: string;
   /**
-   * A live timer: ease linearly over each second instead of springing, so
-   * the ring moves continuously.
+   * A live timer: the ring moves continuously on the UI thread at `rate`
+   * instead of springing, so the timer's screen needn't re-render to move it.
    */
   live?: boolean;
+  /** With `live`: how fast `value` grows, per second. */
+  rate?: number;
   /** Draw the target marker (a notch at 12 o'clock where the lap completes). */
   marker?: boolean;
   children?: React.ReactNode;
@@ -42,7 +44,7 @@ interface ProgressRingProps {
  * sends a shine along the fill as it grows. Time past the target keeps
  * counting as a lighter bonus lap.
  */
-export function ProgressRing({ size, stroke, value, color, bonusColor, track, live, marker, children, label }: ProgressRingProps) {
+export function ProgressRing({ size, stroke, value, color, bonusColor, track, live, rate, marker, children, label }: ProgressRingProps) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
   const r = (size - stroke) / 2 - 1;
@@ -53,6 +55,12 @@ export function ProgressRing({ size, stroke, value, color, bonusColor, track, li
   const shine = useSharedValue(0);
 
   useEffect(() => {
+    if (live && rate && rate > 0) {
+      // Resync to the true value, then run linearly to the end of the bonus lap.
+      p.value = v;
+      if (v < 2) p.value = withTiming(2, { duration: ((2 - v) / rate) * 1000, easing: Easing.linear });
+      return;
+    }
     if (live || reduced) {
       p.value = withTiming(v, live ? { duration: 1000, easing: Easing.linear } : timings.fade);
       return;
@@ -60,7 +68,7 @@ export function ProgressRing({ size, stroke, value, color, bonusColor, track, li
     const grew = v > p.value + 0.005;
     p.value = withSpring(v, springs.progress);
     if (grew) shine.value = withSequence(withTiming(0, { duration: 0 }), withDelay(300, withTiming(1, timings.shine)));
-  }, [v, live, reduced, p, shine]);
+  }, [v, live, rate, reduced, p, shine]);
 
   const lap1 = useAnimatedProps(() => ({ strokeDashoffset: circ * (1 - Math.max(0, Math.min(1, p.value))) }));
   const lap2 = useAnimatedProps(() => ({ strokeDashoffset: circ * (1 - Math.max(0, Math.min(1, p.value - 1))) }));

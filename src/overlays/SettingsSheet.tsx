@@ -10,7 +10,7 @@ import { MAX_REMINDER_HOURS } from '../domain/reminder';
 import { fmtDur, sayDur } from '../domain/time';
 import { feedback } from '../feedback/feedback';
 import { Appearance, MotionPref, useDevicePrefs } from '../store/devicePrefs';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useClearLocalData, useData, useSettings, useSyncStatus, useUi } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -19,11 +19,12 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 /** Device and planning settings and the account, opened from the gear on Today. */
 export function SettingsSheet() {
   const { colors } = useTheme();
-  const { ui, actions } = useStreak();
+  const open = useUi((u) => u.settingsOpen);
+  const actions = useActions();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={ui.settingsOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={actions.closeSettings}>
+    <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={actions.closeSettings}>
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 18, paddingBottom: 8, zIndex: 10 }}>
           <Glyph name="gear" size={28} color={colors.ink} label="Settings" />
@@ -109,7 +110,8 @@ export function Toggle({ on, glyphOn, glyphOff, label, onChange }: { on: boolean
 /** Capacity per weekday: seven small steppers, the week's total above. */
 function CapacityCard() {
   const { colors, radius } = useTheme();
-  const { data, actions } = useStreak();
+  const data = useData();
+  const actions = useActions();
   const cap = data.prefs.capacityMin;
   return (
     <Card row={false}>
@@ -141,7 +143,8 @@ function CapacityCard() {
 
 function DailyPromptCard() {
   const { colors } = useTheme();
-  const { settings, actions } = useStreak();
+  const settings = useSettings();
+  const actions = useActions();
   return (
     <Card>
       <Glyph name="capNormal" size={22} color={colors.sub} label="Ask light, normal or heavy each morning" />
@@ -185,7 +188,8 @@ function Choice<K extends string>({ glyph, label, value, options, onChange }: { 
 }
 
 function WeekStartCard() {
-  const { data, actions } = useStreak();
+  const data = useData();
+  const actions = useActions();
   return (
     <Choice
       glyph="weekStart"
@@ -237,7 +241,8 @@ function MotionCard() {
 /** "Still working?" reminder for a timer left running: bell, hours, − / +. */
 function ReminderCard() {
   const { colors } = useTheme();
-  const { settings, actions } = useStreak();
+  const settings = useSettings();
+  const actions = useActions();
   const hours = settings.reminderHours;
   const step = (delta: number) => actions.setReminderHours(Math.min(MAX_REMINDER_HOURS, Math.max(0, hours + delta)));
   return (
@@ -256,7 +261,8 @@ function ReminderCard() {
 function AccountCard() {
   const { colors, radius, shadow: shadowCard } = useTheme();
   const { session, signOut } = useAuth();
-  const { sync, clearLocalData } = useStreak();
+  const sync = useSyncStatus();
+  const clearLocalData = useClearLocalData();
   const [busy, setBusy] = React.useState(false);
 
   // Signing out wipes this device, so it's confirmed in words.

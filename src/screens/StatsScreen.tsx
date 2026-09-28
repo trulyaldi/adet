@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BadgeArt } from '../components/celebrate/BadgeArt';
@@ -14,9 +14,9 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { STREAK_MILESTONES } from '../domain/milestones';
 import { sessionWhen } from '../domain/projectsView';
-import { badgeCollection, projectTotals, weeklyByProject } from '../domain/stats';
+import { badgeCollectionOf, projectTotalsOf, recentSessionsOf, weeklyByProjectOf } from '../domain/selectors';
 import { fmtDur, sayDur } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useStoreNow } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -24,19 +24,15 @@ import { useTheme } from '../theme/ThemeProvider';
 export function StatsScreen() {
   const t = useTheme();
   const { colors } = t;
-  const { data, now, actions } = useStreak();
+  const data = useData();
+  const now = useStoreNow();
+  const actions = useActions();
   const streak = useDayStreak();
-  const weeks = useMemo(() => weeklyByProject(data, now), [data, Math.floor(now / 3_600_000)]);
-  const totals = useMemo(() => projectTotals(data), [data]);
-  const badges = useMemo(() => badgeCollection(data), [data]);
-  const recent = useMemo(
-    () =>
-      data.sessions
-        .filter((s) => s.end > data.historyClearedAt)
-        .sort((a, b) => b.start - a.start)
-        .slice(0, 15),
-    [data.sessions, data.historyClearedAt]
-  );
+  // Memoized in the domain, so switching back to Stats doesn't recompute them.
+  const weeks = weeklyByProjectOf(data, now);
+  const totals = projectTotalsOf(data);
+  const badges = badgeCollectionOf(data);
+  const recent = recentSessionsOf(data.sessions, data.historyClearedAt, 15);
   const habitOf = (id: string) => data.habits.find((h) => h.id === id);
   const maxTotal = Math.max(1, ...totals.map((p) => p.sec));
   const nextStreak = STREAK_MILESTONES.find((n) => !data.badges.some((b) => b.id === `streak-${n}`));

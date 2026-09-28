@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { useStreak } from '../../store/StreakStore';
+import { useUi } from '../../store/StreakStore';
 import { useReducedMotion } from '../../theme/useMotion';
 
 const N = 14;
@@ -41,12 +41,12 @@ function Particle({ i, x, y, p, color }: { i: number; x: number; y: number; p: S
 
 /** The app's bursts (from ui.bursts), drawn over everything; nothing with reduce motion. */
 export function BurstHost() {
-  const { ui } = useStreak();
+  const bursts = useUi((u) => u.bursts);
   const reduced = useReducedMotion();
-  if (reduced || !ui.bursts.length) return null;
+  if (reduced || !bursts.length) return null;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {ui.bursts.map((b) => (
+      {bursts.map((b) => (
         <Burst key={b.key} x={b.x} y={b.y} color={b.color} />
       ))}
     </View>

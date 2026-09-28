@@ -1,5 +1,5 @@
 import { useKeepAwake } from 'expo-keep-awake';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -13,16 +13,18 @@ import { Companion } from '../components/Companion';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { ProgressRing } from '../components/motion/ProgressRing';
+import { SessionClock } from '../components/SessionClock';
 import { MessageToast } from '../components/UndoToast';
 import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
-import { fmtClock, fmtDur, sayDur } from '../domain/time';
+import { fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
 import { useDevicePrefs } from '../store/devicePrefs';
-import { useStreak } from '../store/StreakStore';
-import { useActiveProgress } from '../store/useActiveProgress';
+import { useActions, useData, useUi } from '../store/StreakStore';
+import { TIMER_FRAME_MS, useActiveProgress } from '../store/useActiveProgress';
 import { useStopTimer } from '../store/useStopTimer';
 import { springs } from '../theme/motion';
+import { Swatch } from '../theme/palette';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAppActive, useReducedMotion } from '../theme/useMotion';
 
@@ -36,8 +38,10 @@ const DIM_OFFER_MS = 2 * 60_000;
  * running. The screen stays awake while it's open.
  */
 export function FocusView() {
-  const { data, ui, actions } = useStreak();
-  const open = ui.timerOpen && !!data.active;
+  const data = useData();
+  const timerOpen = useUi((u) => u.timerOpen);
+  const actions = useActions();
+  const open = timerOpen && !!data.active;
   return (
     <Modal visible={open} animationType="slide" onRequestClose={actions.closeTimer} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>{open && <FocusContent />}</GestureHandlerRootView>
@@ -49,14 +53,19 @@ function FocusContent() {
   useKeepAwake();
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, actions } = useStreak();
+  const data = useData();
+  const targetHits = useUi((u) => u.targetHits);
+  const cheerUntil = useUi((u) => u.cheerUntil);
+  const actions = useActions();
   const { prefs, setPrefs } = useDevicePrefs();
   const reduced = useReducedMotion();
   const appActive = useAppActive();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const stop = useStopTimer();
-  const p = useActiveProgress();
+  // The screen refreshes slowly; the clock text ticks on its own and the ring
+  // moves on the UI thread.
+  const p = useActiveProgress(TIMER_FRAME_MS);
   const [dimOffer, setDimOffer] = useState(false);
   const [dimmed, setDimmed] = useState(false);
   const [burst, setBurst] = useState<{ x: number; y: number } | null>(null);
@@ -67,8 +76,17 @@ function FocusContent() {
     return () => clearTimeout(tm);
   }, []);
 
+  // The cheer ends on its own clock (the screen doesn't re-render every second).
+  const [, endCheer] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const ms = cheerUntil - Date.now();
+    if (ms <= 0) return;
+    const tm = setTimeout(endCheer, ms + 50);
+    return () => clearTimeout(tm);
+  }, [cheerUntil]);
+
   const y = useSharedValue(0);
-  // Built once: focus re-renders every second.
+  // Built once, so re-renders don't rebuild the gesture.
   const closeRef = useRef(actions.closeTimer);
   closeRef.current = actions.closeTimer;
   const swipe = useMemo(() => {
@@ -94,9 +112,8 @@ function FocusContent() {
   const frac = p.sec / p.targetSec;
   const ringSize = Math.min(290, width - 70);
   const cy = insets.top + 70 + (height - insets.top - insets.bottom - 250) / 2;
-  const cheering = ui.cheerUntil > Date.now();
+  const cheering = cheerUntil > Date.now();
   const mood = p.paused ? 'sleepy' : cheering ? 'cheer' : 'idle';
-  const earlier = p.sec - p.sessionSec;
 
   return (
     <GestureDetector gesture={swipe}>
@@ -121,7 +138,7 @@ function FocusContent() {
           progress={frac}
           sessionSec={p.sessionSec}
           swatch={sw}
-          payoff={ui.targetHits}
+          payoff={targetHits}
           moving={!reduced && appActive && !dimmed}
           reduced={reduced}
           dark={t.dark}
@@ -160,23 +177,11 @@ function FocusContent() {
             bonusColor={sw.bonus}
             track={t.dark ? colors.track : '#FFFFFF'}
             live={!p.paused}
+            rate={1 / p.targetSec}
             marker
-            label={`${sayDur(p.sessionSec)} this session, ${sayDur(p.sec)} of ${sayDur(p.targetSec)} today${frac >= 1 ? ', past the target' : ''}${p.paused ? ', paused' : ''}`}
           >
             <View style={{ width: ringSize - 56, height: ringSize - 56, borderRadius: ringSize, backgroundColor: colors.card, opacity: 0.9, position: 'absolute' }} />
-            <Text style={{ fontSize: ringSize * 0.19, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], opacity: p.paused ? 0.55 : 1 }}>
-              {fmtClock(p.sessionSec)}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4, height: 22 }}>
-              {frac >= 1 ? (
-                <Glyph name="sparkle" size={20} color={t.dark ? sw.base : sw.dark} bg={colors.card} />
-              ) : (
-                <Glyph name="clock" size={15} color={colors.sub} bg={colors.card} />
-              )}
-              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.sub, fontVariant: ['tabular-nums'] }}>
-                {earlier >= 60 ? `${fmtDur(p.sec)} / ${fmtDur(p.targetSec)}` : fmtDur(p.targetSec)}
-              </Text>
-            </View>
+            <RingLabel ringSize={ringSize} swatch={sw} />
           </ProgressRing>
         </View>
 
@@ -227,11 +232,43 @@ function FocusContent() {
               accessibilityLabel="Undim the screen"
               style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={{ fontSize: 44, fontWeight: '800', color: '#7C818B', fontVariant: ['tabular-nums'] }}>{fmtClock(p.sessionSec)}</Text>
+              <SessionClock style={{ fontSize: 44, fontWeight: '800', color: '#7C818B', fontVariant: ['tabular-nums'] }} />
             </Pressable>
           </Animated.View>
         )}
       </Animated.View>
     </GestureDetector>
+  );
+}
+
+/**
+ * The ring's center: the count-up and today's time against the target.
+ * Re-renders every second on its own, leaving the rest of focus alone.
+ */
+function RingLabel({ ringSize, swatch: sw }: { ringSize: number; swatch: Swatch }) {
+  const t = useTheme();
+  const { colors } = t;
+  const p = useActiveProgress(1000);
+  if (!p) return null;
+  const frac = p.sec / p.targetSec;
+  const earlier = p.sec - p.sessionSec;
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${sayDur(p.sessionSec)} this session, ${sayDur(p.sec)} of ${sayDur(p.targetSec)} today${frac >= 1 ? ', past the target' : ''}${p.paused ? ', paused' : ''}`}
+      style={{ alignItems: 'center' }}
+    >
+      <SessionClock style={{ fontSize: ringSize * 0.19, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], opacity: p.paused ? 0.55 : 1 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4, height: 22 }}>
+        {frac >= 1 ? (
+          <Glyph name="sparkle" size={20} color={t.dark ? sw.base : sw.dark} bg={colors.card} />
+        ) : (
+          <Glyph name="clock" size={15} color={colors.sub} bg={colors.card} />
+        )}
+        <Text style={{ fontSize: 14, fontWeight: '800', color: colors.sub, fontVariant: ['tabular-nums'] }}>
+          {earlier >= 60 ? `${fmtDur(p.sec)} / ${fmtDur(p.targetSec)}` : fmtDur(p.targetSec)}
+        </Text>
+      </View>
+    </View>
   );
 }

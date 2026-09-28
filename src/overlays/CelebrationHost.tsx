@@ -7,7 +7,7 @@ import { BadgeArt } from '../components/celebrate/BadgeArt';
 import { Companion } from '../components/Companion';
 import { badgeInfo } from '../domain/milestones';
 import { feedback } from '../feedback/feedback';
-import { useStreak } from '../store/StreakStore';
+import { anyModalOpen, useActions, useData, useSettings, useUi } from '../store/StreakStore';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
@@ -20,11 +20,15 @@ import { useReducedMotion } from '../theme/useMotion';
 export function CelebrationHost() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, settings, actions } = useStreak();
+  const data = useData();
+  const modalOpen = useUi(anyModalOpen);
+  const first = useUi((u) => u.celebrations[0]);
+  const settings = useSettings();
+  const actions = useActions();
   const reduced = useReducedMotion();
   const busy =
     !settings.welcomeSeen ||
-    ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix || !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet;
+    modalOpen;
   // Wait for the previous modal's dismiss animation before presenting.
   const [settled, setSettled] = useState(false);
   useEffect(() => {
@@ -35,7 +39,7 @@ export function CelebrationHost() {
     const timer = setTimeout(() => setSettled(true), MODAL_GAP_MS);
     return () => clearTimeout(timer);
   }, [busy]);
-  const id = !busy && settled ? ui.celebrations[0] : undefined;
+  const id = !busy && settled ? first : undefined;
   const info = id ? badgeInfo(id, data) : null;
   const known = !!info;
   const played = useRef<string | undefined>(undefined);

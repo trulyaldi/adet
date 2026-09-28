@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { useStreak } from '../../store/StreakStore';
+import { useUi } from '../../store/StreakStore';
 import { useReducedMotion } from '../../theme/useMotion';
 
 const PIECES = 42;
@@ -52,17 +52,17 @@ function Piece({ i, t, w, h, color }: { i: number; t: SharedValue<number>; w: nu
   return <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: size, height: tall ? size * 1.8 : size, borderRadius: tall ? 2 : size / 2, backgroundColor: color }, style]} />;
 }
 
-/** The day-complete confetti (ui.confetti); off with reduce motion. */
+/** The day-complete confetti (confetti); off with reduce motion. */
 export function ConfettiHost() {
-  const { ui } = useStreak();
+  const confetti = useUi((u) => u.confetti);
   const reduced = useReducedMotion();
   const [shown, setShown] = React.useState<number | null>(null);
   useEffect(() => {
-    if (!ui.confetti) return;
-    setShown(ui.confetti.key);
+    if (!confetti) return;
+    setShown(confetti.key);
     const tm = setTimeout(() => setShown(null), DURATION + 100);
     return () => clearTimeout(tm);
-  }, [ui.confetti]);
-  if (reduced || !ui.confetti || shown !== ui.confetti.key) return null;
-  return <Confetti key={ui.confetti.key} colors={ui.confetti.colors} />;
+  }, [confetti]);
+  if (reduced || !confetti || shown !== confetti.key) return null;
+  return <Confetti key={confetti.key} colors={confetti.colors} />;
 }

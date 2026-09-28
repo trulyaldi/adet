@@ -11,7 +11,7 @@ import { PROJECT_COLORS, PROJECT_ICONS, SCENES } from '../domain/look';
 import { isCheck } from '../domain/marks';
 import { fmtDur } from '../domain/time';
 import { SceneKind } from '../domain/types';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -28,8 +28,9 @@ const SHEET_SWAP_MS = 380;
 export function ProjectSheet() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, actions } = useStreak();
-  const sheet = ui.projectSheet;
+  const data = useData();
+  const actions = useActions();
+  const sheet = useUi((u) => u.projectSheet);
   const isEdit = !!sheet?.id;
   const valid = !!sheet?.name.trim();
   const sw = sheet ? t.swatch(sheet.color) : t.brand;

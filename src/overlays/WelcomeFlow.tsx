@@ -15,7 +15,7 @@ import { ICONS } from '../domain/constants';
 import { projectLook, SCENES } from '../domain/look';
 import { activeProjects } from '../domain/projects';
 import { fmtDur } from '../domain/time';
-import { useStreak } from '../store/StreakStore';
+import { useActions, useData, useReady, useSettings, useUi } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
 
 /**
@@ -25,8 +25,11 @@ import { useTheme } from '../theme/ThemeProvider';
  * and a check to accept.
  */
 export function WelcomeFlow() {
-  const { ready, data, settings, ui } = useStreak();
-  const open = ready && !settings.welcomeSeen && !ui.timerOpen;
+  const ready = useReady();
+  const data = useData();
+  const settings = useSettings();
+  const timerOpen = useUi((u) => u.timerOpen);
+  const open = ready && !settings.welcomeSeen && !timerOpen;
   return (
     <Modal visible={open} animationType="fade" onRequestClose={() => {}} statusBarTranslucent>
       {open && <Pages hasProjects={activeProjects(data).length > 0} />}
@@ -37,7 +40,7 @@ export function WelcomeFlow() {
 function Pages({ hasProjects }: { hasProjects: boolean }) {
   const t = useTheme();
   const { colors } = t;
-  const { actions } = useStreak();
+  const actions = useActions();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
@@ -143,7 +146,8 @@ function Celebrations() {
 function Rebalance() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, actions } = useStreak();
+  const data = useData();
+  const actions = useActions();
   const chk = targetCheck(data);
   const max = Math.max(chk.targetMin, chk.capacityMin, 1);
   return (

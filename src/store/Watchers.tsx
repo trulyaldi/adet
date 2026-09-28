@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { selectToday } from '../domain/day';
+import { todayOf } from '../domain/selectors';
 import { newBadges, qualifiedBadges } from '../domain/milestones';
 import { useTheme } from '../theme/ThemeProvider';
-import { useStreak } from './StreakStore';
+import { useActions, useData, useReady, useStoreNow, useSyncStatus } from './StreakStore';
 import { TargetWatcher } from './TargetWatcher';
 import { useDayStreak } from './useDayStreak';
 
@@ -13,7 +13,11 @@ import { useDayStreak } from './useDayStreak';
  * is recorded quietly, once.
  */
 function MilestoneWatcher() {
-  const { data, now, ready, sync, actions } = useStreak();
+  const data = useData();
+  const now = useStoreNow();
+  const ready = useReady();
+  const sync = useSyncStatus();
+  const actions = useActions();
   const streak = useDayStreak().current;
   const minute = Math.floor(now / 60_000);
   useEffect(() => {
@@ -41,10 +45,12 @@ function MilestoneWatcher() {
 
 /** The day's plan completing while the app is open: jingle, confetti in today's colors, companion cheers. */
 function DayWatcher() {
-  const { data, now, actions } = useStreak();
+  const data = useData();
+  const now = useStoreNow();
+  const actions = useActions();
   const t = useTheme();
-  const minute = Math.floor(now / 60_000);
-  const model = useMemo(() => selectToday(data, Date.now()), [data, minute]);
+  // Shared with the Today screen (same data and clock).
+  const model = todayOf(data, now);
   const prev = useRef<{ day: string; complete: boolean } | null>(null);
   useEffect(() => {
     const was = prev.current;

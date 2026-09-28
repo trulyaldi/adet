@@ -1,3 +1,5 @@
+// First: marks when the JS bundle started running (for the startup log).
+import './src/startup';
 import { registerRootComponent } from 'expo';
 
 import App from './App';
