@@ -2,11 +2,12 @@ import React from 'react';
 import { Text, View } from 'react-native';
 
 import { useStreak } from '../store/StreakStore';
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 import { Glyph, useTip } from './Glyph';
 
 /** A cloud glyph: ticked when synced, dotted while syncing, struck through offline (with the pending count). */
 export function SyncIndicator() {
+  const { colors, radius, shadow } = useTheme();
   const { sync } = useStreak();
   const label =
     sync.state === 'synced'

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { DEFAULT_PREFS } from './capacity';
+
 import { seed } from './seed';
 import { restoreSession } from './sessions';
 import {
@@ -45,8 +47,18 @@ function state(partial: Partial<PersistedState>): PersistedState {
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: 0, updatedAt: 100 }],
     habits: [],
     sessions: [],
+    marks: [],
+    prefs: DEFAULT_PREFS,
+    dailyLogs: [],
+    badges: [],
     active: null,
     historyClearedAt: 0,
+    plans: {},
+    planSince: '2026-01-01',
+    streakCarry: null,
+    rebalancePending: false,
+    days: {},
+    badgesPrimed: true,
     ...partial,
   };
 }
@@ -277,4 +289,46 @@ test('parseTimestamp handles Postgres microsecond timestamps', () => {
   assert.equal(parseTimestamp('2026-09-27T15:00:00.123+05'), ms);
   assert.equal(parseTimestamp('2026-09-27T10:00:00.123Z'), ms);
   assert.ok(Number.isNaN(parseTimestamp('nope')));
+});
+
+// ---------- the redesign's records (005) ----------
+
+test('marks, logs, badges and prefs are stamped and queued like any edit', () => {
+  const prev = state({});
+  const next = {
+    ...prev,
+    marks: [{ id: 'h1:2026-09-28', habitId: 'h1', day: '2026-09-28' }],
+    badges: [{ id: 'streak-3', earnedAt: 5 }],
+    prefs: { ...prev.prefs, weekStart: 0 as const },
+  };
+  const { data, changes } = stampLocalChanges(prev, next, 777);
+  assert.deepEqual(changes.map((c) => c.table).sort(), ['badges', 'habit_marks', 'user_prefs']);
+  assert.equal(data.prefs.updatedAt, 777);
+  assert.equal(data.marks[0].updatedAt, 777);
+  // Undoing a check-off is a soft delete.
+  const off = stampLocalChanges(data, { ...data, marks: [] }, 900).changes;
+  assert.deepEqual(off.map((c) => [c.table, c.deletedAt]), [['habit_marks', 900]]);
+});
+
+test('prefs: the later edit wins; a merged-away habit takes its marks along', () => {
+  const h1 = { ...habit('h1', 100), updatedAt: 100 };
+  const h2 = { ...habit('h2', 100), updatedAt: 100 };
+  const local = state({
+    habits: [h1, h2],
+    marks: [
+      { id: 'h1:2026-09-27', habitId: 'h1', day: '2026-09-27', updatedAt: 100 },
+      { id: 'h1:2026-09-28', habitId: 'h1', day: '2026-09-28', updatedAt: 100 },
+      { id: 'h2:2026-09-28', habitId: 'h2', day: '2026-09-28', updatedAt: 100 },
+    ],
+    prefs: { capacityMin: [60, 60, 60, 60, 60, 60, 60], weekStart: 1, updatedAt: 200 },
+  });
+  const remote: Change[] = [
+    deleteHabit(h1, 500, 'h2'),
+    { table: 'user_prefs', id: 'prefs', deletedAt: null, record: { capacityMin: [90, 90, 90, 90, 90, 90, 90], weekStart: 0, updatedAt: 150 } },
+  ];
+  const { data } = mergeRemote(local, {}, remote, 1000);
+  assert.equal(data.prefs.capacityMin[0], 60, 'older remote prefs lose');
+  assert.deepEqual(data.marks.map((m) => m.id).sort(), ['h2:2026-09-27', 'h2:2026-09-28']);
+  const newer = mergeRemote(local, {}, [{ ...remote[1], record: { ...(remote[1].record as any), updatedAt: 300 } } as Change], 1000);
+  assert.equal(newer.data.prefs.weekStart, 0);
 });

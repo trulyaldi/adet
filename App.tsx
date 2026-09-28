@@ -1,90 +1,94 @@
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AdetMark } from './src/components/AdetMark';
+import { Loading } from './src/components/Loading';
 import { TabBar } from './src/components/TabBar';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ScreenIn } from './src/components/motion/Appear';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
-import { ActivityDaySheet } from './src/overlays/ActivityDaySheet';
-import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
 import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
-import { PlanPickerSheet } from './src/overlays/PlanPickerSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
-import { RebalanceScreen } from './src/overlays/RebalanceScreen';
-import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
-import { TimerOverlay } from './src/overlays/TimerOverlay';
+import { StartSheet } from './src/overlays/StartSheet';
+import { CapacityFixSheet } from './src/overlays/CapacityFixSheet';
+import { FocusView } from './src/overlays/FocusView';
 import { WeekSheet } from './src/overlays/WeekSheet';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
+import { Watchers } from './src/store/Watchers';
+import { CelebrationHost } from './src/overlays/CelebrationHost';
+import { WelcomeFlow } from './src/overlays/WelcomeFlow';
+import { BurstHost } from './src/components/celebrate/Burst';
+import { ConfettiHost } from './src/components/celebrate/Confetti';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
-import { colors } from './src/theme/tokens';
+import { preloadSounds } from './src/feedback/audio';
+import { DevicePrefsProvider } from './src/store/devicePrefs';
+import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
 function Root() {
   const { ready, ui, actions } = useStreak();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <AdetMark height={44} />
-        <ActivityIndicator color={colors.ink} />
-      </View>
-    );
+    return <Loading />;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.screen }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Screens scroll below the status bar, never under it. */}
-      <View style={{ height: insets.top, backgroundColor: colors.screen }} />
+      <View style={{ height: insets.top, backgroundColor: colors.bg }} />
       <View style={{ flex: 1 }}>
-        {ui.screen === 'today' && <TodayScreen />}
-        {ui.screen === 'projects' && <ProjectsScreen />}
-        {ui.screen === 'stats' && <StatsScreen />}
+        <ErrorBoundary key={ui.screen}>
+          <ScreenIn>
+            {ui.screen === 'today' && <TodayScreen />}
+            {ui.screen === 'projects' && <ProjectsScreen />}
+            {ui.screen === 'stats' && <StatsScreen />}
+          </ScreenIn>
+        </ErrorBoundary>
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
           <MessageToast />
-          {/* The day sheet is a modal over this view, so it shows its own copy. */}
-          {ui.heatSel == null && <UndoToast />}
+          <UndoToast />
         </View>
       </View>
 
       <TabBar active={ui.screen} onChange={actions.setScreen} />
 
       {/* Overlays (each is a Modal, safe to always mount) */}
-      <TimerOverlay />
+      <FocusView />
+      <CelebrationHost />
+      <WelcomeFlow />
+      <Watchers />
+      <ConfettiHost />
+      <BurstHost />
       <HabitSheet />
       <ProjectSheet />
       <StageSheet />
       <LogTimeSheet />
       <EditSessionSheet />
-      <ActivityHistorySheet />
-      <ActivityDaySheet />
-      <RecapSheet />
       <SettingsSheet />
-      <PlanPickerSheet />
+      <StartSheet />
+      <CapacityFixSheet />
       <WeekSheet />
-      <RebalanceScreen />
     </View>
   );
 }
 
 function AuthGate() {
   const { ready, session } = useAuth();
+  const { colors } = useTheme();
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <AdetMark height={44} />
-        <ActivityIndicator color={colors.ink} />
-      </View>
-    );
+    return <Loading />;
   }
 
   if (!session) return <SignInScreen />;
@@ -97,13 +101,25 @@ function AuthGate() {
   );
 }
 
+function ThemedStatusBar() {
+  const { dark } = useTheme();
+  return <StatusBar style={dark ? 'light' : 'dark'} />;
+}
+
 export default function App() {
+  useEffect(preloadSounds, []);
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="dark" />
-        <AuthGate />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <DevicePrefsProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <ThemedStatusBar />
+              <AuthGate />
+            </AuthProvider>
+          </ThemeProvider>
+        </DevicePrefsProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

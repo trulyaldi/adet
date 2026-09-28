@@ -13,27 +13,25 @@ import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
 import { activeSec } from '../domain/engine';
+import { clampCapacity, DEFAULT_PREFS, raiseCapacityToFit, scaleTargetsToFit, targetCheck } from '../domain/capacity';
+import { missingLogs } from '../domain/dailyLog';
+import { selectToday } from '../domain/day';
+import { nextProjectColor, nextScene, ProjectColor, projectLook, withLooks } from '../domain/look';
+import { addMark, moveMarks, removeMark } from '../domain/marks';
+import { award, celebrationOrder, enqueueCelebrations } from '../domain/milestones';
+import type { GlyphName } from '../components/glyphs';
+import { feedback } from '../feedback/feedback';
 import { activeHabits } from '../domain/projects';
-import {
-  addToPlan,
-  clampBudgetMin,
-  clampPlanCap,
-  completionOn,
-  habitDaySec,
-  planFor,
-  PlanSettings,
-  suggestPlan,
-  swapInPlan,
-} from '../domain/plan';
+import { clampBudgetMin, clampPlanCap } from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
-import { finishRebalance } from '../domain/rebalance';
 import { seed } from '../domain/seed';
-import { dkey } from '../domain/time';
+import { addDays, dkey, setWeekStartDay } from '../domain/time';
 import {
   applySessionEdit,
   checkSessionTimes,
   defaultManualStart,
   manualSession,
+  quickSession,
   restoreSession,
   sessionFromTimer,
   subMinuteSessions,
@@ -41,24 +39,23 @@ import {
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import {
   CURRENT_SCHEMA_VERSION,
+  DayLevel,
   Habit,
+  HabitKind,
   IconKey,
   PersistedState,
+  SceneKind,
   Session,
 } from '../domain/types';
 import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
+import { MODAL_GAP_MS } from '../theme/motion';
 import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
 export type Screen = 'today' | 'projects' | 'stats';
 export type StatsView = 'overview' | 'history';
 
-/**
- * The plan editor on Today: swap a planned habit for another, add one to a
- * plan with room, or start a bonus habit once the day is done.
- */
-export type PlanPicker = { mode: 'swap'; habitId: string } | { mode: 'add' } | { mode: 'bonus' };
 
 export interface HabitSheetState {
   id: string | null;
@@ -70,11 +67,15 @@ export interface HabitSheetState {
   /** Minimum session length in minutes. */
   minTargetMin: number;
   frequency: Frequency;
+  kind: HabitKind;
 }
 export interface ProjectSheetState {
   id: string | null;
   name: string;
   weeklyTarget: number;
+  color: ProjectColor;
+  icon: IconKey;
+  scene: SceneKind;
 }
 export interface LogSheetState {
   habitId: string | null;
@@ -111,6 +112,12 @@ export interface SessionSheetState {
   confirmLong: boolean;
 }
 
+/** A toast is an icon; the label is spoken, not shown. */
+export interface Toast {
+  glyph: GlyphName;
+  label: string;
+}
+
 export interface UIState {
   screen: Screen;
   timerOpen: boolean;
@@ -132,15 +139,33 @@ export interface UIState {
   undo: Session | null;
   /** Monday dkey of the weekly recap shown in the recap sheet. */
   recapSheet: string | null;
-  /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
-  toast: string | null;
+  /** A brief icon toast (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
+  toast: Toast | null;
   settingsOpen: boolean;
   /** Which half of Stats is showing; kept while switching tabs. */
   statsView: StatsView;
-  planPicker: PlanPicker | null;
-  /** Bumped when a plan edit is blocked by the budget: budget bars flash amber and shake. */
-  budgetShake: number;
   weekOpen: boolean;
+  /** The "+" sheet: start any project's habit, planned or not. */
+  startSheet: boolean;
+  /** The targets-over-capacity sheet. */
+  capacityFix: boolean;
+  /** Bumped when the running session reaches its target (scene payoff, companion cheer). */
+  targetHits: number;
+  /** Epoch ms until which the companion cheers. */
+  cheerUntil: number;
+  /** Full-screen milestone celebrations waiting (badge ids); only the first shows. */
+  celebrations: string[];
+  /** Confetti in these colors (a new key each time the day completes). */
+  confetti: { key: number; colors: string[] } | null;
+  /** Particle bursts from a point (session complete). */
+  bursts: Burst[];
+}
+
+export interface Burst {
+  key: number;
+  x: number;
+  y: number;
+  color: string;
 }
 
 const INITIAL_UI: UIState = {
@@ -160,13 +185,17 @@ const INITIAL_UI: UIState = {
   toast: null,
   settingsOpen: false,
   statsView: 'overview',
-  planPicker: null,
-  budgetShake: 0,
   weekOpen: false,
+  startSheet: false,
+  capacityFix: false,
+  targetHits: 0,
+  cheerUntil: 0,
+  celebrations: [],
+  confetti: null,
+  bursts: [],
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
-const MODAL_DISMISS_MS = 450;
 
 /** How long the "Session deleted · Undo" toast stays up. */
 export const UNDO_MS = 5000;
@@ -175,7 +204,7 @@ export const UNDO_MS = 5000;
 const TOAST_MS = 2500;
 
 /** Shown when a stopped timer is discarded for being too short. */
-const SHORT_TIMER_TOAST = 'Under a minute, not saved';
+const SHORT_TIMER_TOAST: Toast = { glyph: 'undo', label: 'Under a minute, not saved' };
 
 export interface StreakActions {
   // navigation
@@ -189,8 +218,15 @@ export interface StreakActions {
   openTimer(): void;
   closeTimer(): void;
   togglePause(): void;
-  /** Save the running timer as a session; `editAfter` then opens it in the edit sheet. */
-  stopTimer(opts?: { editAfter?: boolean }): void;
+  /**
+   * Save the running timer as a session. `done` also marks the habit done for
+   * today (the done button); `editAfter` then opens it in the edit sheet.
+   */
+  stopTimer(opts?: { editAfter?: boolean; done?: boolean }): void;
+  /** Log `minutes` ending now (the +15 / +30 / +60 chips). */
+  quickLog(habitId: string, minutes: number): void;
+  /** Check-off habits: mark done for today, or clear the mark. */
+  toggleCheck(habitId: string): void;
   // heatmap
   openHeatSheet(): void;
   closeHeatSheet(): void;
@@ -203,6 +239,7 @@ export interface StreakActions {
   // habit sheet
   openNewHabit(projectId: string): void;
   openEditHabit(habit: Habit): void;
+  openEditHabitById(habitId: string): void;
   closeHabitSheet(): void;
   patchHabitSheet(patch: Partial<HabitSheetState>): void;
   saveHabitSheet(): void;
@@ -210,7 +247,9 @@ export interface StreakActions {
   mergeHabit(fromId: string, intoId: string): void;
   // project sheet
   openNewProject(): void;
-  openEditProject(project: { id: string; name: string; weeklyTarget: number }): void;
+  openEditProject(projectId: string): void;
+  openCapacityFix(): void;
+  closeCapacityFix(): void;
   closeProjectSheet(): void;
   patchProjectSheet(patch: Partial<ProjectSheetState>): void;
   saveProjectSheet(): void;
@@ -222,7 +261,8 @@ export interface StreakActions {
   openStageSheet(projectId: string): void;
   closeStageSheet(): void;
   // log-time sheet
-  openLogSheet(): void;
+  /** Log time after the fact, for `habitId` (default: the next planned habit). */
+  openLogSheet(habitId?: string): void;
   closeLogSheet(): void;
   patchLogSheet(patch: Partial<LogSheetState>): void;
   saveLogSheet(): void;
@@ -236,22 +276,37 @@ export interface StreakActions {
   // weekly recap
   openRecap(weekStart: string): void;
   closeRecap(): void;
-  // today's plan
-  openPlanPicker(picker: PlanPicker): void;
-  closePlanPicker(): void;
-  /** Swap a planned habit for another; false (and a budget shake) when it wouldn't fit. */
-  swapPlan(outId: string, inId: string): boolean;
-  removeFromPlan(habitId: string): void;
-  /** Add a habit to today's plan; false (and a budget shake) when it wouldn't fit. */
-  addToPlan(habitId: string): boolean;
   // week view
   openWeek(): void;
+  openStartSheet(): void;
+  /** The running session just reached its target. */
+  targetReached(habitId: string): void;
+  /** Record newly earned badges; `celebrate` queues their full-screen cards. */
+  earnBadges(ids: string[], celebrate: boolean): void;
+  dismissCelebration(): void;
+  /** The day's plan just completed on screen. */
+  dayCompleted(colors: string[]): void;
+  burst(x: number, y: number, color: string): void;
+  closeStartSheet(): void;
   closeWeek(): void;
-  /**
-   * Close the one-time rebalance screen for good, applying the chosen
-   * frequencies (habit id → frequency), or keeping everything as is (null).
-   */
-  finishRebalance(chosen: Record<string, Frequency> | null): void;
+  // capacity and today's plan edits
+  /** Minutes of capacity for one weekday (0 = Monday), or all seven. */
+  setCapacity(weekday: number, min: number): void;
+  setCapacityAll(mins: number[]): void;
+  setWeekStart(day: 0 | 1): void;
+  /** Today's light/normal/heavy tap; null dismisses the prompt. */
+  setDayLevel(level: DayLevel | null): void;
+  /** Today's habits in a new order (drag to reorder). */
+  reorderToday(ids: string[]): void;
+  /** Set a habit aside for today (its time goes to others or later days), or bring it back. */
+  setAside(habitId: string, aside: boolean): void;
+  /** Resolve targets over capacity: scale targets down, or raise capacity. */
+  fixTargets(how: 'scale' | 'raise'): void;
+  dismissTargetCheck(signature: string): void;
+  acceptLearned(mins: number[]): void;
+  dismissLearned(): void;
+  setDailyPrompt(on: boolean): void;
+  markWelcomeSeen(): void;
   // device settings
   setReminderHours(hours: number): void;
   /** Daily time budget in minutes (15..180, 15-minute steps). */
@@ -282,12 +337,19 @@ function emptyData(now: number): PersistedState {
     projects: [],
     habits: [],
     sessions: [],
+    marks: [],
+    prefs: DEFAULT_PREFS,
+    dailyLogs: [],
+    badges: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
     planSince: dkey(new Date(now)),
     streakCarry: null,
     rebalancePending: false,
+    days: {},
+    // Set once history is here (see MilestoneWatcher).
+    badgesPrimed: false,
   };
 }
 
@@ -301,6 +363,8 @@ interface StoreState {
 }
 
 const SAVE_DEBOUNCE_MS = 500;
+/** How often the store's `now` refreshes. */
+const STORE_TICK_MS = 15_000;
 
 /**
  * Prepare freshly loaded data for `userId`. On this device's first sign-in to
@@ -351,14 +415,17 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   // Load persisted state once.
   useEffect(() => {
     let mounted = true;
-    Promise.all([loadState(), loadSyncMeta(), loadSettings()]).then(([loaded, meta, prefs]) => {
-      if (!mounted) return;
-      const next = forUser(loaded, meta, userId, Date.now());
-      setStore(next);
-      setSettings(prefs);
-      if (next.sync !== meta) saveState(next.data, next.sync);
-      setReady(true);
-    });
+    // Settings first: upgrading judges the old streak by the old daily budget.
+    loadSettings()
+      .then((prefs) => Promise.all([loadState(Date.now(), { planSettings: { budgetMin: prefs.budgetMin, planCap: prefs.planCap } }), loadSyncMeta(), prefs]))
+      .then(([loaded, meta, prefs]) => {
+        if (!mounted) return;
+        const next = forUser(loaded, meta, userId, Date.now());
+        setStore(next);
+        setSettings(prefs);
+        if (next.sync !== meta) saveState(next.data, next.sync);
+        setReady(true);
+      });
     return () => {
       mounted = false;
     };
@@ -436,6 +503,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
   }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
 
+  // Weeks start where the (synced) preference says, for every calculation below.
+  setWeekStartDay(data.prefs.weekStart);
+  const today = dkey(new Date(now));
+
   // Once per device: offer to remove sessions under a minute left over from
   // before the stop rule. Re-checked as data arrives (e.g. the first pull on a
   // new device) until answered; the ref keeps it to one alert per app session.
@@ -466,45 +537,27 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     );
   }, [ready, wiped, store.data.sessions, settings.shortSessionsReviewed, updateSettings, setData]);
 
-  // Today's plan is fixed the first time the day is shown, so it doesn't
-  // reshuffle as habits are done (completing one changes the weekly counts the
-  // suggestion is based on). Re-suggested when the budget or cap changes. An
-  // empty suggestion isn't fixed, so habits added (or synced) later that day
-  // are still picked up; a plan the user emptied stays empty.
-  const today = dkey(new Date(now));
-  const todayPinned = data.plans[today] !== undefined;
-  const planSettings: PlanSettings = useMemo(
-    () => ({ budgetMin: settings.budgetMin, planCap: settings.planCap }),
-    [settings.budgetMin, settings.planCap]
-  );
-  const planSettingsRef = useRef(planSettings);
-  planSettingsRef.current = planSettings;
-  const pinnedWith = useRef<PlanSettings | null>(null);
+  // Finished days get their plan-vs-actual log once (for history and a future
+  // AI planner); old per-day edits are dropped after two weeks.
   useEffect(() => {
-    if (!ready || wiped) return;
-    const settingsChanged = pinnedWith.current !== null && pinnedWith.current !== planSettings;
-    pinnedWith.current = planSettings;
-    if (todayPinned && !settingsChanged) return;
+    if (!ready || wiped || !sync.settled) return;
     setData((d) => {
-      const days = habitDaySec(d);
-      const suggested = suggestPlan(d, days, today, planSettings);
-      // After a settings change, habits already done today stay in the plan when they still fit.
-      const kept = settingsChanged
-        ? (d.plans[today] ?? []).filter((id) => {
-            const h = d.habits.find((x) => x.id === id);
-            return h && completionOn(h, habitDaySec(d, Date.now()), today);
-          })
-        : [];
-      let plan = kept;
-      for (const id of suggested) plan = addToPlan(plan, id, d, planSettings) ?? plan;
-      if (!plan.length) {
-        if (d.plans[today] === undefined) return d;
-        const { [today]: _dropped, ...rest } = d.plans;
-        return { ...d, plans: rest };
-      }
-      return { ...d, plans: { ...d.plans, [today]: plan } };
+      const logs = missingLogs(d, today, d.planSince);
+      const cutoff = dkey(addDays(new Date(), -14));
+      const stale = Object.keys(d.days).filter((k) => k < cutoff);
+      if (!logs.length && !stale.length) return d;
+      const days = { ...d.days };
+      for (const k of stale) delete days[k];
+      return { ...d, dailyLogs: logs.length ? [...d.dailyLogs, ...logs] : d.dailyLogs, days };
     });
-  }, [ready, wiped, today, todayPinned, planSettings, data.habits, setData]);
+  }, [ready, wiped, sync.settled, today, setData]);
+
+  // Every project gets a color, icon and scene (older projects, and ones
+  // created on devices without looks); the assignment syncs like an edit.
+  useEffect(() => {
+    if (!ready || wiped || !sync.settled) return;
+    setData(withLooks);
+  }, [ready, wiped, sync.settled, data.projects, data.habits, setData]);
 
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
@@ -518,11 +571,19 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     return () => clearTimeout(t);
   }, [ui.toast]);
 
-  // 1s tick drives the running timer + "Start" button clocks.
+  // A slow tick keeps minute-level views (today's total, the day turning)
+  // current; live clocks tick on their own (useNow), so a running timer
+  // doesn't re-render the whole app every second.
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const t = setInterval(() => setNow(Date.now()), STORE_TICK_MS);
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setNow(Date.now()));
+    return () => {
+      clearInterval(t);
+      sub.remove();
+    };
   }, []);
+  // Any data change (start, stop, a log) refreshes it too.
+  useEffect(() => setNow(Date.now()), [store.data]);
 
   /** Latest actions, for calls deferred past a render (stopTimer's editAfter). */
   const actionsRef = useRef<StreakActions | null>(null);
@@ -554,6 +615,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         const goal = goalMin ?? storeRef.current.data.habits.find((h) => h.id === habitId)?.dailyTargetMin;
         const timerGoal = goal ? { habitId, min: goal } : null;
         patchUi(discarded ? { timerOpen: true, timerGoal, toast: SHORT_TIMER_TOAST } : { timerOpen: true, timerGoal });
+        feedback(discarded ? 'undo' : 'session_start');
         // Reminder permission is asked on timer start; iOS only prompts the first time.
         if (settingsRef.current.reminderHours > 0) {
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
@@ -584,18 +646,37 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setData((d) => {
           if (!d.active) return d;
           const s = sessionFromTimer(d.active, end);
-          return {
+          const next = {
             ...d,
             sessions: s ? [...d.sessions, s] : d.sessions,
             active: null,
           };
+          return s && opts?.done ? addMark(next, s.habitId, dkey(new Date(end))) : next;
         });
+        if (a && !saved) feedback('undo');
+        else if (saved) feedback('session_complete');
         patchUi(a && !saved ? { timerOpen: false, toast: SHORT_TIMER_TOAST } : { timerOpen: false });
         if (opts?.editAfter && saved) {
           // Wait for the timer modal to finish dismissing: iOS won't present the
           // edit sheet while another modal is animating out.
-          setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_DISMISS_MS);
+          setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_GAP_MS);
         }
+      },
+
+      quickLog: (habitId, minutes) => {
+        const now = Date.now();
+        setData((d) => {
+          if (!d.habits.some((h) => h.id === habitId)) return d;
+          return { ...d, sessions: [...d.sessions, quickSession('s' + now, habitId, minutes, now)] };
+        });
+        feedback('session_complete');
+      },
+      toggleCheck: (habitId) => {
+        const day = dkey(new Date());
+        const d0 = storeRef.current.data;
+        const on = d0.marks.some((m) => m.habitId === habitId && m.day === day);
+        setData((d) => (on ? removeMark(d, habitId, day) : addMark(d, habitId, day)));
+        feedback(on ? 'undo' : 'session_complete');
       },
 
       openHeatSheet: () => patchUi({ heatSheet: true }),
@@ -621,6 +702,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             dailyTargetMin: 30,
             minTargetMin: defaultMinMin(30),
             frequency: { kind: 'daily' },
+            kind: 'timed',
           },
         }),
       openEditHabit: (habit) =>
@@ -633,8 +715,13 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             dailyTargetMin: habit.dailyTargetMin,
             minTargetMin: habit.minTargetMin,
             frequency: habit.frequency,
+            kind: habit.kind ?? 'timed',
           },
         }),
+      openEditHabitById: (habitId) => {
+        const h = storeRef.current.data.habits.find((x) => x.id === habitId);
+        if (h) actionsRef.current?.openEditHabit(h);
+      },
       closeHabitSheet: () => patchUi({ habitSheet: null }),
       patchHabitSheet: (patch) =>
         setUi((p) =>
@@ -665,6 +752,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                         weeklyTargetMin,
                         frequency,
                         minTargetMin,
+                        kind: sh.kind,
                       }
                     : h
                 ),
@@ -685,6 +773,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
               weeklyTargetMin,
               frequency,
               minTargetMin,
+              kind: sh.kind,
             };
             return { ...d, habits: [...d.habits, newHabit] };
           });
@@ -695,9 +784,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         setData((d) => {
           const habits = d.habits.filter((h) => h.id !== id);
           const sessions = d.sessions.filter((s) => s.habitId !== id);
+          const marks = d.marks.filter((m) => m.habitId !== id);
           const active =
             d.active && d.active.habitId === id ? null : d.active;
-          return { ...d, habits, sessions, active };
+          return { ...d, habits, sessions, marks, active };
         });
         setUi((p) => ({
           ...p,
@@ -715,21 +805,25 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           let active = d.active;
           if (active && active.habitId === fromId)
             active = { ...active, habitId: intoId };
-          return { ...d, sessions, habits, active };
+          return { ...d, sessions, habits, active, marks: moveMarks(d.marks, fromId, intoId) };
         });
         patchUi({ habitSheet: null });
       },
 
-      openNewProject: () =>
-        patchUi({ projectSheet: { id: null, name: '', weeklyTarget: 8 } }),
-      openEditProject: (project) =>
+      openNewProject: () => {
+        const d = storeRef.current.data;
         patchUi({
-          projectSheet: {
-            id: project.id,
-            name: project.name,
-            weeklyTarget: project.weeklyTarget,
-          },
-        }),
+          projectSheet: { id: null, name: '', weeklyTarget: 5, color: nextProjectColor(d.projects), icon: 'target', scene: nextScene(d.projects) },
+        });
+      },
+      openEditProject: (projectId) => {
+        const p = storeRef.current.data.projects.find((x) => x.id === projectId);
+        if (!p) return;
+        const look = projectLook(p);
+        patchUi({ projectSheet: { id: p.id, name: p.name, weeklyTarget: p.weeklyTarget, ...look } });
+      },
+      openCapacityFix: () => patchUi({ capacityFix: true }),
+      closeCapacityFix: () => patchUi({ capacityFix: false }),
       closeProjectSheet: () => patchUi({ projectSheet: null }),
       patchProjectSheet: (patch) =>
         setUi((p) =>
@@ -747,7 +841,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                 ...d,
                 projects: d.projects.map((p) =>
                   p.id === sh.id
-                    ? { ...p, name: sh.name.trim(), weeklyTarget: sh.weeklyTarget }
+                    ? { ...p, name: sh.name.trim(), weeklyTarget: sh.weeklyTarget, color: sh.color, icon: sh.icon, scene: sh.scene }
                     : p
                 ),
               };
@@ -761,6 +855,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                   name: sh.name.trim(),
                   weeklyTarget: sh.weeklyTarget,
                   started: Date.now(),
+                  color: sh.color,
+                  icon: sh.icon,
+                  scene: sh.scene,
                 },
               ],
             };
@@ -775,6 +872,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             .map((h) => h.id);
           const habits = d.habits.filter((h) => h.projectId !== id);
           const sessions = d.sessions.filter((s) => !hids.includes(s.habitId));
+          const marks = d.marks.filter((m) => !hids.includes(m.habitId));
           let active = d.active;
           if (active && hids.includes(active.habitId)) active = null;
           return {
@@ -782,6 +880,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             projects: d.projects.filter((p) => p.id !== id),
             habits,
             sessions,
+            marks,
             active,
           };
         });
@@ -822,16 +921,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       openStageSheet: (projectId) => patchUi({ stageSheet: projectId }),
       closeStageSheet: () => patchUi({ stageSheet: null }),
 
-      openLogSheet: () => {
-        // Default to the first planned habit not done yet today.
+      openLogSheet: (habitId) => {
+        // Default to the given habit, else the first planned one not done yet today.
         const now = Date.now();
-        const day = dkey(new Date(now));
-        const days = habitDaySec(data, now);
-        const next = planFor(data, days, day, planSettingsRef.current).find((id) => {
-          const h = data.habits.find((x) => x.id === id);
-          return h && !completionOn(h, days, day);
-        });
-        const def = next ?? activeHabits(data)[0]?.id ?? null;
+        const next = selectToday(data, now).items.find((i) => !i.done && i.kind === 'timed')?.habitId;
+        const def = habitId ?? next ?? activeHabits(data)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {
@@ -946,44 +1040,29 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
       closeRecap: () => patchUi({ recapSheet: null }),
 
-      openPlanPicker: (planPicker) => patchUi({ planPicker }),
-      closePlanPicker: () => patchUi({ planPicker: null }),
-      swapPlan: (outId, inId) => {
-        const d = storeRef.current.data;
-        const day = dkey(new Date());
-        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
-        const next = swapInPlan(current, outId, inId, d, planSettingsRef.current);
-        if (!next) {
-          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
-          return false;
-        }
-        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
-        patchUi({ planPicker: null });
-        return true;
-      },
-      removeFromPlan: (habitId) => {
-        const day = dkey(new Date());
-        setData((d) => {
-          const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
-          return { ...d, plans: { ...d.plans, [day]: current.filter((id) => id !== habitId) } };
-        });
-      },
-      addToPlan: (habitId) => {
-        const d = storeRef.current.data;
-        const day = dkey(new Date());
-        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
-        const next = addToPlan(current, habitId, d, planSettingsRef.current);
-        if (!next) {
-          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
-          return false;
-        }
-        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
-        patchUi({ planPicker: null });
-        return true;
-      },
       openWeek: () => patchUi({ weekOpen: true }),
+      openStartSheet: () => patchUi({ startSheet: true }),
+      earnBadges: (ids, celebrate) => {
+        const now = Date.now();
+        setData((d) => ({ ...award(d, ids, now), badgesPrimed: true }));
+        if (celebrate && ids.length) setUi((p) => ({ ...p, celebrations: enqueueCelebrations(p.celebrations, celebrationOrder(ids)) }));
+      },
+      dismissCelebration: () => setUi((p) => ({ ...p, celebrations: p.celebrations.slice(1) })),
+      dayCompleted: (colors) => {
+        feedback('day_complete');
+        setUi((p) => ({ ...p, confetti: { key: Date.now(), colors }, cheerUntil: Date.now() + 4000 }));
+      },
+      burst: (x, y, color) => {
+        const key = Date.now() + Math.random();
+        setUi((p) => ({ ...p, bursts: [...p.bursts, { key, x, y, color }] }));
+        setTimeout(() => setUi((p) => ({ ...p, bursts: p.bursts.filter((b) => b.key !== key) })), 1200);
+      },
+      targetReached: () => {
+        feedback('target_reached');
+        setUi((p) => ({ ...p, targetHits: p.targetHits + 1, cheerUntil: Date.now() + 4000 }));
+      },
+      closeStartSheet: () => patchUi({ startSheet: false }),
       closeWeek: () => patchUi({ weekOpen: false }),
-      finishRebalance: (chosen) => setData((d) => finishRebalance(d, chosen, dkey(new Date()))),
 
       setReminderHours: (hours) => {
         const next = updateSettings({ reminderHours: clampReminderHours(hours) });
@@ -991,6 +1070,54 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
         }
       },
+      setCapacity: (weekday, min) =>
+        setData((d) => {
+          const capacityMin = clampCapacity(d.prefs.capacityMin.map((m, i) => (i === weekday ? min : m)));
+          return { ...d, prefs: { ...d.prefs, capacityMin } };
+        }),
+      setCapacityAll: (mins) => setData((d) => ({ ...d, prefs: { ...d.prefs, capacityMin: clampCapacity(mins) } })),
+      setWeekStart: (weekStart) => setData((d) => ({ ...d, prefs: { ...d.prefs, weekStart } })),
+      setDayLevel: (level) => {
+        const day = dkey(new Date());
+        setData((d) => {
+          const o = d.days[day] ?? {};
+          const next = level ? { ...o, level, prompted: true } : { ...o, prompted: true };
+          return { ...d, days: { ...d.days, [day]: next } };
+        });
+      },
+      reorderToday: (ids) => {
+        const day = dkey(new Date());
+        setData((d) => ({ ...d, days: { ...d.days, [day]: { ...(d.days[day] ?? {}), order: ids } } }));
+      },
+      setAside: (habitId, aside) => {
+        const day = dkey(new Date());
+        setData((d) => {
+          const o = d.days[day] ?? {};
+          const cur = new Set(o.aside ?? []);
+          if (aside) cur.add(habitId);
+          else cur.delete(habitId);
+          return { ...d, days: { ...d.days, [day]: { ...o, aside: [...cur] } } };
+        });
+        feedback(aside ? 'undo' : 'tap');
+      },
+      fixTargets: (how) => {
+        setData((d) => {
+          const chk = targetCheck(d);
+          if (!chk.over) return d;
+          if (how === 'scale') return { ...d, projects: scaleTargetsToFit(d.projects, chk.capacityMin) };
+          return { ...d, prefs: { ...d.prefs, capacityMin: raiseCapacityToFit(d.prefs.capacityMin, chk.targetMin) } };
+        });
+        feedback('session_complete');
+      },
+      dismissTargetCheck: (signature) => updateSettings({ targetCheckDismissed: signature }),
+      acceptLearned: (mins) => {
+        setData((d) => ({ ...d, prefs: { ...d.prefs, capacityMin: clampCapacity(mins) } }));
+        updateSettings({ learnedDismissed: dkey(new Date()) });
+        feedback('session_complete');
+      },
+      dismissLearned: () => updateSettings({ learnedDismissed: dkey(new Date()) }),
+      setDailyPrompt: (dailyPrompt) => updateSettings({ dailyPrompt }),
+      markWelcomeSeen: () => updateSettings({ welcomeSeen: true }),
       setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
       setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
     };

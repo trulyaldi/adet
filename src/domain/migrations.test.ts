@@ -74,7 +74,7 @@ test('hydrates unstamped v3-key data as v2 and preserves explicit targets', () =
 
 test('already-current data passes through unchanged', () => {
   const saved = {
-    schemaVersion: 4,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: NOW - 1000 }],
     habits: [
       {
@@ -87,15 +87,22 @@ test('already-current data passes through unchanged', () => {
         weeklyTargetMin: 75,
         frequency: { kind: 'weekly', times: 3 },
         minTargetMin: 10,
+        kind: 'check',
       },
     ],
     sessions: [],
+    marks: [{ id: 'h1:2026-07-10', habitId: 'h1', day: '2026-07-10' }],
+    prefs: { capacityMin: [120, 120, 120, 120, 120, 60, 0], weekStart: 0 },
+    dailyLogs: [{ id: '2026-07-09', capacityMin: 120, plannedMin: 30, actualMin: 45, items: [{ habitId: 'h1', projectId: 'p1', shareMin: 30 }], doneCount: 1 }],
+    badges: [{ id: 'streak-3', earnedAt: 5 }],
     active: null,
     historyClearedAt: 123,
     plans: { '2026-07-10': ['h1'] },
     planSince: '2026-07-01',
     streakCarry: { current: 12, longest: 30, day: '2026-07-01' },
     rebalancePending: false,
+    days: { '2026-07-10': { order: ['h1'], aside: [], level: 'light', prompted: true } },
+    badgesPrimed: true,
   };
 
   const result = hydrate({ v3: JSON.stringify(saved), v2: null }, NOW);
@@ -145,12 +152,18 @@ test('a stamped empty state stays empty instead of re-seeding', () => {
     projects: [],
     habits: [],
     sessions: [],
+    marks: [],
+    prefs: { capacityMin: [180, 180, 180, 180, 180, 120, 120], weekStart: 1 },
+    dailyLogs: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
     planSince: '2026-07-10',
     streakCarry: null,
     rebalancePending: false,
+    days: {},
+    badges: [],
+    badgesPrimed: true,
   };
   assert.deepEqual(hydrate({ v3: JSON.stringify(empty), v2: null }, NOW), empty);
 });
@@ -180,7 +193,7 @@ const v3Habit = (id: string, dailyTargetMin: number) => ({
 
 test('v3 habits become every-day habits with a 5-minute (or shorter) minimum', () => {
   const r = hydrate({ v3: JSON.stringify(v3State([v3Habit('a', 45), v3Habit('b', 5), v3Habit('c', 3)])), v2: null }, NOW);
-  assert.equal(r.schemaVersion, 4);
+  assert.equal(r.schemaVersion, CURRENT_SCHEMA_VERSION);
   assert.deepEqual(
     r.habits.map((h) => [h.id, h.frequency, h.dailyTargetMin, h.minTargetMin, h.weeklyTargetMin]),
     [
@@ -189,7 +202,7 @@ test('v3 habits become every-day habits with a 5-minute (or shorter) minimum', (
       ['c', { kind: 'daily' }, 3, 3, 15],
     ]
   );
-  assert.equal(r.rebalancePending, true, 'the one-time rebalance screen is due');
+  assert.equal(r.rebalancePending, false, 'the welcome flow does the rebalance now');
   assert.equal(r.planSince, '2026-07-10', 'days from the update on are judged by their plan');
   assert.deepEqual(r.plans, {});
 });
@@ -219,7 +232,7 @@ test('an untouched seed saved by the previous version still reads as untouched',
   const old = {
     schemaVersion: 3,
     projects: s.projects,
-    habits: s.habits.map(({ frequency: _f, minTargetMin: _m, ...h }) => h),
+    habits: s.habits.map(({ frequency: _f, minTargetMin: _m, kind: _k, ...h }) => h),
     sessions: s.sessions,
     active: null,
     historyClearedAt: 0,

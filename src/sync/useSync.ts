@@ -11,6 +11,12 @@ export interface SyncStatus {
   state: SyncState;
   /** Local changes not yet confirmed by the server. */
   pending: number;
+  /**
+   * True once this launch's first sync attempt finished (pulled, or failed
+   * offline). Records derived from all data wait for it, so they aren't
+   * stamped newer than what another device already pushed.
+   */
+  settled: boolean;
 }
 
 interface SyncStore {
@@ -45,6 +51,7 @@ export function useSync<S extends SyncStore>({
   activeRev,
 }: Options<S>): SyncStatus {
   const [phase, setPhase] = useState<'idle' | 'syncing' | 'error'>('syncing');
+  const [settled, setSettled] = useState(false);
   const running = useRef(false);
   const again = useRef(false);
   const failures = useRef(0);
@@ -96,6 +103,7 @@ export function useSync<S extends SyncStore>({
       } while (again.current && enabledRef.current && ++round < MAX_ROUNDS);
       failures.current = 0;
       setPhase('idle');
+      setSettled(true);
       // Still queued after the last round: pick it up on the normal debounce.
       if (again.current && enabledRef.current && !unmounted.current) {
         debounceTimer.current = setTimeout(run, LOCAL_DEBOUNCE_MS);
@@ -105,6 +113,7 @@ export function useSync<S extends SyncStore>({
       if (__DEV__) console.warn('[sync]', e);
       failures.current += 1;
       setPhase('error');
+      setSettled(true);
       if (enabledRef.current && !unmounted.current) {
         const delay = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** (failures.current - 1));
         retryTimer.current = setTimeout(run, delay);
@@ -153,5 +162,5 @@ export function useSync<S extends SyncStore>({
   const pending = Object.keys(storeRef.current.sync.outbox).length;
   const state: SyncState =
     phase === 'error' ? 'offline' : phase === 'syncing' || pending > 0 ? 'syncing' : 'synced';
-  return useMemo(() => ({ state, pending }), [state, pending]);
+  return useMemo(() => ({ state, pending, settled }), [state, pending, settled]);
 }

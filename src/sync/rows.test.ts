@@ -31,6 +31,7 @@ const cases: Change[] = [
       updatedAt: T,
       frequency: { kind: 'days', days: [0, 2, 4] },
       minTargetMin: 10,
+      kind: 'check',
     },
   },
   {
@@ -45,8 +46,19 @@ const cases: Change[] = [
     table: 'projects',
     id: 'p2',
     deletedAt: null,
-    record: { id: 'p2', name: 'Old', weeklyTarget: 4, started: 5, archivedAt: T - 1000, updatedAt: T },
+    record: { id: 'p2', name: 'Old', weeklyTarget: 4, started: 5, archivedAt: T - 1000, color: 'teal', icon: 'music', scene: 'orbit', updatedAt: T },
   },
+  // The redesign's tables (005).
+  { table: 'habit_marks', id: 'h1:2026-09-28', deletedAt: null, record: { id: 'h1:2026-09-28', habitId: 'h1', day: '2026-09-28', updatedAt: T } },
+  { table: 'habit_marks', id: 'h1:2026-09-27', deletedAt: T, record: { id: 'h1:2026-09-27', habitId: 'h1', day: '2026-09-27', updatedAt: T } },
+  {
+    table: 'daily_logs',
+    id: '2026-09-27',
+    deletedAt: null,
+    record: { id: '2026-09-27', capacityMin: 180, plannedMin: 150, actualMin: 95, items: [{ habitId: 'h1', projectId: 'p1', shareMin: 150 }], doneCount: 1, updatedAt: T },
+  },
+  { table: 'badges', id: 'streak-7', deletedAt: null, record: { id: 'streak-7', earnedAt: T - 5, updatedAt: T } },
+  { table: 'user_prefs', id: 'prefs', deletedAt: null, record: { capacityMin: [120, 120, 120, 120, 90, 0, 60], weekStart: 0, updatedAt: T } },
 ];
 
 for (const c of cases) {
@@ -56,6 +68,20 @@ for (const c of cases) {
     assert.deepEqual(rowToChange(c.table, serverTs(row)), c);
   });
 }
+
+test('rows from before 005 read with defaults: timed habits, id-derived project looks', () => {
+  const habit = rowToChange('habits', { id: 'h', project_id: 'p', name: 'H', icon: 'book', tile: '#fff', daily_target_min: 30, weekly_target_min: 90, updated_at: '2026-09-27T10:00:00+00:00' });
+  assert.ok(habit.table === 'habits' && habit.record.kind === 'timed');
+  const project = rowToChange('projects', { id: 'p', name: 'P', weekly_target: 5, started: null, color: null, icon: 'nope', updated_at: '2026-09-27T10:00:00+00:00' });
+  assert.ok(project.table === 'projects' && !('color' in project.record) && !('icon' in project.record));
+});
+
+test('prefs rows are clamped on the way in', () => {
+  const c = rowToChange('user_prefs', { id: 'prefs', capacity_min: [999, -5, 30, 30, 30, 30], week_start: 3, updated_at: '2026-09-27T10:00:00+00:00' });
+  assert.ok(c.table === 'user_prefs');
+  assert.equal(c.record.capacityMin.length, 7, 'malformed (6 values) falls back to the default');
+  assert.equal(c.record.weekStart, 1);
+});
 
 test('live habits never carry merged_into', () => {
   const c: Change = { ...(cases[1] as Extract<Change, { table: 'habits' }>), deletedAt: null };

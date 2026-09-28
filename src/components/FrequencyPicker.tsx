@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Frequency, frequencyLabel, normalizeFrequency, WEEKDAY_LETTERS, weeklyTargetOf } from '../domain/frequency';
-import { colors, radius } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 import { Glyph, IconButton } from './Glyph';
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -22,6 +22,7 @@ interface FrequencyPickerProps {
  * the other is dimmed.
  */
 export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyPickerProps) {
+  const { colors, radius, shadow } = useTheme();
   const count = weeklyTargetOf(value);
   const byDays = value.kind === 'days';
   const setTimes = (times: number) => onChange(normalizeFrequency({ kind: 'weekly', times }));
@@ -33,7 +34,7 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
   return (
     <View style={{ gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, opacity: byDays ? 0.45 : 1 }}>
-        {!compact && <Glyph name="calendar" size={20} color={colors.subtext} label={frequencyLabel(value)} />}
+        {!compact && <Glyph name="calendar" size={20} color={colors.sub} label={frequencyLabel(value)} />}
         {!compact && (
           <IconButton label="Fewer times a week" name="minus" size={15} bg={colors.card} diameter={30} disabled={count <= 1} onPress={() => setTimes(count - 1)} />
         )}
@@ -57,7 +58,7 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
                     borderRadius: 7,
                     backgroundColor: on ? accent : 'transparent',
                     borderWidth: 2,
-                    borderColor: on ? accent : colors.faint,
+                    borderColor: on ? accent : colors.muted,
                   }}
                 />
               </IconButton>
@@ -88,10 +89,10 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
                   justifyContent: 'center',
                   backgroundColor: on ? accent : colors.card,
                   borderWidth: 1.5,
-                  borderColor: on ? accent : colors.track3,
+                  borderColor: on ? accent : colors.track,
                 }}
               >
-                <Text style={{ fontSize: 12.5, fontWeight: '800', color: on ? '#FFFFFF' : colors.subtext }}>{letter}</Text>
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: on ? colors.onBrand : colors.sub }}>{letter}</Text>
               </Pressable>
             );
           })}

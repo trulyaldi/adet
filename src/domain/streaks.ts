@@ -257,3 +257,95 @@ export function habitWeekStreak(h: Habit, days: HabitDays, today: string): numbe
   }
   return streak;
 }
+
+// ---------------------------------------------------------------------------
+// v5: the forgiving streak
+// ---------------------------------------------------------------------------
+
+/**
+ * How a day shows in the v5 streak:
+ * `complete` — any logged time or check-off (or the plan done, whichever is kinder);
+ * `free` — nothing was planned (weekly targets met) and nothing done: neutral;
+ * `rest` — the week's automatic rest day (a moon): neutral;
+ * `freeze` — covered by one of the month's freezes: neutral;
+ * `open` — a quiet day that ended the streak (shown as a plain empty ring, never red);
+ * `today` — today, still in progress (never breaks anything).
+ */
+export type DayMark5 = 'complete' | 'free' | 'rest' | 'freeze' | 'open' | 'today';
+
+export interface StreakV5 {
+  current: number;
+  longest: number;
+  marks: Map<string, DayMark5>;
+}
+
+/** dkeys with logged time or a done mark. */
+export function activityDays(data: PersistedState): Set<string> {
+  const out = new Set<string>();
+  for (const s of data.sessions) if (s.duration > 0) out.add(dkey(new Date(s.start)));
+  for (const m of data.marks) out.add(m.day);
+  return out;
+}
+
+/**
+ * The v5 streak, from the first active day to `today`. A day counts when
+ * anything was logged or checked off. A day with nothing planned (per its
+ * daily log, or today's plan) is neutral. The first quiet day of each week
+ * is a rest day, and up to FREEZES_PER_MONTH more per month are frozen;
+ * only a quiet day beyond those breaks it. `todayFree` is today's plan being
+ * empty. `carry` keeps the streak from before the redesign as a floor while
+ * it hasn't broken since (see planStreak).
+ */
+export function streakV5(data: PersistedState, today: string, carry: StreakCarry | null, todayFree = false): StreakV5 {
+  const active = activityDays(data);
+  const marks = new Map<string, DayMark5>();
+  let first: string | null = null;
+  for (const k of active) if (k <= today && (first === null || k < first)) first = k;
+  if (first === null) {
+    marks.set(today, 'today');
+    const c = carry ? carry.current : 0;
+    return { current: c, longest: Math.max(c, carry?.longest ?? 0), marks };
+  }
+  const freeDays = new Set(data.dailyLogs.filter((l) => !l.items.length).map((l) => l.id));
+  if (todayFree) freeDays.add(today);
+
+  let run = 0;
+  let longest = 0;
+  let lastBreak: string | null = null;
+  let restWeek: string | null = null;
+  const frozen: Record<string, number> = {};
+  let sinceCarry = 0;
+
+  for (const d = pkey(first); ; d.setDate(d.getDate() + 1)) {
+    const k = dkey(d);
+    if (active.has(k)) {
+      run++;
+      longest = Math.max(longest, run);
+      if (carry && k > carry.day) sinceCarry++;
+      marks.set(k, 'complete');
+    } else if (k === today) {
+      marks.set(k, freeDays.has(k) ? 'free' : 'today');
+    } else if (freeDays.has(k)) {
+      marks.set(k, 'free');
+    } else {
+      const week = dkey(monday(d));
+      const month = k.slice(0, 7);
+      if (restWeek !== week) {
+        restWeek = week;
+        marks.set(k, 'rest');
+      } else if ((frozen[month] || 0) < FREEZES_PER_MONTH && run > 0) {
+        frozen[month] = (frozen[month] || 0) + 1;
+        marks.set(k, 'freeze');
+      } else {
+        run = 0;
+        lastBreak = k;
+        marks.set(k, 'open');
+      }
+    }
+    if (k >= today) break;
+  }
+
+  let current = run;
+  if (carry && (lastBreak === null || lastBreak <= carry.day)) current = Math.max(run, carry.current + sinceCarry);
+  return { current, longest: Math.max(longest, current, carry?.longest ?? 0), marks };
+}

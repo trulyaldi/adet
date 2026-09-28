@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface SheetProps {
   visible: boolean;
@@ -30,6 +30,7 @@ export function Sheet({
   children,
   maxHeightPct = 0.82,
 }: SheetProps) {
+  const { colors, radius, shadow } = useTheme();
   const translateY = useRef(new Animated.Value(0)).current;
 
   // Reset the drag offset whenever the sheet (re)opens.
@@ -82,7 +83,7 @@ export function Sheet({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(23,24,26,0.35)',
+            backgroundColor: colors.scrim,
           }}
         />
         <KeyboardAvoidingView
@@ -107,7 +108,7 @@ export function Sheet({
                   width: 36,
                   height: 5,
                   borderRadius: 999,
-                  backgroundColor: '#E3E4E8',
+                  backgroundColor: colors.line,
                 }}
               />
             </View>

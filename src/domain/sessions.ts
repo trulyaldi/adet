@@ -141,3 +141,12 @@ export function defaultManualStart(now: number, minutes: number): number {
 export function fitManualStart(start: number, minutes: number, now: number): number {
   return start + minutes * 60 * 1000 > now ? defaultManualStart(now, minutes) : start;
 }
+
+/**
+ * A quick log of `minutes` that ends now (the +15 / +30 / +60 chips). Always
+ * valid: minutes are clamped to 1..SESSION_MAX_SEC/60.
+ */
+export function quickSession(id: string, habitId: string, minutes: number, now: number): Session {
+  const min = Math.max(1, Math.min(SESSION_MAX_SEC / 60, Math.round(minutes)));
+  return { id, habitId, start: now - min * 60_000, end: now, duration: min * 60, manual: true };
+}

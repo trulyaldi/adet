@@ -15,13 +15,13 @@ export function useStopTimer(): () => void {
   return () => {
     const secs = activeSec(data.active, Date.now());
     if (secs <= longSessionSec(settings.reminderHours)) {
-      actions.stopTimer();
+      actions.stopTimer({ done: true });
       return;
     }
     const tracked = fmtHM(secs);
     Alert.alert('Long session', `You tracked ${tracked}. Keep it, or set the end time?`, [
-      { text: `Keep ${tracked}`, onPress: () => actions.stopTimer() },
-      { text: 'Set end time', onPress: () => actions.stopTimer({ editAfter: true }) },
+      { text: `Keep ${tracked}`, onPress: () => actions.stopTimer({ done: true }) },
+      { text: 'Set end time', onPress: () => actions.stopTimer({ done: true, editAfter: true }) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };

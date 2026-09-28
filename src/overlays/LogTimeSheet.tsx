@@ -8,11 +8,13 @@ import { activeHabits } from '../domain/projects';
 import { checkSessionTimes, fitManualStart, SESSION_MAX_SEC } from '../domain/sessions';
 import { fmtHM, fmtMin, stepFor } from '../domain/time';
 import { logSheetEnd, useStreak } from '../store/StreakStore';
-import { colors, radius } from '../theme/tokens';
+import { inputStyle } from '../theme/styles';
+import { useTheme } from '../theme/ThemeProvider';
 
 const MAX_MIN = SESSION_MAX_SEC / 60;
 
 export function LogTimeSheet() {
+  const { colors, radius, shadow } = useTheme();
   const { data, ui, now, actions } = useStreak();
   const sheet = ui.logSheet;
   // Validate live so problems show while picking, not only on save.
@@ -84,7 +86,7 @@ export function LogTimeSheet() {
             {sheet.mode === 'duration' ? (
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Glyph name="clock" size={17} color={colors.subtext} label="Duration" />
+                  <Glyph name="clock" size={17} color={colors.sub} label="Duration" />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>{fmtMin(sheet.minutes)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -94,7 +96,7 @@ export function LogTimeSheet() {
                     onPress={() => setMinutes(Math.max(5, sheet.minutes - stepFor(sheet.minutes)))}
                   />
                   <View style={{ flex: 1, height: 6, borderRadius: radius.pill, backgroundColor: colors.track, overflow: 'hidden' }}>
-                    <View style={{ width: `${durPct}%`, height: '100%', borderRadius: radius.pill, backgroundColor: colors.ink }} />
+                    <View style={{ width: `${durPct}%`, height: '100%', borderRadius: radius.pill, backgroundColor: colors.brand }} />
                   </View>
                   <StepButton
                     label="Longer"
@@ -112,7 +114,7 @@ export function LogTimeSheet() {
                   onChange={(end) => actions.patchLogSheet({ end })}
                 />
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Glyph name="clock" size={17} color={colors.subtext} label="Duration" />
+                  <Glyph name="clock" size={17} color={colors.sub} label="Duration" />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>
                     {check?.ok ? fmtHM(check.duration) : '—'}
                   </Text>
@@ -121,9 +123,9 @@ export function LogTimeSheet() {
             )}
           </View>
 
-          {error && <Text style={{ fontSize: 13, fontWeight: '600', color: colors.danger }}>{error}</Text>}
+          {error && <Text style={{ fontSize: 13, fontWeight: '600', color: colors.amber }}>{error}</Text>}
           {confirming && check?.ok && (
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.subtext }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.sub }}>
               {`That's ${fmtHM(check.duration)}, longer than 8 hours. Save it anyway?`}
             </Text>
           )}
@@ -133,26 +135,26 @@ export function LogTimeSheet() {
             value={sheet.note}
             onChangeText={(t) => actions.patchLogSheet({ note: t })}
             placeholder="Note"
-            placeholderTextColor="#A9ACB3"
+            placeholderTextColor={colors.muted}
             accessibilityLabel="Note, optional"
-            style={inputStyle}
+            style={inputStyle(colors, radius)}
           />
 
           {/* Save; a session over 8 hours asks to be confirmed in words */}
           {confirming && check?.ok ? (
             <Pressable
               onPress={actions.saveLogSheet}
-              style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.ink }}
+              style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.brand }}
             >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.onBrand }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
             </Pressable>
           ) : (
             <IconButton
               label="Save session"
               name="done"
               size={24}
-              color="#FFFFFF"
-              bg={colors.ink}
+              color={colors.onBrand}
+              bg={colors.brand}
               disabled={!valid}
               onPress={actions.saveLogSheet}
               style={{ borderRadius: radius.lg, padding: 14 }}
@@ -165,6 +167,7 @@ export function LogTimeSheet() {
 }
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): void }) {
+  const { colors, radius, shadow } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -172,26 +175,15 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): v
         borderRadius: radius.pill,
         paddingVertical: 8,
         paddingHorizontal: 14,
-        backgroundColor: on ? colors.ink : colors.screen,
+        backgroundColor: on ? colors.brand : colors.well,
       }}
     >
-      <Text style={{ fontSize: 13, fontWeight: '700', color: on ? '#FFFFFF' : colors.ink }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: on ? colors.onBrand : colors.ink }}>{label}</Text>
     </Pressable>
   );
 }
 
 function StepButton({ label, glyph, onPress }: { label: string; glyph: 'minus' | 'plus'; onPress(): void }) {
-  return <IconButton label={label} name={glyph} size={18} bg={colors.screen} onPress={onPress} style={{ width: 40, height: 40, borderRadius: 13 }} />;
+  const { colors, radius, shadow } = useTheme();
+  return <IconButton label={label} name={glyph} size={18} bg={colors.well} onPress={onPress} style={{ width: 40, height: 40, borderRadius: 13 }} />;
 }
-
-
-
-const inputStyle = {
-  width: '100%' as const,
-  backgroundColor: colors.screen,
-  borderRadius: radius.md,
-  paddingVertical: 15,
-  paddingHorizontal: 16,
-  fontSize: 16,
-  color: colors.ink,
-};
