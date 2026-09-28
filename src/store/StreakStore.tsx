@@ -16,7 +16,7 @@ import { activeSec } from '../domain/engine';
 import { clampCapacity, DEFAULT_PREFS, raiseCapacityToFit, scaleTargetsToFit, targetCheck } from '../domain/capacity';
 import { missingLogs } from '../domain/dailyLog';
 import { selectToday } from '../domain/day';
-import { nextProjectColor, nextScene, withLooks } from '../domain/look';
+import { nextProjectColor, nextScene, ProjectColor, projectLook, withLooks } from '../domain/look';
 import { addMark, moveMarks, removeMark } from '../domain/marks';
 import { award, celebrationOrder, enqueueCelebrations } from '../domain/milestones';
 import type { GlyphName } from '../components/glyphs';
@@ -45,6 +45,7 @@ import {
   HabitKind,
   IconKey,
   PersistedState,
+  SceneKind,
   Session,
 } from '../domain/types';
 import { requestReminderPermission, syncReminder } from '../notifications/reminder';
@@ -72,6 +73,9 @@ export interface ProjectSheetState {
   id: string | null;
   name: string;
   weeklyTarget: number;
+  color: ProjectColor;
+  icon: IconKey;
+  scene: SceneKind;
 }
 export interface LogSheetState {
   habitId: string | null;
@@ -143,6 +147,8 @@ export interface UIState {
   weekOpen: boolean;
   /** The "+" sheet: start any project's habit, planned or not. */
   startSheet: boolean;
+  /** The targets-over-capacity sheet. */
+  capacityFix: boolean;
   /** Bumped when the running session reaches its target (scene payoff, companion cheer). */
   targetHits: number;
   /** Epoch ms until which the companion cheers. */
@@ -181,6 +187,7 @@ const INITIAL_UI: UIState = {
   statsView: 'overview',
   weekOpen: false,
   startSheet: false,
+  capacityFix: false,
   targetHits: 0,
   cheerUntil: 0,
   celebrations: [],
@@ -233,6 +240,7 @@ export interface StreakActions {
   // habit sheet
   openNewHabit(projectId: string): void;
   openEditHabit(habit: Habit): void;
+  openEditHabitById(habitId: string): void;
   closeHabitSheet(): void;
   patchHabitSheet(patch: Partial<HabitSheetState>): void;
   saveHabitSheet(): void;
@@ -240,7 +248,9 @@ export interface StreakActions {
   mergeHabit(fromId: string, intoId: string): void;
   // project sheet
   openNewProject(): void;
-  openEditProject(project: { id: string; name: string; weeklyTarget: number }): void;
+  openEditProject(projectId: string): void;
+  openCapacityFix(): void;
+  closeCapacityFix(): void;
   closeProjectSheet(): void;
   patchProjectSheet(patch: Partial<ProjectSheetState>): void;
   saveProjectSheet(): void;
@@ -711,6 +721,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
             kind: habit.kind ?? 'timed',
           },
         }),
+      openEditHabitById: (habitId) => {
+        const h = storeRef.current.data.habits.find((x) => x.id === habitId);
+        if (h) actionsRef.current?.openEditHabit(h);
+      },
       closeHabitSheet: () => patchUi({ habitSheet: null }),
       patchHabitSheet: (patch) =>
         setUi((p) =>
@@ -799,16 +813,20 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         patchUi({ habitSheet: null });
       },
 
-      openNewProject: () =>
-        patchUi({ projectSheet: { id: null, name: '', weeklyTarget: 8 } }),
-      openEditProject: (project) =>
+      openNewProject: () => {
+        const d = storeRef.current.data;
         patchUi({
-          projectSheet: {
-            id: project.id,
-            name: project.name,
-            weeklyTarget: project.weeklyTarget,
-          },
-        }),
+          projectSheet: { id: null, name: '', weeklyTarget: 5, color: nextProjectColor(d.projects), icon: 'target', scene: nextScene(d.projects) },
+        });
+      },
+      openEditProject: (projectId) => {
+        const p = storeRef.current.data.projects.find((x) => x.id === projectId);
+        if (!p) return;
+        const look = projectLook(p);
+        patchUi({ projectSheet: { id: p.id, name: p.name, weeklyTarget: p.weeklyTarget, ...look } });
+      },
+      openCapacityFix: () => patchUi({ capacityFix: true }),
+      closeCapacityFix: () => patchUi({ capacityFix: false }),
       closeProjectSheet: () => patchUi({ projectSheet: null }),
       patchProjectSheet: (patch) =>
         setUi((p) =>
@@ -826,7 +844,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                 ...d,
                 projects: d.projects.map((p) =>
                   p.id === sh.id
-                    ? { ...p, name: sh.name.trim(), weeklyTarget: sh.weeklyTarget }
+                    ? { ...p, name: sh.name.trim(), weeklyTarget: sh.weeklyTarget, color: sh.color, icon: sh.icon, scene: sh.scene }
                     : p
                 ),
               };
@@ -840,9 +858,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
                   name: sh.name.trim(),
                   weeklyTarget: sh.weeklyTarget,
                   started: Date.now(),
-                  color: nextProjectColor(d.projects),
-                  icon: 'target',
-                  scene: nextScene(d.projects),
+                  color: sh.color,
+                  icon: sh.icon,
+                  scene: sh.scene,
                 },
               ],
             };

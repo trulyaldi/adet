@@ -22,7 +22,7 @@ export function CelebrationHost() {
   const { data, ui, actions } = useStreak();
   const reduced = useReducedMotion();
   const busy =
-    ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet;
+    ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix || !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet;
   const id = !busy ? ui.celebrations[0] : undefined;
   const info = id ? badgeInfo(id, data) : null;
   useEffect(() => {

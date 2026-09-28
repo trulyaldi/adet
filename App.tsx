@@ -19,6 +19,7 @@ import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { StartSheet } from './src/overlays/StartSheet';
+import { CapacityFixSheet } from './src/overlays/CapacityFixSheet';
 import { FocusView } from './src/overlays/FocusView';
 import { WeekSheet } from './src/overlays/WeekSheet';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
@@ -84,6 +85,7 @@ function Root() {
       <RecapSheet />
       <SettingsSheet />
       <StartSheet />
+      <CapacityFixSheet />
       <WeekSheet />
       <RebalanceScreen />
     </View>

@@ -1,282 +1,221 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-import { Glyph, GlyphName, IconButton } from '../components/Glyph';
+import { CapacityIndicator } from '../components/CapacityIndicator';
+import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
-import { ProgressBar } from '../components/ProgressBar';
-import { ArchivedCard, ProjectCard, selectProjects } from '../domain/engine';
+import { Appear, useLayoutMotion } from '../components/motion/Appear';
+import { AnimatedBar } from '../components/motion/AnimatedBar';
+import { QuickAdd } from '../components/QuickAdd';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { ICONS } from '../domain/constants';
+import { ProjectView, selectProjectsView, sessionWhen } from '../domain/projectsView';
+import { fmtDur, sayDur } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
-import { colors, radius, shadowCard } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function ProjectsScreen() {
-  const { data, now, config, actions } = useStreak();
-  const model = selectProjects(data, config, now);
-  // Cards start collapsed each time the screen opens.
-  const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set());
-  const toggle = (id: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const { colors } = useTheme();
+  const { data, now, settings, actions } = useStreak();
+  const model = useMemo(() => selectProjectsView(data, now), [data, now]);
+  const [open, setOpen] = useState<string | null>(null);
+  const showCheck = model.check.over && settings.targetCheckDismissed !== model.check.signature;
 
   return (
-    <ScrollView
-      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 20, paddingBottom: 24 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
-        <Text style={{ flex: 1, fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
-          Projects
-        </Text>
-        <IconButton label="New project" name="plus" onPress={actions.openNewProject} bg={colors.card} diameter={36} size={18} tipBelow />
+    <ScrollView contentContainerStyle={{ paddingTop: 12, paddingHorizontal: 16, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+      <ScreenHeader
+        title="Projects"
+        right={
+          <IconButton
+            label="New project"
+            name="plus"
+            size={22}
+            color={colors.onBrand}
+            bg={colors.brand}
+            edge={colors.brandDark}
+            variant="chunky"
+            diameter={44}
+            onPress={actions.openNewProject}
+            tipBelow
+          />
+        }
+      />
+
+      {showCheck && <CapacityIndicator check={model.check} onPress={actions.openCapacityFix} />}
+
+      <View style={{ gap: 14, marginTop: 14 }}>
+        {model.cards.map((pc, i) => (
+          <Appear key={pc.projectId} index={i}>
+            <ProjectCard pc={pc} expanded={open === pc.projectId} onToggle={() => setOpen((o) => (o === pc.projectId ? null : pc.projectId))} />
+          </Appear>
+        ))}
       </View>
 
-      {model.cards.map((pc) => (
-        <ProjectCardView
-          key={pc.projectId}
-          pc={pc}
-          expanded={expanded.has(pc.projectId)}
-          onToggle={() => toggle(pc.projectId)}
-        />
-      ))}
-
       {model.cards.length === 0 && (
-        <View style={{ alignItems: 'center', paddingVertical: 36 }}>
-          <Glyph name="target" size={30} color={colors.faint} label="No active projects" />
+        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <Glyph name="target" size={40} color={colors.muted} label="No projects yet" />
         </View>
       )}
 
-      {model.archived.length > 0 && <ArchivedSection items={model.archived} />}
+      {model.archived.length > 0 && <Archived items={model.archived} />}
     </ScrollView>
   );
 }
 
-/** Collapsed: week progress, pace and streak. Tap to expand the details and habits. */
-function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded: boolean; onToggle(): void }) {
-  const { data, config, actions } = useStreak();
+/**
+ * A project at a glance: color tile and icon, name, a thick bar of this
+ * week's time toward the weekly target, and "4h 20m / 10h" with a week
+ * badge. A met target gets a check and a soft glow for the rest of the week.
+ * Tap to expand (habits, quick logs, this week's sessions); long-press, or
+ * the edit button inside, to edit.
+ */
+function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: boolean; onToggle(): void }) {
+  const t = useTheme();
+  const { colors, radius } = t;
+  const { actions } = useStreak();
+  const layout = useLayoutMotion();
+  const sw = t.swatch(pc.look.color);
+  const ink = t.dark ? sw.base : sw.dark;
 
   return (
-    <View style={[{ backgroundColor: colors.card, borderRadius: radius.xxl, marginTop: 16 }, shadowCard]}>
-      <Pressable onPress={onToggle} accessibilityState={{ expanded }} style={{ padding: 18, paddingBottom: expanded ? 4 : 18 }}>
-        {/* Title row */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-          <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: colors.ink }}>{pc.name}</Text>
-          <IconButton
-            label="Edit project"
-            name="pencil"
-            size={16}
-            color={colors.faint}
-            onPress={() => actions.openEditProject({ id: pc.projectId, name: pc.name, weeklyTarget: pc.weeklyTarget })}
-            style={{ marginTop: 3 }}
-          />
+    <Animated.View
+      layout={layout}
+      style={[
+        { backgroundColor: colors.card, borderRadius: radius.xxl, overflow: 'visible' },
+        t.shadow,
+        pc.reached ? { shadowColor: sw.base, shadowOpacity: t.dark ? 0.55 : 0.35, shadowRadius: 14, borderWidth: 2, borderColor: sw.light } : null,
+      ]}
+    >
+      <Pressable
+        onPress={onToggle}
+        onLongPress={() => actions.openEditProject(pc.projectId)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${pc.name}, ${sayDur(pc.weekSec)} of ${pc.weeklyTargetH} hours this week${pc.reached ? ', weekly target reached' : ''}`}
+        accessibilityHint="Long-press to edit"
+        style={{ padding: 16, gap: 12 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 48, height: 48, borderRadius: radius.md, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon path={ICONS[pc.look.icon]} size={24} color={sw.on} />
+          </View>
+          <Text numberOfLines={2} style={{ flex: 1, fontSize: 18, fontWeight: '800', color: colors.ink }}>
+            {pc.name}
+          </Text>
+          {pc.reached && (
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
+              <Glyph name="done" size={18} color={sw.on} bg={sw.base} label="Weekly target reached" />
+            </View>
+          )}
+          <Glyph name={expanded ? 'chevronUp' : 'chevronDown'} size={18} color={colors.muted} />
         </View>
-
-        {/* This week: time against the target, then weeks in a row the target was met. */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
-          <Stat glyph="clock" value={pc.weekLabel} label="This week" />
-          {pc.paceMet && <Glyph name="done" size={15} color="#1F8A3B" label="Weekly target met" />}
-          <View style={{ flex: 1 }} />
-          {pc.weekStreak > 0 && <Stat glyph="chain" value={String(pc.weekStreak)} label="Weeks in a row on target" />}
-          <Glyph name={expanded ? 'chevronUp' : 'chevronDown'} size={16} color={colors.muted} />
-        </View>
-        <View style={{ marginTop: 9 }}>
-          <ProgressBar pct={pc.weekPct} color={pc.barColor} />
+        <AnimatedBar value={pc.frac} color={sw.base} track={sw.light} height={14} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: sw.light, borderRadius: radius.pill, paddingVertical: 3, paddingHorizontal: 8 }}>
+            <Glyph name="calendar" size={13} color={ink} bg={sw.light} label="This week" />
+          </View>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>
+            {fmtDur(pc.weekSec)} <Text style={{ color: colors.sub }}>/ {fmtDur(pc.weeklyTargetH * 3600)}</Text>
+          </Text>
         </View>
       </Pressable>
 
       {expanded && (
-        <View style={{ paddingHorizontal: 18, paddingBottom: 14 }}>
-          {/* Level */}
-          <Pressable
-            onPress={() => actions.openStageSheet(pc.projectId)}
-            style={{ backgroundColor: colors.soft, borderRadius: radius.md, padding: 13, marginTop: 10 }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 7 }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.ink }}>{pc.stageLabel}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.muted }}>{pc.nextStageLabel}</Text>
+        <Appear style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
+          {pc.habits.map((h) => (
+            <View key={h.habitId} style={{ backgroundColor: sw.light, borderRadius: radius.lg, padding: 12, gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Icon path={h.iconPath} size={20} color={ink} />
+                <Pressable onPress={() => actions.openEditHabitById(h.habitId)} accessibilityRole="button" accessibilityLabel={`Edit ${h.name}`} style={{ flex: 1 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '800', color: colors.ink }}>
+                    {h.name}
+                  </Text>
+                </Pressable>
+                {h.weekSec > 0 && <Text style={{ fontSize: 13, fontWeight: '800', color: ink, fontVariant: ['tabular-nums'] }}>{fmtDur(h.weekSec)}</Text>}
+                <IconButton
+                  label={h.kind === 'check' ? `Check off ${h.name}` : `Start ${h.name}`}
+                  name={h.kind === 'check' ? 'done' : 'play'}
+                  size={18}
+                  color={sw.on}
+                  bg={sw.base}
+                  edge={sw.dark}
+                  variant="chunky"
+                  diameter={38}
+                  onPress={() => (h.kind === 'check' ? actions.toggleCheck(h.habitId) : actions.startTimer(h.habitId))}
+                />
               </View>
-              <View
-                style={{
-                  width: 18,
-                  height: 18,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Glyph name="info" size={14} color={colors.subtext} />
-              </View>
+              {h.kind === 'timed' && <QuickAdd name={h.name} swatch={sw} onAdd={(m) => actions.quickLog(h.habitId, m)} onCustom={() => actions.openLogSheet(h.habitId)} />}
             </View>
-            <View style={{ marginTop: 9 }}>
-              <ProgressBar pct={pc.stagePct} color={colors.ink} track={colors.track2} />
-            </View>
-          </Pressable>
+          ))}
 
-          {/* Lifetime and consistency */}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <StatCell value={pc.lifetimeLabel} glyph="clock" label="Lifetime" />
-            <StatCell value={pc.sessionsLabel} glyph="list" label="Sessions" />
-            <StatCell value={pc.weekStreakLabel} glyph="chain" label="Weeks in a row on target" />
-            <StatCell value={pc.trendLabel} glyph="bars" label="Versus last week" valueColor={pc.trendColor} />
-          </View>
-          {!!pc.startedLabel && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingHorizontal: 2 }}>
-              <Glyph name="calendar" size={13} color={colors.muted} label="Started" />
-              <Text style={{ fontSize: 12, color: colors.muted }}>{pc.startedLabel}</Text>
+          {pc.sessions.length > 0 && (
+            <View style={{ gap: 2 }}>
+              <Glyph name="list" size={18} color={colors.sub} label="This week's sessions" />
+              {pc.sessions.slice(0, 8).map((s) => (
+                <Pressable
+                  key={s.id}
+                  onPress={() => actions.openSessionSheet(s.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${s.habitName}, ${sessionWhen(s.start)}, ${sayDur(s.duration)}. Edit`}
+                  style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.6 : 1 })}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.manual ? 'transparent' : sw.base, borderWidth: 2, borderColor: sw.base }} />
+                  <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '700', color: colors.ink }}>
+                    {s.habitName}
+                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sub, fontVariant: ['tabular-nums'] }}>{sessionWhen(s.start)}</Text>
+                  <Text style={{ width: 56, textAlign: 'right', fontSize: 14, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>{fmtDur(s.duration)}</Text>
+                </Pressable>
+              ))}
             </View>
           )}
 
-          {/* Habits */}
-          <View style={{ marginTop: 4 }}>
-            {pc.habits.map((gh) => (
-              <Pressable
-                key={gh.habitId}
-                onPress={() => {
-                  const habit = data.habits.find((h) => h.id === gh.habitId);
-                  if (habit) actions.openEditHabit(habit);
-                }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 11,
-                  paddingVertical: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.hairline,
-                }}
-              >
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: radius.sm,
-                    backgroundColor: gh.tile,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon path={gh.iconPath} size={18} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text numberOfLines={2} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>
-                    {gh.name}
-                  </Text>
-                  {!!gh.shareLabel && (
-                    <>
-                      <View style={{ marginTop: 6 }}>
-                        <ProgressBar pct={Math.max(2, gh.shareBarW)} color={gh.tile} height={5} />
-                      </View>
-                      <Text style={{ fontSize: 11.5, color: colors.subtext, marginTop: 5, fontVariant: ['tabular-nums'] }}>
-                        {gh.shareLabel + ' · ' + gh.sub}
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </Pressable>
-            ))}
-            <View style={{ paddingTop: 12, paddingBottom: 4, alignItems: 'flex-start' }}>
-              <IconButton
-                label="Add habit"
-                name="plus"
-                size={16}
-                color={config.accent}
-                bg={colors.track}
-                diameter={32}
-                onPress={() => actions.openNewHabit(pc.projectId)}
-              />
-            </View>
+          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+            <IconButton label={`Add a habit to ${pc.name}`} name="plus" size={18} color={colors.sub} bg={colors.well} diameter={40} onPress={() => actions.openNewHabit(pc.projectId)} />
+            <IconButton label={`Levels for ${pc.name}`} name="badge" size={18} color={colors.sub} bg={colors.well} diameter={40} onPress={() => actions.openStageSheet(pc.projectId)} />
+            <IconButton label={`Edit ${pc.name}`} name="edit" size={18} color={colors.sub} bg={colors.well} diameter={40} onPress={() => actions.openEditProject(pc.projectId)} />
           </View>
-        </View>
+        </Appear>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
-/** Archived projects, collapsed by default; each can be unarchived. */
-function ArchivedSection({ items }: { items: ArchivedCard[] }) {
-  const { config, actions } = useStreak();
-  const [open, setOpen] = React.useState(false);
-
+function Archived({ items }: { items: { projectId: string; name: string; lifetimeSec: number; look: ProjectView['look'] }[] }) {
+  const t = useTheme();
+  const { colors, radius } = t;
+  const { actions } = useStreak();
+  const [open, setOpen] = useState(false);
   return (
-    <View style={{ marginTop: 22 }}>
+    <View style={{ marginTop: 24 }}>
       <Pressable
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
-        accessibilityLabel="Archived projects"
+        accessibilityLabel={`Archived projects, ${items.length}`}
         accessibilityState={{ expanded: open }}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}
       >
-        <Glyph name="archive" size={17} color={colors.subtext} />
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>{items.length}</Text>
-        <Glyph name={open ? 'chevronUp' : 'chevronDown'} size={15} color={colors.subtext} />
+        <Glyph name="archive" size={18} color={colors.sub} />
+        <Text style={{ fontSize: 14, fontWeight: '800', color: colors.sub }}>{items.length}</Text>
+        <Glyph name={open ? 'chevronUp' : 'chevronDown'} size={16} color={colors.sub} />
       </Pressable>
-      {open && (
-        <View style={[{ backgroundColor: colors.card, borderRadius: radius.xl, paddingHorizontal: 16, marginTop: 6 }, shadowCard]}>
-          {items.map((a, i) => (
-            <View
-              key={a.projectId}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 13,
-                borderBottomWidth: i === items.length - 1 ? 0 : 1,
-                borderBottomColor: colors.hairline,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text numberOfLines={2} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>{a.name}</Text>
-                <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{a.sub}</Text>
+      {open &&
+        items.map((a) => {
+          const sw = t.swatch(a.look.color);
+          return (
+            <View key={a.projectId} style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.card, borderRadius: radius.lg, padding: 12, marginTop: 8 }, t.shadow]}>
+              <View style={{ width: 32, height: 32, borderRadius: radius.sm, backgroundColor: sw.light, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon path={ICONS[a.look.icon]} size={16} color={t.dark ? sw.base : sw.dark} />
               </View>
-              <IconButton
-                label="Unarchive"
-                name="unarchive"
-                size={18}
-                color={config.accent}
-                bg={colors.track}
-                diameter={36}
-                onPress={() => actions.unarchiveProject(a.projectId)}
-              />
+              <Text numberOfLines={1} style={{ flex: 1, fontSize: 15, fontWeight: '800', color: colors.ink }}>
+                {a.name}
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sub, fontVariant: ['tabular-nums'] }}>{fmtDur(a.lifetimeSec)}</Text>
+              <IconButton label={`Unarchive ${a.name}`} name="unarchive" size={18} color={colors.brand} bg={colors.well} diameter={38} onPress={() => actions.unarchiveProject(a.projectId)} />
             </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
-/** A glyph and a number; the label is spoken, not shown. */
-function Stat({ glyph, value, label }: { glyph: GlyphName; value: string; label: string }) {
-  return (
-    <View accessible accessibilityLabel={label + ', ' + value} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <Glyph name={glyph} size={14} color={colors.subtext} />
-      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.subtext, fontVariant: ['tabular-nums'] }}>{value}</Text>
-    </View>
-  );
-}
-
-function StatCell({
-  value,
-  glyph,
-  label,
-  valueColor = colors.ink,
-}: {
-  value: string;
-  glyph: GlyphName;
-  /** Spoken only; the glyph stands in for it on screen. */
-  label: string;
-  valueColor?: string;
-}) {
-  return (
-    <View
-      accessible
-      accessibilityLabel={label + ', ' + value}
-      style={{ flex: 1, backgroundColor: colors.soft, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 10, gap: 5 }}
-    >
-      <Glyph name={glyph} size={14} color={colors.subtext} />
-      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, fontWeight: '800', color: valueColor }}>{value}</Text>
+          );
+        })}
     </View>
   );
 }
