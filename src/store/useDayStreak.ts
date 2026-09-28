@@ -1,7 +1,5 @@
-import { useMemo } from 'react';
-
-import { planFor } from '../domain/dailyLog';
-import { streakV5, StreakV5 } from '../domain/streaks';
+import { dayStreakOf } from '../domain/selectors';
+import { StreakV5 } from '../domain/streaks';
 import { dkey } from '../domain/time';
 import { useData, useStoreNow } from './StreakStore';
 
@@ -13,5 +11,6 @@ export function useDayStreak(): StreakV5 {
   const data = useData();
   const now = useStoreNow();
   const day = dkey(new Date(now));
-  return useMemo(() => streakV5(data, day, data.streakCarry, planFor(data, day).items.length === 0), [data, day]);
+  // Shared: every caller in a render gets the same computed streak.
+  return dayStreakOf(data, day);
 }

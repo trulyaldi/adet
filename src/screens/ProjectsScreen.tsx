@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -11,7 +11,8 @@ import { AnimatedBar } from '../components/motion/AnimatedBar';
 import { QuickAdd } from '../components/QuickAdd';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { ICONS } from '../domain/constants';
-import { ProjectView, selectProjectsView, sessionWhen } from '../domain/projectsView';
+import { ProjectView, sessionWhen } from '../domain/projectsView';
+import { projectsViewOf } from '../domain/selectors';
 import { fmtDur, sayDur } from '../domain/time';
 import { useActions, useData, useSettings, useStoreNow } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
@@ -22,7 +23,7 @@ export function ProjectsScreen() {
   const now = useStoreNow();
   const settings = useSettings();
   const actions = useActions();
-  const model = useMemo(() => selectProjectsView(data, now), [data, now]);
+  const model = projectsViewOf(data, now);
   const [open, setOpen] = useState<string | null>(null);
   const showCheck = model.check.over && settings.targetCheckDismissed !== model.check.signature;
 

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { selectToday } from '../domain/day';
+import { todayOf } from '../domain/selectors';
 import { newBadges, qualifiedBadges } from '../domain/milestones';
 import { useTheme } from '../theme/ThemeProvider';
 import { useActions, useData, useReady, useStoreNow, useSyncStatus } from './StreakStore';
@@ -49,8 +49,8 @@ function DayWatcher() {
   const now = useStoreNow();
   const actions = useActions();
   const t = useTheme();
-  const minute = Math.floor(now / 60_000);
-  const model = useMemo(() => selectToday(data, Date.now()), [data, minute]);
+  // Shared with the Today screen (same data and clock).
+  const model = todayOf(data, now);
   const prev = useRef<{ day: string; complete: boolean } | null>(null);
   useEffect(() => {
     const was = prev.current;

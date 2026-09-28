@@ -16,7 +16,8 @@ import { DoneRow, PlanRow, ROW_H } from '../components/today/PlanRow';
 import { SortableList } from '../components/today/SortableList';
 import { StreakPill } from '../components/today/StreakPill';
 import { SummaryCard } from '../components/today/SummaryCard';
-import { selectToday, TodayItem } from '../domain/day';
+import { TodayItem } from '../domain/day';
+import { todayListsOf, todayOf } from '../domain/selectors';
 import { fmtDur } from '../domain/time';
 import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
@@ -32,18 +33,25 @@ export function TodayScreen() {
   const now = useStoreNow();
   const settings = useSettings();
   const actions = useActions();
-  const model = useMemo(() => selectToday(data, now), [data, now]);
+  const model = todayOf(data, now);
+  const { pending, done, bonus, summary } = todayListsOf(model);
   const streak = useDayStreak().current;
   // Only a day that finishes on screen animates into the check.
   const opened = useRef({ day: model.day, complete: model.complete });
   const animateIn = !(opened.current.complete && opened.current.day === model.day);
 
-  const pending = model.items.filter((i) => !i.done && !i.running);
-  const done = model.items.filter((i) => i.done && !i.running);
   const prompt = settings.dailyPrompt && !data.days[model.day]?.prompted && !model.noHabits;
 
   const start = (i: TodayItem) => actions.startTimer(i.habitId);
   const tapDone = (i: TodayItem) => (i.kind === 'check' ? actions.toggleCheck(i.habitId) : actions.startTimer(i.habitId));
+  const segments = useMemo(
+    () =>
+      model.items.map((i) => {
+        const sw = t.swatch(i.color);
+        return { key: i.habitId, color: sw.base, track: sw.light, frac: i.done ? 1 : i.shareSec > 0 ? Math.min(1, i.sec / i.shareSec) : 0 };
+      }),
+    [model.items, t]
+  );
 
   return (
     <ScrollView contentContainerStyle={{ paddingTop: 12, paddingHorizontal: 16, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
@@ -86,10 +94,7 @@ export function TodayScreen() {
           ) : (
             <View style={{ alignItems: 'center', marginTop: 18 }}>
               <HeroRing
-                segments={model.items.map((i) => {
-                  const sw = t.swatch(i.color);
-                  return { key: i.habitId, color: sw.base, track: sw.light, frac: i.done ? 1 : i.shareSec > 0 ? Math.min(1, i.sec / i.shareSec) : 0 };
-                })}
+                segments={segments}
                 trackedSec={model.trackedSec}
                 capacitySec={model.capacityMin * 60}
                 complete={model.complete}
@@ -103,7 +108,7 @@ export function TodayScreen() {
 
           {model.complete ? (
             <>
-              <SummaryCard items={[...model.items, ...model.bonus.filter((b) => b.done)]} trackedSec={model.trackedSec} streak={streak} animateIn={animateIn} onRow={tapDone} />
+              <SummaryCard items={summary} trackedSec={model.trackedSec} streak={streak} animateIn={animateIn} onRow={tapDone} />
               <BonusButton onPress={actions.openStartSheet} />
             </>
           ) : (
@@ -136,13 +141,11 @@ export function TodayScreen() {
             )
           )}
 
-          {model.bonus.filter((b) => !b.running && !(model.complete && b.done)).length > 0 && (
+          {bonus.length > 0 && (
             <View style={{ marginTop: 14, gap: 8 }}>
-              {model.bonus
-                .filter((b) => !b.running && !(model.complete && b.done))
-                .map((b) => (
-                  <DoneRow key={b.habitId} item={b} bonus onPress={() => tapDone(b)} />
-                ))}
+              {bonus.map((b) => (
+                <DoneRow key={b.habitId} item={b} bonus onPress={() => tapDone(b)} />
+              ))}
             </View>
           )}
 
