@@ -59,6 +59,8 @@ export function monday(d: Date): Date {
   return x;
 }
 
+export const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 /** Deterministic pseudo-random in [0,1) — used only for seed data. */
 export function rand(i: number): number {
   const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;

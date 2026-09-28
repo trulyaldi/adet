@@ -8,14 +8,11 @@ import { AdetMark } from './src/components/AdetMark';
 import { TabBar } from './src/components/TabBar';
 import { ScreenIn } from './src/components/motion/Appear';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
-import { ActivityDaySheet } from './src/overlays/ActivityDaySheet';
-import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
 import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
 import { RebalanceScreen } from './src/overlays/RebalanceScreen';
-import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { StartSheet } from './src/overlays/StartSheet';
@@ -62,8 +59,7 @@ function Root() {
         </ScreenIn>
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
           <MessageToast />
-          {/* The day sheet is a modal over this view, so it shows its own copy. */}
-          {ui.heatSel == null && <UndoToast />}
+          <UndoToast />
         </View>
       </View>
 
@@ -80,9 +76,6 @@ function Root() {
       <StageSheet />
       <LogTimeSheet />
       <EditSessionSheet />
-      <ActivityHistorySheet />
-      <ActivityDaySheet />
-      <RecapSheet />
       <SettingsSheet />
       <StartSheet />
       <CapacityFixSheet />
