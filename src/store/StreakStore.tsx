@@ -15,6 +15,7 @@ import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTarget
 import { activeSec, recommendedHabitId } from '../domain/engine';
 import { activeHabits } from '../domain/projects';
 import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
+import { clampBudgetMin, clampPlanCap } from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
 import { dkey } from '../domain/time';
@@ -218,6 +219,10 @@ export interface StreakActions {
   dismissRecapCard(): void;
   // device settings
   setReminderHours(hours: number): void;
+  /** Daily time budget in minutes (15..180, 15-minute steps). */
+  setBudgetMin(min: number): void;
+  /** Most habits in a day's plan (1..5). */
+  setPlanCap(cap: number): void;
 }
 
 interface StreakContextValue {
@@ -878,6 +883,8 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
         }
       },
+      setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
+      setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
     };
     // A few actions read `data` directly (deleteHabit's timerOpen decision,
     // openLogSheet, deleteSession's undo copy); the rest use

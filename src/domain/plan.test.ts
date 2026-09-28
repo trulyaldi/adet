@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { DEFAULT_CONFIG } from './config';
 import { selectStats, selectTimer } from './engine';
 import { Frequency } from './frequency';
-import { completionOf, completionOn, doneBefore, doneThrough, habitDaySec } from './plan';
+import { clampBudgetMin, clampPlanCap, completionOf, completionOn, doneBefore, doneThrough, habitDaySec } from './plan';
 import { Habit, PersistedState, Session } from './types';
 
 // Monday Sep 28, 2026, noon.
@@ -125,4 +125,15 @@ test('history marks each habit-day once: solid for full, hollow for minimum', ()
     ['3', 'min'],
     ['2', 'full'],
   ]);
+});
+
+test('budget: 15..180 minutes in 15-minute steps, 60 by default; cap: 1..5, 3 by default', () => {
+  assert.equal(clampBudgetMin(undefined), 60);
+  assert.equal(clampBudgetMin(0), 15);
+  assert.equal(clampBudgetMin(52), 45);
+  assert.equal(clampBudgetMin(53), 60);
+  assert.equal(clampBudgetMin(500), 180);
+  assert.equal(clampPlanCap(null), 3);
+  assert.equal(clampPlanCap(0), 1);
+  assert.equal(clampPlanCap(9), 5);
 });
