@@ -3,6 +3,7 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AdetMark } from './src/components/AdetMark';
 import { TabBar } from './src/components/TabBar';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
 import { ActivityDaySheet } from './src/overlays/ActivityDaySheet';
@@ -29,7 +30,8 @@ function Root() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <AdetMark height={44} />
         <ActivityIndicator color={colors.ink} />
       </View>
     );
@@ -72,7 +74,8 @@ function AuthGate() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <AdetMark height={44} />
         <ActivityIndicator color={colors.ink} />
       </View>
     );

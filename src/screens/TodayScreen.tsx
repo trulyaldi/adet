@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { AdetMark } from '../components/AdetMark';
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
 import { RecapCard } from '../components/RecapCard';
@@ -16,8 +17,6 @@ const FLAME =
 // Feather "settings" (MIT).
 const GEAR =
   'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z';
-const LEAF =
-  'M20 4C10.5 5 5.5 10 5.5 19c9 0 14-5 14.5-15zM5.5 19C8 13.5 11.5 9.5 16.5 6.5';
 
 export function TodayScreen() {
   const { data, now, config, actions } = useStreak();
@@ -31,9 +30,12 @@ export function TodayScreen() {
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flexShrink: 1 }}>
-          <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
-            Today
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <AdetMark height={30} />
+            <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
+              Adet
+            </Text>
+          </View>
           <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>
             {model.todayDateLabel}
           </Text>
@@ -165,7 +167,7 @@ export function TodayScreen() {
       {/* Empty state */}
       {model.noHabits && (
         <View style={{ alignItems: 'center', paddingVertical: 44, paddingHorizontal: 20 }}>
-          <Icon path={LEAF} size={34} color={colors.muted} />
+          <AdetMark height={30} color={colors.muted} />
           <Text style={{ fontSize: 15, fontWeight: '600', color: colors.subtext, marginTop: 10, textAlign: 'center' }}>
             Start a project, then add habits to it
           </Text>
