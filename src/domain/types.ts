@@ -23,6 +23,12 @@ export interface Project {
   weeklyTarget: number;
   /** Epoch ms the project was started; backfilled from earliest session on load. */
   started?: number | null;
+  /**
+   * Epoch ms the project was archived; null/absent when active. Archived
+   * projects leave Today, Projects and pace/target counts, but their history
+   * still counts in Stats.
+   */
+  archivedAt?: number | null;
   /** Epoch ms of the last local edit; set by the store, used for sync conflicts. */
   updatedAt?: number;
 }

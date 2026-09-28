@@ -12,6 +12,7 @@ import { Alert, AppState } from 'react-native';
 import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { activeSec, recommendedHabitId } from '../domain/engine';
+import { activeHabits } from '../domain/projects';
 import { lastCompletedWeekStart, recapToShow } from '../domain/recap';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { seed } from '../domain/seed';
@@ -180,6 +181,9 @@ export interface StreakActions {
   patchProjectSheet(patch: Partial<ProjectSheetState>): void;
   saveProjectSheet(): void;
   deleteProject(id: string): void;
+  /** Archive (hide) a project; a timer running on one of its habits is stopped and saved first. */
+  archiveProject(id: string): void;
+  unarchiveProject(id: string): void;
   // stage sheet
   openStageSheet(projectId: string): void;
   closeStageSheet(): void;
@@ -685,13 +689,43 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         patchUi({ projectSheet: null });
       },
 
+      archiveProject: (id) => {
+        const now = Date.now();
+        const a = storeRef.current.data.active;
+        const onIt = !!a && storeRef.current.data.habits.some((h) => h.id === a.habitId && h.projectId === id);
+        setData((d) => {
+          let { sessions, active } = d;
+          if (active && d.habits.some((h) => h.id === active!.habitId && h.projectId === id)) {
+            const saved = sessionFromTimer(active, now);
+            if (saved) sessions = [...sessions, saved];
+            active = null;
+          }
+          return {
+            ...d,
+            sessions,
+            active,
+            projects: d.projects.map((p) => (p.id === id ? { ...p, archivedAt: now } : p)),
+          };
+        });
+        const discarded = onIt && !sessionFromTimer(a!, now);
+        patchUi({
+          projectSheet: null,
+          ...(onIt ? { timerOpen: false } : {}),
+          ...(discarded ? { toast: SHORT_TIMER_TOAST } : {}),
+        });
+      },
+      unarchiveProject: (id) =>
+        setData((d) => ({
+          ...d,
+          projects: d.projects.map((p) => (p.id === id ? { ...p, archivedAt: null } : p)),
+        })),
+
       openStageSheet: (projectId) => patchUi({ stageSheet: projectId }),
       closeStageSheet: () => patchUi({ stageSheet: null }),
 
       openLogSheet: () => {
         const def =
-          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ??
-          (data.habits[0] ? data.habits[0].id : null);
+          recommendedHabitId(data, DEFAULT_CONFIG, Date.now()) ?? activeHabits(data)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {

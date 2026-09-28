@@ -56,8 +56,8 @@ thin: they call a selector and attach press handlers from the store.
 
 ## Data model
 
-- **Project** — `{ name, weeklyTarget (h/week), started }`
-- **Habit** — belongs to a project; `{ name, icon, tile, dailyTargetMin, weeklyTargetMin }` (targets are in minutes)
+- **Project** — `{ name, weeklyTarget (h/week), started, archivedAt? }`; archived projects are hidden from Today/Projects but their history counts in Stats
+- **Habit** — belongs to a project; `{ name, icon, tile, dailyTargetMin, weeklyTargetMin }` (targets are in minutes; `dailyTargetMin` is kept and synced but no longer shown)
 - **Session** — a logged block of time on a habit `{ start, end, duration, notes?, manual? }`; `manual` is true when logged manually
 - **PersistedState** — carries a numeric `schemaVersion`
 - Stages (by lifetime hours): Novice → Learner → Builder → Practitioner → Professional → Expert → Master

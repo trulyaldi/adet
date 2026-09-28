@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { ProgressBar } from '../components/ProgressBar';
-import { ProjectCard, selectProjects } from '../domain/engine';
+import { ArchivedCard, ProjectCard, selectProjects } from '../domain/engine';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
@@ -61,6 +61,14 @@ export function ProjectsScreen() {
           onToggle={() => toggle(pc.projectId)}
         />
       ))}
+
+      {model.cards.length === 0 && (
+        <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 14, paddingVertical: 36 }}>
+          {model.archived.length ? 'No active projects' : 'No projects yet'}
+        </Text>
+      )}
+
+      {model.archived.length > 0 && <ArchivedSection items={model.archived} />}
     </ScrollView>
   );
 }
@@ -202,6 +210,54 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
               <Text style={{ fontSize: 13.5, fontWeight: '700', color: config.accent }}>+ Add habit</Text>
             </Pressable>
           </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Archived projects, collapsed by default; each can be unarchived. */
+function ArchivedSection({ items }: { items: ArchivedCard[] }) {
+  const { config, actions } = useStreak();
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <View style={{ marginTop: 22 }}>
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        accessibilityState={{ expanded: open }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}
+      >
+        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>Archived ({items.length})</Text>
+        <Icon path={open ? CHEVRON_UP : CHEVRON_DOWN} size={15} color={colors.subtext} strokeWidth={2} />
+      </Pressable>
+      {open && (
+        <View style={[{ backgroundColor: colors.card, borderRadius: radius.xl, paddingHorizontal: 16, marginTop: 6 }, shadowCard]}>
+          {items.map((a, i) => (
+            <View
+              key={a.projectId}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingVertical: 13,
+                borderBottomWidth: i === items.length - 1 ? 0 : 1,
+                borderBottomColor: colors.hairline,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text numberOfLines={2} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink }}>{a.name}</Text>
+                <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 2 }}>{a.sub}</Text>
+              </View>
+              <Pressable
+                onPress={() => actions.unarchiveProject(a.projectId)}
+                hitSlop={6}
+                style={{ borderRadius: radius.pill, paddingVertical: 8, paddingHorizontal: 13, backgroundColor: colors.track }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: config.accent }}>Unarchive</Text>
+              </Pressable>
+            </View>
+          ))}
         </View>
       )}
     </View>

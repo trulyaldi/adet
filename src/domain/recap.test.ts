@@ -178,3 +178,32 @@ test('recapSummary counts targets hit and total time', () => {
     assert.equal(recapSummary(weekRecap(noTargets, '2026-09-21')), '1h tracked · up 1h on the week before');
   });
 });
+
+test('archived projects drop out of recap targets but their time still counts', () => {
+  inTZ('Asia/Almaty', () => {
+    const mon = new Date(2026, 8, 21, 10, 0).getTime();
+    const d: PersistedState = {
+      schemaVersion: 3,
+      projects: [
+        { id: 'p1', name: 'Active', weeklyTarget: 1, started: mon },
+        { id: 'p2', name: 'Archived, tracked', weeklyTarget: 1, started: mon, archivedAt: mon + 7 * 86_400_000 },
+        { id: 'p3', name: 'Archived, idle', weeklyTarget: 1, started: mon, archivedAt: mon },
+      ],
+      habits: [habit('a', 'p1'), habit('b', 'p2'), habit('c', 'p3')],
+      sessions: [sess('a', mon, 2 * H), sess('b', mon, 2 * H)],
+      active: null,
+      historyClearedAt: 0,
+    };
+    const r = weekRecap(d, '2026-09-21');
+    assert.equal(r.totalSec, 4 * H);
+    assert.equal(r.targetCount, 1);
+    assert.equal(r.hitCount, 1);
+    assert.deepEqual(
+      r.projects.map((p) => [p.name, p.targetSec, p.hit]),
+      [
+        ['Active', H, true],
+        ['Archived, tracked', null, null],
+      ]
+    );
+  });
+});

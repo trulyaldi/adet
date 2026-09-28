@@ -6,6 +6,7 @@ import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
 import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
 import { dailyStreak, weeklyTargetStreak } from './streaks';
 import { timeOfDay } from './insights';
+import { activeHabits, activeProjects, archivedProjects, isArchived } from './projects';
 import { weekPace, weekSummary, WeekSummary } from './weeks';
 import {
   ActiveTimer,
@@ -239,7 +240,7 @@ function recommendedIdFrom(
   let recommendedId: string | null = null;
   let lowestScore = Infinity;
 
-  for (const h of data.habits) {
+  for (const h of activeHabits(data)) {
     if (data.active && data.active.habitId === h.id) continue;
 
     const stt = ctx.habitStats[h.id];
@@ -326,7 +327,14 @@ export function selectToday(
   const todayD = ctx.todayD;
   const recommendedId = recommendedIdFrom(ctx, data, now);
 
-  const shown = data.projects.filter((p) => ctx.projStats[p.id].habits.length > 0);
+  const live = activeProjects(data).filter((p) => ctx.projStats[p.id].habits.length > 0);
+  // A timer can still be running on an archived project's habit (started on
+  // another device, or by an older app version); keep that project visible
+  // until it's stopped, without counting it toward pace.
+  const runningPid = data.active ? data.habits.find((h) => h.id === data.active!.habitId)?.projectId : undefined;
+  const shown = data.projects.filter(
+    (p) => live.includes(p) || (p.id === runningPid && isArchived(p))
+  );
 
   const groups: TodayGroup[] = shown.map((p) => {
     const ps = ctx.projStats[p.id];
@@ -370,7 +378,7 @@ export function selectToday(
   if (groups.length === 1) groups[0].streakLabel = '';
 
   const summary = weekSummary(
-    shown.map((p) => {
+    live.map((p) => {
       const ps = ctx.projStats[p.id];
       return {
         weekSec: ps.week,
@@ -396,8 +404,8 @@ export function selectToday(
         ? { ...summary, pct: Math.min(100, Math.round((summary.doneSec / summary.targetSec) * 100)) }
         : null,
     groups,
-    noHabits: data.habits.length === 0,
-    hasHabits: data.habits.length > 0,
+    noHabits: groups.length === 0,
+    hasHabits: groups.length > 0,
   };
 }
 
@@ -445,9 +453,17 @@ export interface ProjectCard {
   startedLabel: string;
   habits: ProjectHabitRow[];
 }
+/** An archived project, listed in the collapsed "Archived" section. */
+export interface ArchivedCard {
+  projectId: string;
+  name: string;
+  /** e.g. "12.5h lifetime · archived Sep 2026". */
+  sub: string;
+}
 export interface ProjectsModel {
   sub: string;
   cards: ProjectCard[];
+  archived: ArchivedCard[];
 }
 
 export function selectProjects(
@@ -458,7 +474,11 @@ export function selectProjects(
   const ctx = buildContext(data, now);
   const stages = stagesFor(config);
 
-  const cards: ProjectCard[] = data.projects.map((p) => {
+  const active = activeProjects(data);
+  const activeIds = new Set(active.map((p) => p.id));
+  const habitCount = data.habits.filter((h) => activeIds.has(h.projectId)).length;
+
+  const cards: ProjectCard[] = active.map((p) => {
     const ps = ctx.projStats[p.id];
     const stage = stageOf(ps.life, stages);
     const next = nextStageOf(ps.life, stages);
@@ -515,13 +535,28 @@ export function selectProjects(
     };
   });
 
+  const archived: ArchivedCard[] = archivedProjects(data).map((p) => {
+    const at = new Date(p.archivedAt!);
+    return {
+      projectId: p.id,
+      name: p.name,
+      sub:
+        fmtH(ctx.projStats[p.id].life) +
+        ' lifetime · archived ' +
+        MONTHS[at.getMonth()].slice(0, 3) +
+        ' ' +
+        at.getFullYear(),
+    };
+  });
+
   return {
     sub:
-      data.projects.length +
-      (data.projects.length === 1 ? ' project · ' : ' projects · ') +
-      data.habits.length +
-      (data.habits.length === 1 ? ' habit' : ' habits'),
+      active.length +
+      (active.length === 1 ? ' project · ' : ' projects · ') +
+      habitCount +
+      (habitCount === 1 ? ' habit' : ' habits'),
     cards,
+    archived,
   };
 }
 
@@ -923,7 +958,8 @@ export function selectStats(
     .map((p) => ({ p, t: ctx.projStats[p.id].life }))
     .sort((a, b) => b.t - a.t)
     .map(({ p, t }) => ({
-      name: p.name,
+      // Archived projects' history still counts here.
+      name: isArchived(p) ? p.name + ' (archived)' : p.name,
       label:
         lifeAll > 0
           ? Math.round((t / lifeAll) * 100) + '% · ' + fmtH(t)

@@ -4,6 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { ICONS, ICON_KEYS } from '../domain/constants';
+import { activeHabits, isArchived } from '../domain/projects';
 import { fmtMin } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
@@ -81,7 +82,7 @@ export function HabitSheet() {
           <View>
             <Label>Project</Label>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {data.projects.map((p) => {
+              {data.projects.filter((p) => !isArchived(p) || p.id === sheet.projectId).map((p) => {
                 const on = sheet.projectId === p.id;
                 return (
                   <Pressable
@@ -166,7 +167,7 @@ export function HabitSheet() {
                 All sessions move to the chosen habit. History is preserved.
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {data.habits
+                {activeHabits(data)
                   .filter((h) => h.id !== sheet.id)
                   .map((h) => (
                     <Pressable

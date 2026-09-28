@@ -1,8 +1,10 @@
 // Weekly recap: a finished week's hours per project against its target, the
 // change from the week before, the best day, and the session count. Computed
 // from local data on demand; judged against each project's current target.
+// Archived projects count toward totals but have no target.
 
 import { DOWFULL, MONTHS } from './constants';
+import { isArchived } from './projects';
 import { addDays, dkey, fmtH, monday, pkey } from './time';
 import { PersistedState } from './types';
 
@@ -80,9 +82,11 @@ export function weekRecap(data: PersistedState, weekStart: string): WeekRecap {
     }
   }
 
-  const projects: ProjectRecap[] = data.projects.map((p) => {
+  // Archived projects have no target here; they're listed only if they have time this week.
+  const listed = data.projects.filter((p) => !isArchived(p) || (week[p.id] || 0) > 0);
+  const projects: ProjectRecap[] = listed.map((p) => {
     const doneSec = week[p.id] || 0;
-    const hasTarget = Number.isFinite(p.weeklyTarget) && p.weeklyTarget > 0;
+    const hasTarget = !isArchived(p) && Number.isFinite(p.weeklyTarget) && p.weeklyTarget > 0;
     const targetSec = hasTarget ? p.weeklyTarget * 3600 : null;
     return {
       projectId: p.id,

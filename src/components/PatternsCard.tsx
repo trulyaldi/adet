@@ -4,6 +4,7 @@ import Svg, { Line, Rect } from 'react-native-svg';
 
 import { HEAT_SCALE } from '../domain/constants';
 import { heatLevel, timeOfDay, Trends, weeklyTrends } from '../domain/insights';
+import { activeProjects } from '../domain/projects';
 import { dkey, fmtH, monday } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius, shadowCard } from '../theme/tokens';
@@ -20,11 +21,13 @@ export function PatternsCard() {
   const { data, now } = useStreak();
   const [projectId, setProjectId] = useState<string | null>(null);
   // A single project is always the scope (so its target shows); a selected
-  // project deleted here or via sync falls back to all projects.
+  // project deleted, archived, or removed via sync falls back to all projects.
+  // Archived projects get no chip, but their history stays in "All".
+  const chips = activeProjects(data);
   const scope =
     data.projects.length === 1
       ? data.projects[0].id
-      : projectId !== null && data.projects.some((p) => p.id === projectId)
+      : projectId !== null && chips.some((p) => p.id === projectId)
       ? projectId
       : null;
   const week = dkey(monday(new Date(now)));
@@ -40,7 +43,7 @@ export function PatternsCard() {
       {data.projects.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ gap: 8 }}>
           <Chip label="All" on={scope === null} onPress={() => setProjectId(null)} />
-          {data.projects.map((p) => (
+          {chips.map((p) => (
             <Chip key={p.id} label={p.name} on={scope === p.id} onPress={() => setProjectId(p.id)} />
           ))}
         </ScrollView>

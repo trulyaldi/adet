@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
 import { Sheet } from '../components/Sheet';
+import { activeHabits } from '../domain/projects';
 import { checkSessionTimes, fitManualStart, SESSION_MAX_SEC } from '../domain/sessions';
 import { fmtHM, fmtMin, stepFor } from '../domain/time';
 import { logSheetEnd, useStreak } from '../store/StreakStore';
@@ -52,7 +53,7 @@ export function LogTimeSheet() {
           <View>
             <Label>Habit</Label>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {data.habits.map((h) => (
+              {activeHabits(data).map((h) => (
                 <Chip
                   key={h.id}
                   label={h.name}

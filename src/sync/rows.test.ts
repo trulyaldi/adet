@@ -30,6 +30,12 @@ const cases: Change[] = [
   },
   { table: 'sessions', id: 's2', deletedAt: null, record: { id: 's2', habitId: 'h1', start: 1, end: 2, duration: 1, updatedAt: T } },
   { table: 'active_timers', id: ACTIVE_ID, deletedAt: null, record: { habitId: 'h1', startedAt: null, baseSec: 12.5, updatedAt: T } },
+  {
+    table: 'projects',
+    id: 'p2',
+    deletedAt: null,
+    record: { id: 'p2', name: 'Old', weeklyTarget: 4, started: 5, archivedAt: T - 1000, updatedAt: T },
+  },
 ];
 
 for (const c of cases) {
@@ -43,4 +49,25 @@ for (const c of cases) {
 test('live habits never carry merged_into', () => {
   const c: Change = { ...(cases[1] as Extract<Change, { table: 'habits' }>), deletedAt: null };
   assert.equal(changeToRow(c, 'u').merged_into, null);
+});
+
+test('projects always send archived_at, so unarchiving clears it on the server', () => {
+  const base = cases[0] as Extract<Change, { table: 'projects' }>;
+  assert.equal(changeToRow(base, 'u').archived_at, null, 'never archived');
+  const archived: Change = { ...base, record: { ...base.record, archivedAt: T } };
+  assert.equal(changeToRow(archived, 'u').archived_at, T);
+  const unarchived: Change = { ...base, record: { ...base.record, archivedAt: null } };
+  assert.equal(changeToRow(unarchived, 'u').archived_at, null);
+});
+
+test('project rows without archived_at (before migration 003, or null) read as active', () => {
+  const row = { user_id: 'u', id: 'p1', name: 'P', weekly_target: '8', started: '5', updated_at: '2026-09-27T10:00:00.123+00:00', deleted_at: null };
+  const c = rowToChange('projects', row);
+  assert.equal(c.table, 'projects');
+  assert.ok(c.table === 'projects' && !('archivedAt' in c.record));
+  const nulled = rowToChange('projects', { ...row, archived_at: null });
+  assert.ok(nulled.table === 'projects' && !('archivedAt' in nulled.record));
+  // bigint columns can come back as strings.
+  const str = rowToChange('projects', { ...row, archived_at: String(T) });
+  assert.ok(str.table === 'projects' && str.record.archivedAt === T);
 });
