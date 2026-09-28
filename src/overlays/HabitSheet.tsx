@@ -21,6 +21,9 @@ export function HabitSheet() {
         )
       : null;
   const valid = !!(sheet && sheet.name.trim() && !dup);
+  // Archived projects' habits aren't listed in Projects, so say where it is.
+  const dupProject = dup ? data.projects.find((p) => p.id === dup.projectId) : undefined;
+  const dupArchivedIn = dupProject && isArchived(dupProject) ? dupProject : null;
 
   return (
     <Sheet visible={!!sheet} onClose={actions.closeHabitSheet} maxHeightPct={0.78}>
@@ -45,7 +48,9 @@ export function HabitSheet() {
             />
             {!!dup && (
               <Text style={{ fontSize: 12.5, color: colors.warn, marginTop: 7 }}>
-                "{dup.name}" already exists — open it from Projects instead of creating a duplicate.
+                {dupArchivedIn
+                  ? `"${dup.name}" already exists in the archived project "${dupArchivedIn.name}". Unarchive it from Projects to use it again.`
+                  : `"${dup.name}" already exists — open it from Projects instead of creating a duplicate.`}
               </Text>
             )}
           </View>
