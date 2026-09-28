@@ -516,7 +516,6 @@ export interface StatsModel {
   weekHours: string;
   monthHours: string;
   avgDaily: string;
-  recStreak: string;
   projDist: DistRow[];
   legendCells: string[];
   dayHeads: string[];
@@ -715,9 +714,6 @@ export function selectStats(
       .reverse();
   }
 
-  // longest streak across all history (freezes included, see dailyStreak)
-  const recStreak = dailyStreak(dayMap, now).longest;
-
   // Insights: one card, each fact once. (Icon paths are 24x24 stroke glyphs:
   // flame / bars / calendar / clock.)
   const FLAME_PATH =
@@ -826,7 +822,6 @@ export function selectStats(
     weekHours: fmtH(weekAll),
     monthHours: fmtH(monthAll),
     avgDaily: fmtHM(Math.floor(avgSec)),
-    recStreak: recStreak + 'd',
     projDist,
     legendCells: HEAT_SCALE.slice(),
     dayHeads: DOWS.map((d) => d[0]),

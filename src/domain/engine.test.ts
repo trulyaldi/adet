@@ -294,7 +294,7 @@ test('project pace uses local Monday-start weeks across the New York DST switch'
   }
 });
 
-test('project streaks on Projects and Stats use freezes and the given now', () => {
+test('project streaks on Projects use freezes and the given now', () => {
   const day = (d: number) => new Date(2026, 8, d, 10, 0).getTime();
   const s = (id: string, d: number) => ({ id, habitId: 'h1', start: day(d), end: day(d) + 1800_000, duration: 1800 });
   const data: PersistedState = {
@@ -314,7 +314,6 @@ test('project streaks on Projects and Stats use freezes and the given now', () =
   };
   const now = new Date(2026, 8, 15, 9, 0).getTime();
   assert.equal(selectProjects(data, DEFAULT_CONFIG, now).cards[0].streakLabel, '4d streak');
-  assert.equal(selectStats(data, DEFAULT_CONFIG, now, { heatSel: null }).recStreak, '4d');
 });
 
 test('Projects: target-week streak, and never a nudge when the day streak is at risk', () => {

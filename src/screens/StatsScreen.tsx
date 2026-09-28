@@ -12,11 +12,13 @@ import { selectStats } from '../domain/engine';
 import { lastCompletedWeekStart, pastRecaps } from '../domain/recap';
 import { fmtH } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
+import { usePlanStreak } from '../store/usePlanStreak';
 import { colors, radius, shadowCard } from '../theme/tokens';
 
 export function StatsScreen() {
   const { data, ui, now, config, actions } = useStreak();
   const model = selectStats(data, config, now, { heatSel: ui.heatSel });
+  const streak = usePlanStreak();
 
   return (
     <ScrollView
@@ -73,7 +75,7 @@ export function StatsScreen() {
               }
             />
             <PeriodTile
-              value={model.recStreak}
+              value={streak.longest + 'd'}
               label="Longest streak"
               iconBg="#FDE4D5"
               icon={

@@ -9,17 +9,16 @@ import { Glyph, IconButton } from '../components/Glyph';
 import { PlanCard } from '../components/PlanCard';
 import { RecapCard } from '../components/RecapCard';
 import { SyncIndicator } from '../components/SyncIndicator';
-import { daySecMap } from '../domain/engine';
-import { dailyStreak } from '../domain/streaks';
 import { selectPlanToday } from '../domain/today';
 import { useStreak } from '../store/StreakStore';
+import { usePlanStreak } from '../store/usePlanStreak';
 import { colors, radius } from '../theme/tokens';
 
 /** Today: the day's plan and nothing else; habits not planned never show as undone. */
 export function TodayScreen() {
   const { data, ui, now, config, settings, actions } = useStreak();
   const model = selectPlanToday(data, { budgetMin: settings.budgetMin, planCap: settings.planCap }, now);
-  const streak = dailyStreak(daySecMap(data, now), now).current;
+  const streak = usePlanStreak().current;
   // A finished day (or one with nothing due) collapses to a single card. It
   // animates in when the day finishes on screen, not when Today opens on a
   // day that was already finished.
