@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
-import { ProgressBar } from '../components/ProgressBar';
+import { AnimatedBar } from '../components/motion/AnimatedBar';
 import { CloseButton } from '../components/Glyph';
 import { Sheet } from '../components/Sheet';
 import { selectStageSheet } from '../domain/engine';
@@ -44,11 +44,11 @@ export function StageSheet() {
                 <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>{model.remainingLabel}</Text>
               </View>
               <View style={{ marginTop: 11 }}>
-                <ProgressBar pct={model.progressPct} color={config.accent} track={colors.track} height={8} />
+                <AnimatedBar value={(model.progressPct) / 100} color={colors.brand} track={colors.track} height={8} />
               </View>
               {!!model.etaLabel && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 13 }}>
-                <Icon path={SUN} size={16} color={config.accent} strokeWidth={2} />
+                <Icon path={SUN} size={16} color={colors.brand} strokeWidth={2} />
                 <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.ink }}>{model.etaLabel}</Text>
               </View>
               )}

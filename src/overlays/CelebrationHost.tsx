@@ -19,9 +19,10 @@ import { useReducedMotion } from '../theme/useMotion';
 export function CelebrationHost() {
   const t = useTheme();
   const { colors, radius } = t;
-  const { data, ui, actions } = useStreak();
+  const { data, ui, settings, actions } = useStreak();
   const reduced = useReducedMotion();
   const busy =
+    !settings.welcomeSeen ||
     ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix || !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet;
   const id = !busy ? ui.celebrations[0] : undefined;
   const info = id ? badgeInfo(id, data) : null;

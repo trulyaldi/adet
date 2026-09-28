@@ -1,18 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AdetMark } from './src/components/AdetMark';
+import { Loading } from './src/components/Loading';
 import { TabBar } from './src/components/TabBar';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { ScreenIn } from './src/components/motion/Appear';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
 import { EditSessionSheet } from './src/overlays/EditSessionSheet';
 import { HabitSheet } from './src/overlays/HabitSheet';
 import { LogTimeSheet } from './src/overlays/LogTimeSheet';
 import { ProjectSheet } from './src/overlays/ProjectSheet';
-import { RebalanceScreen } from './src/overlays/RebalanceScreen';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { StartSheet } from './src/overlays/StartSheet';
@@ -26,6 +26,7 @@ import { TodayScreen } from './src/screens/TodayScreen';
 import { StreakProvider, useStreak } from './src/store/StreakStore';
 import { Watchers } from './src/store/Watchers';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
+import { WelcomeFlow } from './src/overlays/WelcomeFlow';
 import { BurstHost } from './src/components/celebrate/Burst';
 import { ConfettiHost } from './src/components/celebrate/Confetti';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
@@ -39,12 +40,7 @@ function Root() {
   const insets = useSafeAreaInsets();
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <AdetMark height={44} color={colors.brand} />
-        <ActivityIndicator color={colors.sub} />
-      </View>
-    );
+    return <Loading />;
   }
 
   return (
@@ -52,11 +48,13 @@ function Root() {
       {/* Screens scroll below the status bar, never under it. */}
       <View style={{ height: insets.top, backgroundColor: colors.bg }} />
       <View style={{ flex: 1 }}>
-        <ScreenIn key={ui.screen}>
-          {ui.screen === 'today' && <TodayScreen />}
-          {ui.screen === 'projects' && <ProjectsScreen />}
-          {ui.screen === 'stats' && <StatsScreen />}
-        </ScreenIn>
+        <ErrorBoundary key={ui.screen}>
+          <ScreenIn>
+            {ui.screen === 'today' && <TodayScreen />}
+            {ui.screen === 'projects' && <ProjectsScreen />}
+            {ui.screen === 'stats' && <StatsScreen />}
+          </ScreenIn>
+        </ErrorBoundary>
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
           <MessageToast />
           <UndoToast />
@@ -68,6 +66,7 @@ function Root() {
       {/* Overlays (each is a Modal, safe to always mount) */}
       <FocusView />
       <CelebrationHost />
+      <WelcomeFlow />
       <Watchers />
       <ConfettiHost />
       <BurstHost />
@@ -80,7 +79,6 @@ function Root() {
       <StartSheet />
       <CapacityFixSheet />
       <WeekSheet />
-      <RebalanceScreen />
     </View>
   );
 }
@@ -90,12 +88,7 @@ function AuthGate() {
   const { colors } = useTheme();
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <AdetMark height={44} color={colors.brand} />
-        <ActivityIndicator color={colors.sub} />
-      </View>
-    );
+    return <Loading />;
   }
 
   if (!session) return <SignInScreen />;

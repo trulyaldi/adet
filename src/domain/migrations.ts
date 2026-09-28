@@ -114,6 +114,8 @@ export const MIGRATIONS: Array<(s: any, now: number, ctx: MigrationContext) => a
     days: s.days && typeof s.days === 'object' ? s.days : {},
     // Milestones already reached are recorded quietly on first load.
     badgesPrimed: false,
+    // The welcome flow's rebalance step replaces the v4 rebalance screen.
+    rebalancePending: false,
   }),
 ];
 

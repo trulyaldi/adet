@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { CapacityIndicator } from '../components/CapacityIndicator';
+import { Companion } from '../components/Companion';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear, useLayoutMotion } from '../components/motion/Appear';
@@ -53,8 +54,8 @@ export function ProjectsScreen() {
       </View>
 
       {model.cards.length === 0 && (
-        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-          <Glyph name="target" size={40} color={colors.muted} label="No projects yet" />
+        <View accessible accessibilityLabel="No projects yet" style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <Companion mood="idle" size={120} />
         </View>
       )}
 

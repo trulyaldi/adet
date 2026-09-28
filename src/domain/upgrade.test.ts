@@ -9,7 +9,6 @@ import { test } from 'node:test';
 import { dailyStreak } from './streaks';
 import { hydrate, persistedSlice } from './migrations';
 import { habitDaySec, planMinutes } from './plan';
-import { averageDailyMin, finishRebalance, suggestedFrequency } from './rebalance';
 import { seed } from './seed';
 import { dayRecords, planStreak } from './streaks';
 import { isUntouchedSeed } from './sync';
@@ -148,31 +147,6 @@ test("upgrade: today's plan fits the cap and the budget, and finishing it by min
   assert.equal(streakOf(done, later).current, STREAK_DAYS + 1);
   // The week view marks today complete.
   assert.equal(selectWeek(done, SETTINGS, later).cells[2].kind, 'complete');
-});
-
-test('upgrade: the rebalance brings the average day down, once', () => {
-  const { data } = upgraded();
-  assert.equal(data.rebalancePending, true);
-  const before = averageDailyMin(data.habits);
-  const after = averageDailyMin(data.habits, suggestedFrequency);
-  assert.equal(before, 298);
-  assert.ok(after < before);
-  const chosen = Object.fromEntries(data.habits.map((h) => [h.id, suggestedFrequency(h)]));
-  const applied = finishRebalance(data, chosen, dkey(new Date(NOW)));
-  assert.deepEqual(
-    applied.habits.filter((h) => h.frequency.kind === 'weekly').map((h) => h.name),
-    ['Coding', 'Portfolio', 'Gym'],
-    'only habits over 30 minutes'
-  );
-  assert.deepEqual(applied.sessions, data.sessions);
-  assert.equal(applied.rebalancePending, false);
-
-  // Saved and loaded again: stays v4, dismissed, and not migrated twice.
-  const again = hydrate({ v3: JSON.stringify(persistedSlice(applied)), v2: null }, NOW + 60_000);
-  assert.equal(again.rebalancePending, false);
-  assert.deepEqual(again.streakCarry, applied.streakCarry);
-  assert.deepEqual(again.habits, applied.habits);
-  assert.deepEqual(again, persistedSlice(applied));
 });
 
 test('upgrade: plans survive a save and reload', () => {

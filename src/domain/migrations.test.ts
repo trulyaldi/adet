@@ -202,7 +202,7 @@ test('v3 habits become every-day habits with a 5-minute (or shorter) minimum', (
       ['c', { kind: 'daily' }, 3, 3, 15],
     ]
   );
-  assert.equal(r.rebalancePending, true, 'the one-time rebalance screen is due');
+  assert.equal(r.rebalancePending, false, 'the welcome flow does the rebalance now');
   assert.equal(r.planSince, '2026-07-10', 'days from the update on are judged by their plan');
   assert.deepEqual(r.plans, {});
 });

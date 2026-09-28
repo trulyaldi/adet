@@ -24,7 +24,6 @@ import { feedback } from '../feedback/feedback';
 import { activeHabits } from '../domain/projects';
 import { clampBudgetMin, clampPlanCap } from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
-import { finishRebalance } from '../domain/rebalance';
 import { seed } from '../domain/seed';
 import { addDays, dkey, setWeekStartDay } from '../domain/time';
 import {
@@ -290,11 +289,6 @@ export interface StreakActions {
   burst(x: number, y: number, color: string): void;
   closeStartSheet(): void;
   closeWeek(): void;
-  /**
-   * Close the one-time rebalance screen for good, applying the chosen
-   * frequencies (habit id → frequency), or keeping everything as is (null).
-   */
-  finishRebalance(chosen: Record<string, Frequency> | null): void;
   // capacity and today's plan edits
   /** Minutes of capacity for one weekday (0 = Monday), or all seven. */
   setCapacity(weekday: number, min: number): void;
@@ -1069,7 +1063,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       },
       closeStartSheet: () => patchUi({ startSheet: false }),
       closeWeek: () => patchUi({ weekOpen: false }),
-      finishRebalance: (chosen) => setData((d) => finishRebalance(d, chosen, dkey(new Date()))),
 
       setReminderHours: (hours) => {
         const next = updateSettings({ reminderHours: clampReminderHours(hours) });

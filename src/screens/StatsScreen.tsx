@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BadgeArt } from '../components/celebrate/BadgeArt';
+import { Companion } from '../components/Companion';
 import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear } from '../components/motion/Appear';
@@ -46,6 +47,12 @@ export function StatsScreen() {
         title="Stats"
         right={<IconButton label="Log time" name="plus" size={20} color={colors.sub} bg={colors.card} diameter={40} onPress={() => actions.openLogSheet()} tipBelow />}
       />
+
+      {!data.sessions.length && (
+        <View accessible accessibilityLabel="Nothing tracked yet" style={{ alignItems: 'center', paddingVertical: 24 }}>
+          <Companion mood="sleepy" size={110} />
+        </View>
+      )}
 
       <Appear index={0}>
         <Card glyph="stats" label="Time per project, last 12 weeks">
