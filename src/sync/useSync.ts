@@ -37,6 +37,8 @@ interface Options<S extends SyncStore> {
 }
 
 const LOCAL_DEBOUNCE_MS = 3000;
+/** The first sync waits this long after local data loads, so the first screen draws first. */
+const STARTUP_DELAY_MS = 300;
 const RETRY_BASE_MS = 2000;
 const RETRY_MAX_MS = 60_000;
 /** Extra push/pull rounds per run for changes queued while syncing. */
@@ -123,10 +125,14 @@ export function useSync<S extends SyncStore>({
     }
   }, [storeRef, setStore, userId]);
 
-  // On start (once local data is loaded).
+  // On start (once local data is loaded), just after the first screen.
   useEffect(() => {
-    if (enabled) run();
-    else clearTimers();
+    if (!enabled) {
+      clearTimers();
+      return;
+    }
+    const t = setTimeout(run, STARTUP_DELAY_MS);
+    return () => clearTimeout(t);
   }, [enabled, run]);
 
   // On return to the foreground.

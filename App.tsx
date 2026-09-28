@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { memo, useEffect } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,13 +31,22 @@ import { BurstHost } from './src/components/celebrate/Burst';
 import { ConfettiHost } from './src/components/celebrate/Confetti';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
 import { preloadSounds } from './src/feedback/audio';
+import { logFirstScreen } from './src/startup';
 import { DevicePrefsProvider } from './src/store/devicePrefs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
-function Root() {
+/** Sounds load just after launch, off the path to the first screen. */
+const SOUND_PRELOAD_DELAY_MS = 500;
+
+// Memoized: it takes no props, so an auth token refresh re-rendering the
+// providers above doesn't re-render the whole app.
+const Root = memo(function Root() {
   const ready = useReady();
   const screen = useUi((u) => u.screen);
   const actions = useActions();
+  useEffect(() => {
+    if (ready) logFirstScreen();
+  }, [ready]);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -83,7 +92,7 @@ function Root() {
       <WeekSheet />
     </View>
   );
-}
+});
 
 function AuthGate() {
   const { ready, session } = useAuth();
@@ -109,7 +118,10 @@ function ThemedStatusBar() {
 }
 
 export default function App() {
-  useEffect(preloadSounds, []);
+  useEffect(() => {
+    const t = setTimeout(preloadSounds, SOUND_PRELOAD_DELAY_MS);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
