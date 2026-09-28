@@ -40,9 +40,19 @@ const LOCAL_DEBOUNCE_MS = 3000;
 /** The first sync waits this long after local data loads, so the first screen draws first. */
 const STARTUP_DELAY_MS = 300;
 const RETRY_BASE_MS = 2000;
-const RETRY_MAX_MS = 60_000;
+/** Offline for a while: try every few minutes at most (foreground and edits still try right away). */
+const RETRY_MAX_MS = 5 * 60_000;
 /** Extra push/pull rounds per run for changes queued while syncing. */
 const MAX_ROUNDS = 3;
+
+/** Offline or unreachable (expected; retried quietly), as opposed to a server error. */
+function isNetworkError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+  return /network|fetch|timed? ?out|abort|offline|internet/i.test(msg);
+}
+
+/** Server errors already reported this launch (each is logged once, in development). */
+const reported = new Set<string>();
 
 export function useSync<S extends SyncStore>({
   enabled,
@@ -111,12 +121,19 @@ export function useSync<S extends SyncStore>({
         debounceTimer.current = setTimeout(run, LOCAL_DEBOUNCE_MS);
       }
     } catch (e) {
-      // Offline or server error: retry silently with exponential backoff.
-      if (__DEV__) console.warn('[sync]', e);
+      // Offline or server error: retry quietly with exponential backoff, only
+      // while the app is in front (coming back to it tries again anyway).
+      if (__DEV__ && !isNetworkError(e)) {
+        const msg = e instanceof Error ? e.message : JSON.stringify(e);
+        if (!reported.has(msg)) {
+          reported.add(msg);
+          console.log('[sync] server error, will retry:', msg);
+        }
+      }
       failures.current += 1;
       setPhase('error');
       setSettled(true);
-      if (enabledRef.current && !unmounted.current) {
+      if (enabledRef.current && !unmounted.current && AppState.currentState === 'active') {
         const delay = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** (failures.current - 1));
         retryTimer.current = setTimeout(run, delay);
       }
@@ -139,6 +156,11 @@ export function useSync<S extends SyncStore>({
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') run();
+      // No retries in the background; they'd only drain the battery.
+      else if (retryTimer.current) {
+        clearTimeout(retryTimer.current);
+        retryTimer.current = null;
+      }
     });
     return () => {
       sub.remove();
