@@ -6,6 +6,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import { AdetMark } from './src/components/AdetMark';
 import { TabBar } from './src/components/TabBar';
+import { ScreenIn } from './src/components/motion/Appear';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
 import { ActivityDaySheet } from './src/overlays/ActivityDaySheet';
 import { ActivityHistorySheet } from './src/overlays/ActivityHistorySheet';
@@ -48,9 +49,11 @@ function Root() {
       {/* Screens scroll below the status bar, never under it. */}
       <View style={{ height: insets.top, backgroundColor: colors.bg }} />
       <View style={{ flex: 1 }}>
-        {ui.screen === 'today' && <TodayScreen />}
-        {ui.screen === 'projects' && <ProjectsScreen />}
-        {ui.screen === 'stats' && <StatsScreen />}
+        <ScreenIn key={ui.screen}>
+          {ui.screen === 'today' && <TodayScreen />}
+          {ui.screen === 'projects' && <ProjectsScreen />}
+          {ui.screen === 'stats' && <StatsScreen />}
+        </ScreenIn>
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
           <MessageToast />
           {/* The day sheet is a modal over this view, so it shows its own copy. */}

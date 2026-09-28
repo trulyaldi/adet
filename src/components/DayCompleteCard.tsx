@@ -6,7 +6,7 @@ import { colors, radius, shadowCard } from '../theme/tokens';
 import { CompletionMark } from './CompletionMark';
 import { Glyph } from './Glyph';
 import { Icon } from './Icon';
-import { useReducedMotion } from './useReducedMotion';
+import { useReducedMotion } from '../theme/useMotion';
 
 interface DayCompleteCardProps {
   /** The day's plan, all done (empty on a free day). */

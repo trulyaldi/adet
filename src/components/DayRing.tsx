@@ -4,7 +4,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../theme/tokens';
 import { ADET_MARK, ADET_MARK_STROKE } from './glyphs';
-import { useReducedMotion } from './useReducedMotion';
+import { useReducedMotion } from '../theme/useMotion';
 
 interface DayRingProps {
   /** Planned habits (segments). */

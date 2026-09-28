@@ -3,7 +3,7 @@ import { Animated, Text, View } from 'react-native';
 
 import { colors, radius } from '../theme/tokens';
 import { Glyph } from './Glyph';
-import { useReducedMotion } from './useReducedMotion';
+import { useReducedMotion } from '../theme/useMotion';
 
 export const AMBER = '#E08A00';
 
