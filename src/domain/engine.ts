@@ -5,7 +5,7 @@ import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
 import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
 import { dailyStreak, weeklyTargetStreak } from './streaks';
-import { weekPace } from './weeks';
+import { weekPace, weekSummary, WeekSummary } from './weeks';
 import {
   ActiveTimer,
   Habit,
@@ -220,10 +220,8 @@ export interface TodayRow {
   iconPath: string;
   tile: string;
   name: string;
+  /** Time tracked today, e.g. "45m today". */
   sub: string;
-  todayPct: string;
-  barColor: string;
-  done: boolean;
   recommended: boolean;
   running: boolean;
   paused: boolean;
@@ -236,11 +234,10 @@ export interface TodayRow {
 export interface TodayGroup {
   projectId: string;
   name: string;
-  stageLabel: string;
   weekLabel: string;
   weekPct: number;
   barColor: string;
-  /** e.g. "5.5h left · ~1.1h/day for 5 days" (see weekPace). */
+  /** e.g. "5.5h left · ~1.1h/day for 5 days" (see weekPace); "" without a target. */
   paceLabel: string;
   paceMet: boolean;
   /** e.g. "5d streak · 3w target · ↑ 1h", or the at-risk nudge. */
@@ -255,15 +252,14 @@ export interface TodayModel {
   /** After the streak in the header chip: "❄ 2" freezes left, "track today" when at risk, or "". */
   streakNote: string;
   streakAtRisk: boolean;
+  /**
+   * This week across the projects shown, when two or more have a target
+   * (with one, the project's own card already says the same).
+   */
+  summary: (WeekSummary & { pct: number }) | null;
   groups: TodayGroup[];
   noHabits: boolean;
   hasHabits: boolean;
-  focusPctLabel: string;
-  focusRingOffset: number;
-  focusRingColor: string;
-  focusTimeLabel: string;
-  focusDots: { c: string }[];
-  focusDotsLabel: string;
 }
 
 export function recommendedHabitId(
@@ -286,107 +282,71 @@ export function selectToday(
   const global = dailyStreak(daySecMap(data, now), now);
   const globalStreak = global.current;
   const todayD = ctx.todayD;
-  const dayGoalSec = data.habits.reduce(
-    (total, h) => total + (h.dailyTargetMin || 30) * 60,
-    0
-  );
-  const dayDoneSec = data.habits.reduce(
-    (total, h) => total + ctx.habitStats[h.id].day,
-    0
-  );
-  const doneCount = data.habits.filter(
-    (h) => ctx.habitStats[h.id].day >= (h.dailyTargetMin || 30) * 60
-  ).length;
-  const fp = dayGoalSec > 0 ? Math.min(1, dayDoneSec / dayGoalSec) : 0;
   const recommendedId = recommendedIdFrom(ctx, data, now);
 
-  const groups: TodayGroup[] = data.projects
-    .map((p) => {
+  const shown = data.projects.filter((p) => ctx.projStats[p.id].habits.length > 0);
+
+  const groups: TodayGroup[] = shown.map((p) => {
+    const ps = ctx.projStats[p.id];
+    const pDays = daySecMap(data, now, ps.habits.map((h) => h.id));
+    const streak = dailyStreak(pDays, now);
+    const weeks = weeklyTargetStreak(pDays, p.weeklyTarget, now);
+    const trend = trendOf(ps);
+    const pace = weekPace(ps.week, p.weeklyTarget, now);
+    const pct = pace.targetSec ? Math.min(100, Math.round((ps.week / pace.targetSec) * 100)) : 0;
+    return {
+      projectId: p.id,
+      name: p.name,
+      weekLabel: pace.targetSec
+        ? fmtH(ps.week) + ' / ' + fmtH(pace.targetSec) + ' this week'
+        : fmtH(ps.week) + ' this week',
+      weekPct: pct,
+      barColor: pct >= 100 ? '#34C759' : '#17181A',
+      paceLabel: pace.kind === 'noTarget' ? '' : pace.label,
+      paceMet: pace.kind === 'met',
+      consistencyLabel: streak.atRisk
+        ? streak.current + 'd streak · track today to keep it'
+        : [streak.current + 'd streak', weeks > 0 ? weeks + 'w target' : '', trend.label]
+            .filter(Boolean)
+            .join(' · '),
+      streakAtRisk: streak.atRisk,
+      rows: ps.habits.map((h) => {
+        const stt = ctx.habitStats[h.id];
+        const active = data.active;
+        const running = !!(active && active.habitId === h.id);
+        const paused = running && !active?.startedAt;
+        const rec = h.id === recommendedId;
+        const tracked = stt.day >= 60;
+        return {
+          habitId: h.id,
+          iconPath: iconPath(h.icon),
+          tile: h.tile,
+          name: h.name,
+          sub: tracked ? fmtHM(Math.floor(stt.day)) + ' today' : 'Not tracked today',
+          recommended: rec,
+          running,
+          paused,
+          cardBorder: running ? config.accent : 'transparent',
+          btnLabelSec: running && !paused ? activeSec(active, now) : 0,
+          btnLabel: running ? (paused ? 'Resume' : '') : tracked ? 'Continue' : 'Start',
+          btnBg: running ? (paused ? '#FFF4E5' : '#FFECEB') : rec ? config.accent : '#F1F2F5',
+          btnFg: running ? (paused ? '#C77800' : '#FF3B30') : rec ? '#FFFFFF' : config.accent,
+        };
+      }),
+    };
+  });
+
+  const summary = weekSummary(
+    shown.map((p) => {
       const ps = ctx.projStats[p.id];
-      const target = (p.weeklyTarget || 8) * 3600;
-      const pct = Math.min(100, Math.round((ps.week / target) * 100));
-      const pDays = daySecMap(data, now, ps.habits.map((h) => h.id));
-      const streak = dailyStreak(pDays, now);
-      const weeks = weeklyTargetStreak(pDays, p.weeklyTarget, now);
-      const trend = trendOf(ps);
-      const pace = weekPace(ps.week, p.weeklyTarget, now);
       return {
-        projectId: p.id,
-        name: p.name,
-        stageLabel: stageOf(ps.life, stages)[0],
-        weekLabel:
-          fmtHM(Math.floor(ps.week)) +
-          ' / ' +
-          (p.weeklyTarget || 8) +
-          'h this week',
-        weekPct: pct,
-        barColor: pct >= 100 ? '#34C759' : '#17181A',
-        paceLabel: pace.label,
-        paceMet: pace.kind === 'met',
-        consistencyLabel: streak.atRisk
-          ? streak.current + 'd streak · track today to keep it'
-          : [streak.current + 'd streak', weeks > 0 ? weeks + 'w target' : '', trend.label]
-              .filter(Boolean)
-              .join(' · '),
-        streakAtRisk: streak.atRisk,
-        rows: ps.habits.map((h) => {
-          const stt = ctx.habitStats[h.id];
-          const active = data.active;
-          const dGoal = (h.dailyTargetMin || 30) * 60;
-          const running = !!(active && active.habitId === h.id);
-          const paused = running && !active?.startedAt;
-          const done = stt.day >= dGoal;
-          const rec = h.id === recommendedId;
-          return {
-            habitId: h.id,
-            iconPath: iconPath(h.icon),
-            tile: h.tile,
-            name: h.name,
-            sub:
-              fmtHM(Math.floor(stt.day)) +
-              ' / ' +
-              fmtMin(h.dailyTargetMin || 30) +
-              ' today',
-            todayPct: Math.min(100, Math.round((stt.day / dGoal) * 100)) + '%',
-            barColor: done ? '#34C759' : '#17181A',
-            done,
-            recommended: rec,
-            running,
-            paused,
-            cardBorder: running ? config.accent : 'transparent',
-            btnLabelSec: running && !paused ? activeSec(active, now) : 0,
-            btnLabel: running
-              ? paused
-                ? 'Resume'
-                : ''
-              : done
-              ? 'Done ✓'
-              : stt.day > 0
-              ? 'Continue'
-              : 'Start timer',
-            btnBg: running
-              ? paused
-                ? '#FFF4E5'
-                : '#FFECEB'
-              : done
-              ? '#E8F5EC'
-              : rec
-              ? config.accent
-              : '#F1F2F5',
-            btnFg: running
-              ? paused
-                ? '#C77800'
-                : '#FF3B30'
-              : done
-              ? '#1F8A3B'
-              : rec
-              ? '#FFFFFF'
-              : config.accent,
-          };
-        }),
+        weekSec: ps.week,
+        todaySec: ps.habits.reduce((a, h) => a + ctx.habitStats[h.id].day, 0),
+        targetHours: p.weeklyTarget,
       };
-    })
-    .filter((g) => g.rows.length > 0);
+    }),
+    now
+  );
 
   return {
     todayDateLabel:
@@ -398,20 +358,13 @@ export function selectToday(
     streakLabel: globalStreak + ' day' + (globalStreak === 1 ? '' : 's'),
     streakNote: global.atRisk ? 'track today' : globalStreak > 0 ? '❄ ' + global.freezesLeft : '',
     streakAtRisk: global.atRisk,
+    summary:
+      summary.projects >= 2
+        ? { ...summary, pct: Math.min(100, Math.round((summary.doneSec / summary.targetSec) * 100)) }
+        : null,
     groups,
     noHabits: data.habits.length === 0,
     hasHabits: data.habits.length > 0,
-    focusPctLabel: Math.round(fp * 100) + '%',
-    focusRingOffset: Number((157.1 * (1 - fp)).toFixed(1)),
-    focusRingColor: fp >= 1 ? '#34C759' : config.accent,
-    focusTimeLabel: fmtHM(Math.floor(dayDoneSec)) + ' of ' + fmtHM(dayGoalSec),
-    focusDots: data.habits.map((h) => ({
-      c:
-        ctx.habitStats[h.id].day >= (h.dailyTargetMin || 30) * 60
-          ? '#34C759'
-          : '#E3E4E8',
-    })),
-    focusDotsLabel: doneCount + ' of ' + data.habits.length + ' habits done',
   };
 }
 

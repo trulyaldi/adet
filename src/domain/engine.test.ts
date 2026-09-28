@@ -93,7 +93,7 @@ test('active timer contributes to today/day totals and timer model', () => {
   assert.ok(map[dkey(new Date(NOW))] >= 600);
 });
 
-test('selectToday focus summary and recommendation use deterministic daily progress', () => {
+test('Today rows show time tracked today; recommendation is deterministic', () => {
   const today = dkey(new Date(NOW));
   assert.equal(today, '2026-07-10');
   const data: PersistedState = {
@@ -142,10 +142,16 @@ test('selectToday focus summary and recommendation use deterministic daily progr
   };
 
   const model = selectToday(data, DEFAULT_CONFIG, NOW);
-  assert.equal(model.focusPctLabel, '44%');
-  assert.equal(model.focusDotsLabel, '0 of 2 habits done');
   assert.equal(model.hasHabits, true);
   assert.equal(recommendedHabitId(data, DEFAULT_CONFIG, NOW), 'h2');
+  // Rows show time tracked today, never the (hidden) daily target.
+  const rows = model.groups[0].rows;
+  assert.deepEqual(rows.map((r) => r.sub), ['30m today', '10m today']);
+  assert.ok(rows.every((r) => !r.sub.includes('/')));
+  assert.deepEqual(rows.map((r) => r.btnLabel), ['Continue', 'Continue']);
+  // One project: no separate summary card (the project card says the same).
+  assert.equal(model.summary, null);
+  assert.equal(model.groups[0].weekLabel, '40m / 8h this week');
 });
 
 test('manual sessions show a "logged manually" marker and their note in history', () => {
@@ -380,4 +386,45 @@ test('Today header chip shows freezes left, or a nudge when the streak is at ris
   assert.equal(risky.streakAtRisk, true);
 
   assert.equal(selectToday(data([]), DEFAULT_CONFIG, now).streakNote, '', 'no streak: no freeze count');
+});
+
+test('Today week summary: two or more projects with targets, pace summed per project', () => {
+  const wed = new Date(2026, 8, 16, 12, 0).getTime(); // Wed Sep 16: 5 days left
+  const at = (d: number, h: number) => new Date(2026, 8, d, h, 0).getTime();
+  const habit = (id: string, projectId: string) => ({
+    id,
+    projectId,
+    name: id,
+    icon: 'book' as const,
+    tile: '#fff',
+    dailyTargetMin: 30,
+    weeklyTargetMin: 150,
+  });
+  const sess = (id: string, habitId: string, start: number, sec: number) => ({ id, habitId, start, end: start + sec * 1000, duration: sec });
+  const data: PersistedState = {
+    schemaVersion: 3,
+    projects: [
+      { id: 'p1', name: 'A', weeklyTarget: 8, started: at(1, 9) },
+      { id: 'p2', name: 'B', weeklyTarget: 3, started: at(1, 9) },
+      { id: 'p3', name: 'No habits', weeklyTarget: 10, started: at(1, 9) },
+    ],
+    habits: [habit('h1', 'p1'), habit('h2', 'p2')],
+    sessions: [
+      sess('a', 'h1', at(14, 9), 3 * 3600), // Mon: 3h
+      sess('b', 'h2', at(16, 9), 1800), // today: 30m
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+  const m = selectToday(data, DEFAULT_CONFIG, wed);
+  // p3 has no habits, so Today doesn't show it and it isn't summed.
+  assert.equal(m.groups.length, 2);
+  assert.ok(m.summary);
+  assert.equal(m.summary!.weekLabel, '3.5h / 11h this week');
+  assert.equal(m.summary!.pct, 32);
+  // p1: (8h-3h)/5 = 1h; p2: 3h/5 = 36m, less 30m done today = 6m.
+  assert.equal(m.summary!.todaySec, 3600 + 360);
+  assert.equal(m.summary!.todayLabel, '1.1h more today to stay on pace');
+  // No level badge on Today.
+  assert.ok(!('stageLabel' in m.groups[0]));
 });

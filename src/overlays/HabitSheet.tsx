@@ -4,7 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { ICONS, ICON_KEYS } from '../domain/constants';
-import { fmtMin, stepFor } from '../domain/time';
+import { fmtMin } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
 import { colors, radius } from '../theme/tokens';
 
@@ -103,65 +103,9 @@ export function HabitSheet() {
             </View>
           </View>
 
-          {/* Targets */}
+          {/* Target. The habit's daily target is still stored and synced
+              (older app versions show it) but no longer shown or edited. */}
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: colors.screen,
-                borderRadius: 14,
-                padding: 12,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.subtext }}>
-                Daily target
-              </Text>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  marginTop: 8,
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Pressable
-                  onPress={() =>
-                    actions.patchHabitSheet({
-                      dailyTargetMin: Math.max(
-                        5,
-                        sheet.dailyTargetMin - stepFor(sheet.dailyTargetMin)
-                      ),
-                    })
-                  }
-                  style={stepButtonStyle}
-                >
-                  <Text style={stepButtonTextStyle}>−</Text>
-                </Pressable>
-                <Text
-                  style={{
-                    fontWeight: '800',
-                    color: colors.ink,
-                    fontVariant: ['tabular-nums'],
-                  }}
-                >
-                  {fmtMin(sheet.dailyTargetMin)}
-                </Text>
-                <Pressable
-                  onPress={() =>
-                    actions.patchHabitSheet({
-                      dailyTargetMin: Math.min(
-                        480,
-                        sheet.dailyTargetMin + stepFor(sheet.dailyTargetMin)
-                      ),
-                    })
-                  }
-                  style={stepButtonStyle}
-                >
-                  <Text style={stepButtonTextStyle}>+</Text>
-                </Pressable>
-              </View>
-            </View>
-
             <View
               style={{
                 flex: 1,
