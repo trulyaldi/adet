@@ -149,13 +149,17 @@ export function changeLabel(sec: number, prevSec: number): string {
   return (d > 0 ? 'up ' : 'down ') + fmtH(Math.abs(d)) + ' on the week before';
 }
 
-/** One-line summary, e.g. "Hit 2 of 3 targets · 14.5h tracked · up 2h on the week before". */
-export function recapSummary(r: WeekRecap): string {
+/**
+ * One-line summary, e.g. "Hit 2 of 3 targets · 14.5h tracked · up 2h on the
+ * week before". `tracked: false` leaves out the total, for views that show it
+ * on its own.
+ */
+export function recapSummary(r: WeekRecap, opts: { tracked?: boolean } = {}): string {
   const parts: string[] = [];
   if (r.targetCount > 0) {
     parts.push(`Hit ${r.hitCount} of ${r.targetCount} target${r.targetCount === 1 ? '' : 's'}`);
   }
-  parts.push(fmtH(r.totalSec) + ' tracked');
+  if (opts.tracked !== false) parts.push(fmtH(r.totalSec) + ' tracked');
   parts.push(changeLabel(r.totalSec, r.prevTotalSec));
   return parts.join(' · ');
 }

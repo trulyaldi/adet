@@ -176,6 +176,7 @@ test('recapSummary counts targets hit and total time', () => {
     assert.equal(recapSummary(weekRecap(d, '2026-09-21')), 'Hit 1 of 2 targets · 6h tracked · up 2h on the week before');
     const noTargets = data([sess('h1', at(8, 22), H)], { p1: 0, p2: 0 });
     assert.equal(recapSummary(weekRecap(noTargets, '2026-09-21')), '1h tracked · up 1h on the week before');
+    assert.equal(recapSummary(weekRecap(d, '2026-09-21'), { tracked: false }), 'Hit 1 of 2 targets · up 2h on the week before');
   });
 });
 

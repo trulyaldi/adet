@@ -595,3 +595,37 @@ test('week-over-week copy: neutral under a minute, natural sentences otherwise',
   assert.equal(text(3630, 3600), 'You’ve matched last week’s total.');
   assert.equal(text(3600, 0), null, 'nothing to compare with');
 });
+
+test('day sheet: total only when it adds to the session rows', () => {
+  const at = (d: number, h: number) => new Date(2026, 6, d, h, 0).getTime();
+  const base: PersistedState = {
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(1, 9) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions: [
+      { id: 'a', habitId: 'h1', start: at(8, 9), end: at(8, 10), duration: 3600 },
+      { id: 'b', habitId: 'h1', start: at(9, 9), end: at(9, 10), duration: 3600 },
+      { id: 'c', habitId: 'h1', start: at(9, 11), end: at(9, 11) + 1800_000, duration: 1800 },
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+  const day = (d: PersistedState, key: string) => selectStats(d, DEFAULT_CONFIG, NOW, { heatSel: key });
+
+  const lone = day(base, '2026-07-08');
+  assert.equal(lone.heatSelInfo, '', 'one session: its row already says 1h 00m');
+  assert.equal(lone.heatSelSessions.length, 1);
+  assert.equal(day(base, '2026-07-09').heatSelInfo, '1h 30m total');
+  const empty = day(base, '2026-07-07');
+  assert.equal(empty.heatSelEmpty, true);
+  assert.equal(empty.heatSelInfo, '');
+
+  // Today with only a running timer (no rows): the total shows it.
+  const running = { ...base, active: { habitId: 'h1', startedAt: NOW - 600_000, baseSec: 0 } };
+  const today = day(running, '2026-07-10');
+  assert.equal(today.heatSelEmpty, false);
+  assert.equal(today.heatSelSessions.length, 0);
+  assert.equal(today.heatSelInfo, '10m total');
+});

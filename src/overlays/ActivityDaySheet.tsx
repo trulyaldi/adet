@@ -31,34 +31,10 @@ export function ActivityDaySheet() {
           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.subtext }}>{model.heatSelInfo}</Text>
         </View>
 
-        {model.heatSelEmpty ? (
+        {model.heatSelEmpty && (
           <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 14, paddingVertical: 26 }}>
             No time logged this day
           </Text>
-        ) : (
-          <View>
-            {model.heatSelRows.map((hs, i) => (
-              <View
-                key={i}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 11,
-                  paddingVertical: 10,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.hairline,
-                }}
-              >
-                <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: hs.tile, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon path={hs.iconPath} size={17} />
-                </View>
-                <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.ink }}>
-                  {hs.name}
-                </Text>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hs.timeLabel}</Text>
-              </View>
-            ))}
-          </View>
         )}
 
         {model.heatSelSessions.length > 0 && (

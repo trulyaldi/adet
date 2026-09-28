@@ -649,12 +649,6 @@ export interface HeatRow {
   monthLabel: string;
   cells: HeatCell[];
 }
-export interface HeatSelRow {
-  iconPath: string;
-  tile: string;
-  name: string;
-  timeLabel: string;
-}
 /** One completed session on the selected heatmap day (tappable to edit). */
 export interface HeatSelSession {
   id: string;
@@ -715,8 +709,8 @@ export interface StatsModel {
   heatSelOpen: boolean;
   heatSelEmpty: boolean;
   heatSelDate: string;
+  /** "2h 05m total" with 2+ sessions or a timer running that day; "" for a lone session (its row says it). */
   heatSelInfo: string;
-  heatSelRows: HeatSelRow[];
   heatSelSessions: HeatSelSession[];
   historyRows: HistoryRow[];
   /** historyRows grouped under a header per day. */
@@ -834,10 +828,10 @@ export function selectStats(
   const fullStart = addDays(mon, -(sheetWeeks - 1) * 7);
 
   // heat selection detail
-  let heatSelRows: HeatSelRow[] = [];
   let heatSelSessions: HeatSelSession[] = [];
   let heatSelInfo = '';
   let heatSelDate = '';
+  let heatSelEmpty = false;
   if (ui.heatSel) {
     const d = pkey(ui.heatSel);
     heatSelDate =
@@ -846,34 +840,17 @@ export function selectStats(
       MONTHS[d.getMonth()].slice(0, 3) +
       ' ' +
       d.getDate();
-    const perHabit: Record<string, number> = {};
-    for (const s of data.sessions) {
-      if (dkey(new Date(s.start)) === ui.heatSel) {
-        perHabit[s.habitId] = (perHabit[s.habitId] || 0) + s.duration;
-      }
-    }
-    if (data.active && dkey(new Date(now)) === ui.heatSel) {
-      perHabit[data.active.habitId] =
-        (perHabit[data.active.habitId] || 0) + activeSec(data.active, now);
-    }
-    heatSelRows = Object.keys(perHabit)
-      .map((hid) => {
-        const h = data.habits.find((x) => x.id === hid);
-        return h
-          ? {
-              iconPath: iconPath(h.icon),
-              tile: h.tile,
-              name: h.name,
-              timeLabel: fmtHM(Math.floor(perHabit[hid])),
-              sec: perHabit[hid],
-            }
-          : null;
-      })
-      .filter((x): x is HeatSelRow & { sec: number } => !!x)
-      .sort((a, b) => b.sec - a.sec)
-      .map(({ sec, ...rest }) => rest);
-    const tot = Object.values(perHabit).reduce((a, x) => a + x, 0);
-    heatSelInfo = tot > 0 ? fmtHM(Math.floor(tot)) + ' total' : 'No time logged';
+    // The day's time: its sessions, plus a timer running today.
+    const known = new Set(data.habits.map((h) => h.id));
+    const parts = data.sessions
+      .filter((s) => known.has(s.habitId) && dkey(new Date(s.start)) === ui.heatSel)
+      .map((s) => s.duration);
+    const running = !!data.active && known.has(data.active.habitId) && dkey(new Date(now)) === ui.heatSel;
+    if (running) parts.push(activeSec(data.active, now));
+    const tot = parts.reduce((a, x) => a + x, 0);
+    heatSelEmpty = tot <= 0;
+    // A lone session's time is already on its row; a running timer has no row.
+    heatSelInfo = parts.length >= 2 || running ? fmtHM(Math.floor(tot)) + ' total' : '';
     heatSelSessions = data.sessions
       .filter((s) => dkey(new Date(s.start)) === ui.heatSel)
       .sort((a, b) => a.start - b.start)
@@ -1035,10 +1012,9 @@ export function selectStats(
       'See full history · ' + fullWeeks + (fullWeeks === 1 ? ' week' : ' weeks'),
     heatCanToggle,
     heatSelOpen: !!ui.heatSel,
-    heatSelEmpty: !!ui.heatSel && heatSelRows.length === 0,
+    heatSelEmpty,
     heatSelDate,
     heatSelInfo,
-    heatSelRows,
     heatSelSessions,
     historyRows,
     historyDays,
