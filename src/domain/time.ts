@@ -27,10 +27,35 @@ export function addDays(d: Date, n: number): Date {
   return x;
 }
 
-/** Monday of the week containing d (local, ISO week start). */
+/** First day of the week, as Date.getDay(): 1 = Monday (default), 0 = Sunday. */
+export type WeekStartDay = 0 | 1;
+let WEEK_START: WeekStartDay = 1;
+
+/**
+ * Set the week start used by every week calculation (the user's preference).
+ * Weekday identities (capacity per weekday, fixed habit days) stay
+ * Monday-based; only where a week begins and ends moves.
+ */
+export function setWeekStartDay(d: WeekStartDay): void {
+  WEEK_START = d === 0 ? 0 : 1;
+}
+
+export function weekStartDay(): WeekStartDay {
+  return WEEK_START;
+}
+
+/** Position of d in its week: 0 = the first day (Monday by default) … 6. */
+export function weekPos(d: Date): number {
+  return (d.getDay() - WEEK_START + 7) % 7;
+}
+
+/**
+ * The first day of the week containing d (local midnight). Named for the
+ * default; it follows setWeekStartDay.
+ */
 export function monday(d: Date): Date {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  x.setDate(x.getDate() - weekPos(x));
   return x;
 }
 

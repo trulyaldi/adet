@@ -2,7 +2,8 @@ import { clampMinMin, DAILY, defaultMinMin, parseFrequency } from './frequency';
 import { seed } from './seed';
 import { dailyStreak } from './streaks';
 import { addDays, dkey } from './time';
-import { CURRENT_SCHEMA_VERSION, Mark, PersistedState, StreakCarry } from './types';
+import { DEFAULT_PREFS, parsePrefs } from './capacity';
+import { CURRENT_SCHEMA_VERSION, DailyLog, DayOverride, Mark, PersistedState, StreakCarry } from './types';
 
 /**
  * The streak under the pre-v4 rule (any tracked time, monthly freezes), kept
@@ -67,12 +68,17 @@ export const MIGRATIONS: Array<(s: any, now: number) => any> = [
     rebalancePending: (s.habits || []).length > 0,
   }),
   // v5: the redesign. Every existing habit is timed (its length becomes a
-  // target marker, not a deadline); done marks start empty.
-  (s: any) => ({
+  // target marker, not a deadline); done marks start empty; days from the
+  // update on are planned by capacity.
+  (s: any, now: number) => ({
     ...s,
     schemaVersion: 5,
+    planSince: dkey(new Date(now)),
     habits: (s.habits || []).map((h: any) => ({ ...h, kind: h.kind === 'check' ? 'check' : 'timed' })),
     marks: Array.isArray(s.marks) ? s.marks : [],
+    prefs: s.prefs ?? DEFAULT_PREFS,
+    dailyLogs: Array.isArray(s.dailyLogs) ? s.dailyLogs : [],
+    days: s.days && typeof s.days === 'object' ? s.days : {},
   }),
 ];
 
@@ -100,6 +106,29 @@ function marksOf(v: unknown): Mark[] {
   return v.filter(
     (m): m is Mark => !!m && typeof m.id === 'string' && typeof m.habitId === 'string' && typeof m.day === 'string'
   );
+}
+
+/** Saved daily logs, with anything malformed dropped. */
+function logsOf(v: unknown): DailyLog[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((l): l is DailyLog => !!l && typeof l.id === 'string' && Array.isArray(l.items));
+}
+
+/** Local per-day overrides, keeping only well-formed recent ones. */
+function daysOf(v: unknown): Record<string, DayOverride> {
+  if (!v || typeof v !== 'object') return {};
+  const out: Record<string, DayOverride> = {};
+  for (const [k, o] of Object.entries(v as Record<string, any>)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !o || typeof o !== 'object') continue;
+    const ids = (x: unknown) => (Array.isArray(x) ? x.filter((i): i is string => typeof i === 'string') : undefined);
+    out[k] = {
+      ...(ids(o.order) ? { order: ids(o.order) } : {}),
+      ...(ids(o.aside) ? { aside: ids(o.aside) } : {}),
+      ...(o.level === 'light' || o.level === 'normal' || o.level === 'heavy' ? { level: o.level } : {}),
+      ...(o.prompted === true ? { prompted: true } : {}),
+    };
+  }
+  return out;
 }
 
 export function hydrate(
@@ -153,6 +182,8 @@ export function hydrate(
     habits,
     sessions,
     marks: marksOf(migrated.marks),
+    prefs: parsePrefs(migrated.prefs),
+    dailyLogs: logsOf(migrated.dailyLogs),
     active: migrated.active || null,
     historyClearedAt: migrated.historyClearedAt || 0,
     plans: plansOf(migrated.plans),
@@ -162,6 +193,7 @@ export function hydrate(
         ? { current: carry.current, longest: carry.longest, day: carry.day }
         : null,
     rebalancePending: migrated.rebalancePending === true,
+    days: daysOf(migrated.days),
   };
 }
 
@@ -171,6 +203,7 @@ export function hydrate(
  * are saved here too; they're never synced.
  */
 export function persistedSlice(data: PersistedState): PersistedState {
-  const { schemaVersion, projects, habits, sessions, marks, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending } = data;
-  return { schemaVersion, projects, habits, sessions, marks, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending };
+  const { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending, days } =
+    data;
+  return { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, active, historyClearedAt, plans, planSince, streakCarry, rebalancePending, days };
 }

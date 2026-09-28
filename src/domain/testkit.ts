@@ -1,5 +1,6 @@
 // Fixtures shared by the domain tests (not a test file itself).
 
+import { DEFAULT_PREFS } from './capacity';
 import { Frequency } from './frequency';
 import { Habit, PersistedState, Session } from './types';
 
@@ -29,12 +30,15 @@ export function state(habits: Habit[], sessions: Session[] = [], extra: Partial<
     habits,
     sessions,
     marks: [],
+    prefs: DEFAULT_PREFS,
+    dailyLogs: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
     planSince: '2026-01-01',
     streakCarry: null,
     rebalancePending: false,
+    days: {},
     ...extra,
   };
 }

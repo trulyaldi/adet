@@ -135,6 +135,56 @@ export interface StreakCarry {
   day: string;
 }
 
+/**
+ * Synced per-user preferences (one record, id "prefs"): planning capacity per
+ * weekday and where weeks start.
+ */
+export interface UserPrefs {
+  /** Minutes of planned time per weekday, 0 = Monday … 6 = Sunday. */
+  capacityMin: number[];
+  /** Date.getDay() of the first day of the week: 1 = Monday, 0 = Sunday. */
+  weekStart: 0 | 1;
+  updatedAt?: number;
+}
+
+/** One planned habit on a day's log. */
+export interface LogItem {
+  habitId: string;
+  projectId: string;
+  /** The habit's share of the day in minutes (0 for check-offs). */
+  shareMin: number;
+}
+
+/**
+ * A finished day's plan against what actually happened (synced, id = dkey),
+ * written once after the day ends, for history and a future AI planner.
+ */
+export interface DailyLog {
+  id: string;
+  /** Capacity that day in minutes, after the light/normal/heavy tap. */
+  capacityMin: number;
+  plannedMin: number;
+  actualMin: number;
+  items: LogItem[];
+  /** Planned habits done (marked, or their share reached). */
+  doneCount: number;
+  updatedAt?: number;
+}
+
+/** How heavy a day feels, tapped on first open: 0.5×, 1× or 1.5× capacity. */
+export type DayLevel = 'light' | 'normal' | 'heavy';
+
+/** Local-only edits to one day's suggestion. */
+export interface DayOverride {
+  /** Habit ids in the order dragged to. */
+  order?: string[];
+  /** Habits set aside for the day (their time goes to the rest of the week). */
+  aside?: string[];
+  level?: DayLevel;
+  /** The capacity tap was answered or dismissed. */
+  prompted?: boolean;
+}
+
 /** The slice of state that is persisted to device storage. */
 export interface PersistedState {
   schemaVersion: number;
@@ -143,6 +193,10 @@ export interface PersistedState {
   sessions: Session[];
   /** v5: done marks (synced). */
   marks: Mark[];
+  /** v5: capacity and week start (synced). */
+  prefs: UserPrefs;
+  /** v5: plan vs actual per finished day (synced). */
+  dailyLogs: DailyLog[];
   active: ActiveTimer | null;
   historyClearedAt: number;
   // Local-only (not synced), like historyClearedAt:
@@ -156,6 +210,8 @@ export interface PersistedState {
   streakCarry: StreakCarry | null;
   /** The one-time rebalance screen is still to be shown (set by the v4 migration). */
   rebalancePending: boolean;
+  /** v5, local-only: per-day edits to the plan (order, set aside, capacity tap). */
+  days: Record<string, DayOverride>;
 }
 
 /** A [name, thresholdHours] stage tuple. */

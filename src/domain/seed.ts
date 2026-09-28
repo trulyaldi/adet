@@ -1,6 +1,7 @@
 // Seed dataset — ported from the design's seed(). Generates ~90 days of
 // deterministic sample sessions so a fresh install has something to show.
 
+import { DEFAULT_PREFS } from './capacity';
 import { addDays, dkey, rand } from './time';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -81,12 +82,15 @@ export function seed(now: number = Date.now()): PersistedState {
     habits,
     sessions,
     marks: [],
+    prefs: DEFAULT_PREFS,
+    dailyLogs: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
     planSince: dkey(nowD),
     streakCarry: null,
     rebalancePending: false,
+    days: {},
   };
 }
 

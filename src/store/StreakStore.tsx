@@ -13,6 +13,8 @@ import { AppConfig, DEFAULT_CONFIG } from '../domain/config';
 import { TILES } from '../domain/constants';
 import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTargetOf } from '../domain/frequency';
 import { activeSec } from '../domain/engine';
+import { clampCapacity, DEFAULT_PREFS, raiseCapacityToFit, scaleTargetsToFit, targetCheck } from '../domain/capacity';
+import { missingLogs } from '../domain/dailyLog';
 import { nextProjectColor, nextScene, withLooks } from '../domain/look';
 import { addMark, moveMarks, removeMark } from '../domain/marks';
 import type { GlyphName } from '../components/glyphs';
@@ -32,7 +34,7 @@ import {
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { finishRebalance } from '../domain/rebalance';
 import { seed } from '../domain/seed';
-import { dkey } from '../domain/time';
+import { addDays, dkey, setWeekStartDay } from '../domain/time';
 import {
   applySessionEdit,
   checkSessionTimes,
@@ -46,6 +48,7 @@ import {
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import {
   CURRENT_SCHEMA_VERSION,
+  DayLevel,
   Habit,
   HabitKind,
   IconKey,
@@ -272,6 +275,24 @@ export interface StreakActions {
    * frequencies (habit id → frequency), or keeping everything as is (null).
    */
   finishRebalance(chosen: Record<string, Frequency> | null): void;
+  // capacity and today's plan edits
+  /** Minutes of capacity for one weekday (0 = Monday), or all seven. */
+  setCapacity(weekday: number, min: number): void;
+  setCapacityAll(mins: number[]): void;
+  setWeekStart(day: 0 | 1): void;
+  /** Today's light/normal/heavy tap; null dismisses the prompt. */
+  setDayLevel(level: DayLevel | null): void;
+  /** Today's habits in a new order (drag to reorder). */
+  reorderToday(ids: string[]): void;
+  /** Set a habit aside for today (its time goes to others or later days), or bring it back. */
+  setAside(habitId: string, aside: boolean): void;
+  /** Resolve targets over capacity: scale targets down, or raise capacity. */
+  fixTargets(how: 'scale' | 'raise'): void;
+  dismissTargetCheck(signature: string): void;
+  acceptLearned(mins: number[]): void;
+  dismissLearned(): void;
+  setDailyPrompt(on: boolean): void;
+  markWelcomeSeen(): void;
   // device settings
   setReminderHours(hours: number): void;
   /** Daily time budget in minutes (15..180, 15-minute steps). */
@@ -303,12 +324,15 @@ function emptyData(now: number): PersistedState {
     habits: [],
     sessions: [],
     marks: [],
+    prefs: DEFAULT_PREFS,
+    dailyLogs: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
     planSince: dkey(new Date(now)),
     streakCarry: null,
     rebalancePending: false,
+    days: {},
   };
 }
 
@@ -457,6 +481,10 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     syncReminder({ fireAt: reminderAt, habitName: reminderHabit, hours: settings.reminderHours });
   }, [ready, reminderAt, reminderHabit, settings.reminderHours, permRev]);
 
+  // Weeks start where the (synced) preference says, for every calculation below.
+  setWeekStartDay(data.prefs.weekStart);
+  const today = dkey(new Date(now));
+
   // Once per device: offer to remove sessions under a minute left over from
   // before the stop rule. Re-checked as data arrives (e.g. the first pull on a
   // new device) until answered; the ref keeps it to one alert per app session.
@@ -487,6 +515,21 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     );
   }, [ready, wiped, store.data.sessions, settings.shortSessionsReviewed, updateSettings, setData]);
 
+  // Finished days get their plan-vs-actual log once (for history and a future
+  // AI planner); old per-day edits are dropped after two weeks.
+  useEffect(() => {
+    if (!ready || wiped) return;
+    setData((d) => {
+      const logs = missingLogs(d, today, d.planSince);
+      const cutoff = dkey(addDays(new Date(), -14));
+      const stale = Object.keys(d.days).filter((k) => k < cutoff);
+      if (!logs.length && !stale.length) return d;
+      const days = { ...d.days };
+      for (const k of stale) delete days[k];
+      return { ...d, dailyLogs: logs.length ? [...d.dailyLogs, ...logs] : d.dailyLogs, days };
+    });
+  }, [ready, wiped, today, setData]);
+
   // Every project gets a color, icon and scene (older projects, and ones
   // created on devices without looks); the assignment syncs like an edit.
   useEffect(() => {
@@ -499,7 +542,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   // suggestion is based on). Re-suggested when the budget or cap changes. An
   // empty suggestion isn't fixed, so habits added (or synced) later that day
   // are still picked up; a plan the user emptied stays empty.
-  const today = dkey(new Date(now));
   const todayPinned = data.plans[today] !== undefined;
   const planSettings: PlanSettings = useMemo(
     () => ({ budgetMin: settings.budgetMin, planCap: settings.planCap }),
@@ -1049,6 +1091,54 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           requestReminderPermission().then((ok) => ok && setPermRev((r) => r + 1));
         }
       },
+      setCapacity: (weekday, min) =>
+        setData((d) => {
+          const capacityMin = clampCapacity(d.prefs.capacityMin.map((m, i) => (i === weekday ? min : m)));
+          return { ...d, prefs: { ...d.prefs, capacityMin } };
+        }),
+      setCapacityAll: (mins) => setData((d) => ({ ...d, prefs: { ...d.prefs, capacityMin: clampCapacity(mins) } })),
+      setWeekStart: (weekStart) => setData((d) => ({ ...d, prefs: { ...d.prefs, weekStart } })),
+      setDayLevel: (level) => {
+        const day = dkey(new Date());
+        setData((d) => {
+          const o = d.days[day] ?? {};
+          const next = level ? { ...o, level, prompted: true } : { ...o, prompted: true };
+          return { ...d, days: { ...d.days, [day]: next } };
+        });
+      },
+      reorderToday: (ids) => {
+        const day = dkey(new Date());
+        setData((d) => ({ ...d, days: { ...d.days, [day]: { ...(d.days[day] ?? {}), order: ids } } }));
+      },
+      setAside: (habitId, aside) => {
+        const day = dkey(new Date());
+        setData((d) => {
+          const o = d.days[day] ?? {};
+          const cur = new Set(o.aside ?? []);
+          if (aside) cur.add(habitId);
+          else cur.delete(habitId);
+          return { ...d, days: { ...d.days, [day]: { ...o, aside: [...cur] } } };
+        });
+        feedback(aside ? 'undo' : 'tap');
+      },
+      fixTargets: (how) => {
+        setData((d) => {
+          const chk = targetCheck(d);
+          if (!chk.over) return d;
+          if (how === 'scale') return { ...d, projects: scaleTargetsToFit(d.projects, chk.capacityMin) };
+          return { ...d, prefs: { ...d.prefs, capacityMin: raiseCapacityToFit(d.prefs.capacityMin, chk.targetMin) } };
+        });
+        feedback('session_complete');
+      },
+      dismissTargetCheck: (signature) => updateSettings({ targetCheckDismissed: signature }),
+      acceptLearned: (mins) => {
+        setData((d) => ({ ...d, prefs: { ...d.prefs, capacityMin: clampCapacity(mins) } }));
+        updateSettings({ learnedDismissed: dkey(new Date()) });
+        feedback('session_complete');
+      },
+      dismissLearned: () => updateSettings({ learnedDismissed: dkey(new Date()) }),
+      setDailyPrompt: (dailyPrompt) => updateSettings({ dailyPrompt }),
+      markWelcomeSeen: () => updateSettings({ welcomeSeen: true }),
       setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
       setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
     };

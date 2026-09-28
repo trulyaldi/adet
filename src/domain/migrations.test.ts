@@ -92,12 +92,15 @@ test('already-current data passes through unchanged', () => {
     ],
     sessions: [],
     marks: [{ id: 'h1:2026-07-10', habitId: 'h1', day: '2026-07-10' }],
+    prefs: { capacityMin: [120, 120, 120, 120, 120, 60, 0], weekStart: 0 },
+    dailyLogs: [{ id: '2026-07-09', capacityMin: 120, plannedMin: 30, actualMin: 45, items: [{ habitId: 'h1', projectId: 'p1', shareMin: 30 }], doneCount: 1 }],
     active: null,
     historyClearedAt: 123,
     plans: { '2026-07-10': ['h1'] },
     planSince: '2026-07-01',
     streakCarry: { current: 12, longest: 30, day: '2026-07-01' },
     rebalancePending: false,
+    days: { '2026-07-10': { order: ['h1'], aside: [], level: 'light', prompted: true } },
   };
 
   const result = hydrate({ v3: JSON.stringify(saved), v2: null }, NOW);
@@ -148,12 +151,15 @@ test('a stamped empty state stays empty instead of re-seeding', () => {
     habits: [],
     sessions: [],
     marks: [],
+    prefs: { capacityMin: [180, 180, 180, 180, 180, 120, 120], weekStart: 1 },
+    dailyLogs: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
     planSince: '2026-07-10',
     streakCarry: null,
     rebalancePending: false,
+    days: {},
   };
   assert.deepEqual(hydrate({ v3: JSON.stringify(empty), v2: null }, NOW), empty);
 });

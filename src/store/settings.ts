@@ -17,6 +17,14 @@ export interface AppSettings {
   budgetMin: number;
   /** Most habits in a day's plan. */
   planCap: number;
+  /** Ask light / normal / heavy on the first open of each day. */
+  dailyPrompt: boolean;
+  /** dkey a learned-capacity suggestion was last dismissed (asked again two weeks later). */
+  learnedDismissed: string | null;
+  /** The target-vs-capacity conflict last dismissed (TargetCheck.signature). */
+  targetCheckDismissed: string | null;
+  /** The one-time "welcome to the new Adet" flow was seen on this device. */
+  welcomeSeen: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -25,6 +33,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shortSessionsReviewed: false,
   budgetMin: DEFAULT_BUDGET_MIN,
   planCap: DEFAULT_PLAN_CAP,
+  dailyPrompt: true,
+  learnedDismissed: null,
+  targetCheckDismissed: null,
+  welcomeSeen: false,
 };
 
 export async function loadSettings(): Promise<AppSettings> {
@@ -41,6 +53,10 @@ export async function loadSettings(): Promise<AppSettings> {
       shortSessionsReviewed: saved.shortSessionsReviewed === true,
       budgetMin: clampBudgetMin(saved.budgetMin),
       planCap: clampPlanCap(saved.planCap),
+      dailyPrompt: saved.dailyPrompt !== false,
+      learnedDismissed: typeof saved.learnedDismissed === 'string' ? saved.learnedDismissed : null,
+      targetCheckDismissed: typeof saved.targetCheckDismissed === 'string' ? saved.targetCheckDismissed : null,
+      welcomeSeen: saved.welcomeSeen === true,
     };
   } catch {
     return DEFAULT_SETTINGS;
