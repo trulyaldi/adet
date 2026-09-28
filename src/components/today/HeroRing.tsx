@@ -115,7 +115,9 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
     // Let the closing segment fill first, then the ring gives way to the mark drawing itself.
     morph.value = withDelay(450, withTiming(1, { duration: 320, easing: Easing.out(Easing.quad) }));
     draw.value = withDelay(520, withTiming(1, timings.draw));
-    if (onCheckDrawn) setTimeout(onCheckDrawn, 1250);
+    if (!onCheckDrawn) return;
+    const tm = setTimeout(onCheckDrawn, 1250);
+    return () => clearTimeout(tm);
   }, [complete, day, reduced, morph, draw, onCheckDrawn]);
 
   const ringStyle = useAnimatedStyle(() => ({ opacity: 1 - morph.value, transform: [{ scale: 1 - morph.value * 0.15 }] }));

@@ -71,7 +71,7 @@ export function EditSessionSheet() {
             </View>
           </View>
 
-          {error && <Text style={{ fontSize: 13, fontWeight: '600', color: colors.danger }}>{error}</Text>}
+          {error && <Text style={{ fontSize: 13, fontWeight: '600', color: colors.amber }}>{error}</Text>}
           {confirming && check?.ok && (
             <Text style={{ fontSize: 13, fontWeight: '600', color: colors.sub }}>
               {`That's ${fmtHM(check.duration)}, longer than 8 hours. Save it anyway?`}

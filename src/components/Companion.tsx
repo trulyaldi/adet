@@ -12,7 +12,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Ellipse, G, Path } from 'react-native-svg';
+import Svg, { Ellipse, Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeProvider';
 import { useAppActive, useReducedMotion } from '../theme/useMotion';
@@ -25,7 +25,6 @@ import { useAppActive, useReducedMotion } from '../theme/useMotion';
 export type CompanionMood = 'idle' | 'sleepy' | 'cheer';
 
 const AEllipse = Animated.createAnimatedComponent(Ellipse);
-const AG = Animated.createAnimatedComponent(G);
 
 // A soft drop: rounded bottom, gently pointed top.
 const BODY = 'M50 10C62 22 84 38 84 62C84 81 69 92 50 92C31 92 16 81 16 62C16 38 38 22 50 10Z';
@@ -76,9 +75,10 @@ export function Companion({ mood = 'idle', size = 96 }: { mood?: CompanionMood; 
     ],
   }));
   const eyeProps = useAnimatedProps(() => ({ ry: 9 * blink.value }));
-  const zProps = useAnimatedProps(() => ({
+  // The z's float in their own view: SVG group transforms can't be animated natively.
+  const zStyle = useAnimatedStyle(() => ({
     opacity: z.value < 0.15 ? z.value / 0.15 : 1 - (z.value - 0.15) / 0.85,
-    transform: `translate(${z.value * 8} ${-z.value * 14})`,
+    transform: [{ translateX: (z.value * 8 * size) / 100 }, { translateY: (-z.value * 14 * size) / 100 }],
   }));
 
   const blue = t.brand.base;
@@ -138,15 +138,17 @@ export function Companion({ mood = 'idle', size = 96 }: { mood?: CompanionMood; 
           ) : (
             <Path d={mood === 'sleepy' ? 'M47 73C49 74 51 74 53 73' : 'M45 71C48 74 52 74 55 71'} stroke={pupil} strokeWidth={2.6} strokeLinecap="round" fill="none" />
           )}
-          {/* Drifting z's while dozing (drawn, not text) */}
-          {mood === 'sleepy' && (
-            <AG animatedProps={zProps}>
-              <Path d="M72 26h7l-7 8h7" stroke={t.colors.sub} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              <Path d="M82 14h5l-5 6h5" stroke={t.colors.sub} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </AG>
-          )}
         </Svg>
       </Animated.View>
+      {/* Drifting z's while dozing (drawn, not text) */}
+      {mood === 'sleepy' && (
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: size, height: size }, zStyle]}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            <Path d="M72 26h7l-7 8h7" stroke={t.colors.sub} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <Path d="M82 14h5l-5 6h5" stroke={t.colors.sub} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </Svg>
+        </Animated.View>
+      )}
     </View>
   );
 }

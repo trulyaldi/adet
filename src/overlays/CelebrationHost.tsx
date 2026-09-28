@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
@@ -8,6 +8,7 @@ import { Companion } from '../components/Companion';
 import { badgeInfo } from '../domain/milestones';
 import { feedback } from '../feedback/feedback';
 import { useStreak } from '../store/StreakStore';
+import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
 
@@ -24,12 +25,30 @@ export function CelebrationHost() {
   const busy =
     !settings.welcomeSeen ||
     ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix || !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet;
-  const id = !busy ? ui.celebrations[0] : undefined;
-  const info = id ? badgeInfo(id, data) : null;
+  // Wait for the previous modal's dismiss animation before presenting.
+  const [settled, setSettled] = useState(false);
   useEffect(() => {
-    if (id && !info) actions.dismissCelebration();
-    else if (id) feedback('milestone');
-  }, [id, info, actions]);
+    if (busy) {
+      setSettled(false);
+      return;
+    }
+    const timer = setTimeout(() => setSettled(true), MODAL_GAP_MS);
+    return () => clearTimeout(timer);
+  }, [busy]);
+  const id = !busy && settled ? ui.celebrations[0] : undefined;
+  const info = id ? badgeInfo(id, data) : null;
+  const known = !!info;
+  const played = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!id) return;
+    if (!known) actions.dismissCelebration();
+    else if (played.current !== id) {
+      played.current = id;
+      feedback('milestone');
+    }
+    // actions changes identity with data; only a new card should react.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, known]);
   const project = info?.projectId ? data.projects.find((p) => p.id === info.projectId) : undefined;
 
   return (

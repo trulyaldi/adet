@@ -13,11 +13,12 @@ import { useDayStreak } from './useDayStreak';
  * is recorded quietly, once.
  */
 function MilestoneWatcher() {
-  const { data, now, ready, actions } = useStreak();
+  const { data, now, ready, sync, actions } = useStreak();
   const streak = useDayStreak().current;
   const minute = Math.floor(now / 60_000);
   useEffect(() => {
-    if (!ready) return;
+    // After the first pull, so badges another device recorded aren't earned again.
+    if (!ready || !sync.settled) return;
     const t = Date.now();
     if (!data.badgesPrimed) {
       // Nothing yet (e.g. a new device before its first pull): wait.
@@ -34,7 +35,7 @@ function MilestoneWatcher() {
     const ids = newBadges(data, streak, t);
     if (ids.length) actions.earnBadges(ids, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, data, streak, minute]);
+  }, [ready, sync.settled, data, streak, minute]);
   return null;
 }
 

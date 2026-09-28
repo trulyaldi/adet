@@ -71,7 +71,8 @@ export function assignLooks<P extends Project>(projects: P[], iconFor: (p: P) =>
       taken.add(color);
     }
     const scene = isScene(p.scene) ? p.scene : SCENES[si++ % SCENES.length];
-    const icon = isIconKey(p.icon) ? p.icon : iconFor(p) ?? 'target';
+    const guess = iconFor(p);
+    const icon = isIconKey(p.icon) ? p.icon : guess && isIconKey(guess) ? guess : 'target';
     assigned.set(p.id, { ...p, color, scene, icon });
   }
   return projects.map((p) => assigned.get(p.id) ?? p);

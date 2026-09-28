@@ -49,6 +49,7 @@ import {
 } from '../domain/types';
 import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
+import { MODAL_GAP_MS } from '../theme/motion';
 import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
@@ -195,7 +196,6 @@ const INITIAL_UI: UIState = {
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
-const MODAL_DISMISS_MS = 450;
 
 /** How long the "Session deleted · Undo" toast stays up. */
 export const UNDO_MS = 5000;
@@ -540,7 +540,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   // Finished days get their plan-vs-actual log once (for history and a future
   // AI planner); old per-day edits are dropped after two weeks.
   useEffect(() => {
-    if (!ready || wiped) return;
+    if (!ready || wiped || !sync.settled) return;
     setData((d) => {
       const logs = missingLogs(d, today, d.planSince);
       const cutoff = dkey(addDays(new Date(), -14));
@@ -550,14 +550,14 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       for (const k of stale) delete days[k];
       return { ...d, dailyLogs: logs.length ? [...d.dailyLogs, ...logs] : d.dailyLogs, days };
     });
-  }, [ready, wiped, today, setData]);
+  }, [ready, wiped, sync.settled, today, setData]);
 
   // Every project gets a color, icon and scene (older projects, and ones
   // created on devices without looks); the assignment syncs like an edit.
   useEffect(() => {
-    if (!ready || wiped) return;
+    if (!ready || wiped || !sync.settled) return;
     setData(withLooks);
-  }, [ready, wiped, data.projects, data.habits, setData]);
+  }, [ready, wiped, sync.settled, data.projects, data.habits, setData]);
 
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
@@ -659,7 +659,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
         if (opts?.editAfter && saved) {
           // Wait for the timer modal to finish dismissing: iOS won't present the
           // edit sheet while another modal is animating out.
-          setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_DISMISS_MS);
+          setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_GAP_MS);
         }
       },
 

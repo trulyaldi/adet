@@ -10,6 +10,7 @@ import { projectLook } from '../domain/look';
 import { isCheck } from '../domain/marks';
 import { activeProjects, projectWeekSec } from '../domain/projects';
 import { useStreak } from '../store/StreakStore';
+import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 
 /**
@@ -27,7 +28,7 @@ export function StartSheet() {
     if (!h) return;
     actions.closeStartSheet();
     if (isCheck(h)) actions.toggleCheck(h.id);
-    else actions.startTimer(h.id);
+    else setTimeout(() => actions.startTimer(h.id), MODAL_GAP_MS); // focus opens once the sheet is gone
   };
 
   return (
@@ -97,7 +98,7 @@ export function StartSheet() {
               onPress={() => {
                 actions.closeStartSheet();
                 actions.setScreen('projects');
-                actions.openNewProject();
+                setTimeout(actions.openNewProject, MODAL_GAP_MS);
               }}
             />
           </View>

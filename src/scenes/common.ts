@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cancelAnimation, Easing, SharedValue, useSharedValue, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 import { Swatch } from '../theme/palette';
@@ -53,11 +53,12 @@ export function useLoop(ms: number, run: boolean): SharedValue<number> {
   return v;
 }
 
-/** A pulse 0→1→0 each time `trigger` changes (skipped with reduce motion). */
+/** A pulse 0→1→0 each time `trigger` changes after mount (skipped with reduce motion). */
 export function usePulse(trigger: number, reduced: boolean): SharedValue<number> {
   const v = useSharedValue(0);
+  const initial = useRef(trigger);
   useEffect(() => {
-    if (!trigger || reduced) return;
+    if (!trigger || trigger === initial.current || reduced) return;
     v.value = withSequence(withSpring(1, { damping: 7, stiffness: 140 }), withTiming(0, { duration: 1400, easing: Easing.out(Easing.quad) }));
   }, [trigger, reduced, v]);
   return v;

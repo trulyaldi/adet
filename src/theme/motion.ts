@@ -32,3 +32,6 @@ export const timings = {
 export const STAGGER_MS = 45;
 /** How far a card rises as it appears. */
 export const RISE_PX = 12;
+
+/** iOS presents one modal at a time: wait this long after closing one before opening the next. */
+export const MODAL_GAP_MS = 450;

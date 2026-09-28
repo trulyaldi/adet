@@ -145,8 +145,8 @@ export function SignInScreen() {
         )}
 
         {error && (
-          <View style={{ backgroundColor: colors.dangerBg, borderRadius: radius.sm, paddingVertical: 10, paddingHorizontal: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.danger }}>{error}</Text>
+          <View style={{ backgroundColor: colors.amberBg, borderRadius: radius.sm, paddingVertical: 10, paddingHorizontal: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.amber }}>{error}</Text>
           </View>
         )}
         {notice && !error && <Text style={{ fontSize: 13, color: colors.sub }}>{notice}</Text>}

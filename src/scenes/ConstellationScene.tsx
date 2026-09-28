@@ -57,7 +57,10 @@ export function ConstellationScene({ width, height, cx, cy, ringR, progress, swa
 }
 
 /** Star i shows once progress passes i/STARS. */
-const shownAt = (i: number) => i / STARS;
+function shownAt(i: number) {
+  'worklet';
+  return i / STARS;
+}
 
 function Star({ i, x, y, p, tw, glow, color, halo }: { i: number; x: number; y: number; p: SharedValue<number>; tw: SharedValue<number>; glow: SharedValue<number>; color: string; halo: string }) {
   const core = useAnimatedProps(() => {

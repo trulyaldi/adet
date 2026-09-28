@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureType } from 'react-native-gesture-handler';
 import Animated, {
@@ -37,16 +37,23 @@ function toPositions(keys: string[]): Positions {
  * thread with the reorder spring; the new order is reported on release.
  */
 export function SortableList<T>({ items, keyOf, slot, gap, renderItem, onReorder }: SortableListProps<T>) {
-  const keys = useMemo(() => items.map(keyOf), [items, keyOf]);
+  // Keyed on the order itself so a re-render mid-drag (store tick, sync) keeps the dragged positions.
+  const keyStr = items.map(keyOf).join('\u0001');
+  const keys = useMemo(() => (keyStr ? keyStr.split('\u0001') : []), [keyStr]);
   const positions = useSharedValue<Positions>(toPositions(keys));
   useEffect(() => {
     positions.value = toPositions(keys);
   }, [keys, positions]);
 
-  const commit = (pos: Positions) => {
-    const next = Object.keys(pos).sort((a, b) => pos[a] - pos[b]);
-    if (next.join() !== keys.join()) onReorder(next);
-  };
+  const reorderRef = useRef(onReorder);
+  reorderRef.current = onReorder;
+  const commit = useCallback(
+    (pos: Positions) => {
+      const next = Object.keys(pos).sort((a, b) => pos[a] - pos[b]);
+      if (next.join() !== keys.join()) reorderRef.current(next);
+    },
+    [keys]
+  );
   const move = (key: string, dir: -1 | 1) => {
     const i = keys.indexOf(key);
     const j = i + dir;
