@@ -24,7 +24,7 @@ export const timings = {
   draw: { duration: 700, easing: Easing.inOut(Easing.cubic) } satisfies WithTimingConfig,
   /** The shine sweeping across a bar after it fills. */
   shine: { duration: 900, easing: Easing.inOut(Easing.quad) } satisfies WithTimingConfig,
-  /** Idle breathing in scenes and the companion. */
+  /** Idle breathing in scenes. */
   breathe: { duration: 2600, easing: Easing.inOut(Easing.sin) } satisfies WithTimingConfig,
 };
 

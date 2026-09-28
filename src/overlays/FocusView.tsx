@@ -9,7 +9,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '../components/Button';
 import { Burst } from '../components/celebrate/Burst';
-import { Companion } from '../components/Companion';
+import { Ilmek } from '../components/ilmek/Ilmek';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { ProgressRing } from '../components/motion/ProgressRing';
@@ -33,7 +33,7 @@ const DIM_OFFER_MS = 2 * 60_000;
 
 /**
  * Full-screen focus: the count-up inside a ring in the project's color,
- * the project's scene growing behind it, the companion in a corner, and
+ * the project's scene growing behind it, Ilmek in a corner, and
  * pause / done. Swipe down to minimize back to Today; the session keeps
  * running. The screen stays awake while it's open.
  */
@@ -113,7 +113,7 @@ function FocusContent() {
   const ringSize = Math.min(290, width - 70);
   const cy = insets.top + 70 + (height - insets.top - insets.bottom - 250) / 2;
   const cheering = cheerUntil > Date.now();
-  const mood = p.paused ? 'sleepy' : cheering ? 'cheer' : 'idle';
+  const mascot = p.paused ? 'sleepy' : cheering ? 'cheering' : 'focused';
 
   return (
     <GestureDetector gesture={swipe}>
@@ -185,9 +185,9 @@ function FocusContent() {
           </ProgressRing>
         </View>
 
-        {/* Companion, bottom corner */}
+        {/* Ilmek, bottom corner */}
         <View pointerEvents="none" style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108 }}>
-          <Companion mood={mood} size={78} />
+          <Ilmek state={mascot} size={78} tint={look.color} />
         </View>
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>

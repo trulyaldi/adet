@@ -4,7 +4,8 @@ import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { Button } from '../components/Button';
 import { BadgeArt } from '../components/celebrate/BadgeArt';
-import { Companion } from '../components/Companion';
+import { Ilmek } from '../components/ilmek/Ilmek';
+import { projectLook } from '../domain/look';
 import { badgeInfo } from '../domain/milestones';
 import { feedback } from '../feedback/feedback';
 import { anyModalOpen, useActions, useData, useSettings, useUi } from '../store/StreakStore';
@@ -71,7 +72,7 @@ export function CelebrationHost() {
               </Text>
             )}
             <View style={{ position: 'absolute', right: 14, top: 14 }}>
-              <Companion mood="cheer" size={56} />
+              <Ilmek state={info.kind === 'week' ? 'relaxed' : 'celebrating'} size={56} tint={project ? projectLook(project).color : undefined} decorative />
             </View>
             <Button icon="done" label="Continue" onPress={actions.dismissCelebration} quiet style={{ alignSelf: 'stretch', marginTop: 8 }} />
           </Animated.View>
