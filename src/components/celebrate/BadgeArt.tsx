@@ -16,7 +16,7 @@ import { BadgeInfo } from '../../domain/milestones';
 import { SWATCHES } from '../../theme/palette';
 import { springs } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
-import { useReducedMotion } from '../../theme/useMotion';
+import { useAppActive, useReducedMotion } from '../../theme/useMotion';
 import { Glyph, GlyphName } from '../Glyph';
 
 /** A scalloped medal outline (12 bumps) in a 100×100 box. */
@@ -57,6 +57,7 @@ export function badgeLook(info: BadgeInfo): { glyph: GlyphName; color: keyof typ
 export function BadgeArt({ info, size = 64, animated, dim }: { info: BadgeInfo; size?: number; animated?: boolean; dim?: boolean }) {
   const t = useTheme();
   const reduced = useReducedMotion();
+  const active = useAppActive();
   const look = badgeLook(info);
   const sw = look.color === 'brand' ? t.brand : t.swatch(look.color);
   const pop = useSharedValue(animated && !reduced ? 0 : 1);
@@ -64,9 +65,13 @@ export function BadgeArt({ info, size = 64, animated, dim }: { info: BadgeInfo; 
   useEffect(() => {
     if (!animated || reduced) return;
     pop.value = withDelay(120, withSpring(1, springs.celebrate));
-    spin.value = withRepeat(withTiming(1, { duration: 14000, easing: Easing.linear }), -1);
+  }, [animated, reduced, pop]);
+  // The rays turn only while the app is in front.
+  useEffect(() => {
+    if (!animated || reduced || !active) return;
+    spin.value = withRepeat(withTiming(spin.value + 1, { duration: 14000, easing: Easing.linear }), -1);
     return () => cancelAnimation(spin);
-  }, [animated, reduced, pop, spin]);
+  }, [animated, reduced, active, spin]);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
   const rayStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 360}deg` }], opacity: pop.value }));
   const number = info.kind === 'streak' ? String(info.value) : info.kind === 'hours' ? `${info.value}h` : '';

@@ -1,5 +1,5 @@
 import { useKeepAwake } from 'expo-keep-awake';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -68,16 +68,22 @@ function FocusContent() {
   }, []);
 
   const y = useSharedValue(0);
-  const swipe = Gesture.Pan()
-    .activeOffsetY(14)
-    .failOffsetX([-30, 30])
-    .onUpdate((e) => {
-      y.value = Math.max(0, e.translationY);
-    })
-    .onEnd((e) => {
-      if (e.translationY > 140 || e.velocityY > 900) scheduleOnRN(actions.closeTimer);
-      y.value = withSpring(0, springs.appear);
-    });
+  // Built once: focus re-renders every second.
+  const closeRef = useRef(actions.closeTimer);
+  closeRef.current = actions.closeTimer;
+  const swipe = useMemo(() => {
+    const close = () => closeRef.current();
+    return Gesture.Pan()
+      .activeOffsetY(14)
+      .failOffsetX([-30, 30])
+      .onUpdate((e) => {
+        y.value = Math.max(0, e.translationY);
+      })
+      .onEnd((e) => {
+        if (e.translationY > 140 || e.velocityY > 900) scheduleOnRN(close);
+        y.value = withSpring(0, springs.appear);
+      });
+  }, [y]);
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
   const habit = data.habits.find((h) => h.id === p?.habitId);
