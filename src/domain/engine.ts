@@ -5,6 +5,7 @@ import { AppConfig } from './config';
 import { ICONS, MONTHS, DOWFULL, DOWS, HEAT_SCALE, STAGES } from './constants';
 import { addDays, dkey, fmtH, fmtHM, fmtMin, monday, pad, pkey } from './time';
 import { dailyStreak, weeklyTargetStreak } from './streaks';
+import { timeOfDay } from './insights';
 import { weekPace, weekSummary, WeekSummary } from './weeks';
 import {
   ActiveTimer,
@@ -639,11 +640,6 @@ export interface StatsModel {
   monthHours: string;
   avgDaily: string;
   recStreak: string;
-  hasTopHabit: boolean;
-  topHabitName: string;
-  topHabitTile: string;
-  topHabitIcon: string;
-  topHabitHours: string;
   projDist: DistRow[];
   legendCells: string[];
   dayHeads: string[];
@@ -829,35 +825,46 @@ export function selectStats(
   // longest streak across all history (freezes included, see dailyStreak)
   const recStreak = dailyStreak(dayMap, now).longest;
 
-  const topHabit =
-    data.habits
-      .slice()
-      .sort((a, b) => ctx.habitStats[b.id].life - ctx.habitStats[a.id].life)[0] ||
-    null;
-
-  // insights (icon paths are 24x24 stroke glyphs: flame / bars / calendar)
+  // Insights: one card, each fact once. (Icon paths are 24x24 stroke glyphs:
+  // flame / bars / calendar / clock.)
   const FLAME_PATH =
     'M12 21c3.9 0 6.5-2.4 6.5-6 0-2.5-1.4-4.7-3-6.5-.3 1-.8 1.9-1.7 2.5C13.6 8.6 13 5.5 10 3c.3 2.5-.7 4.4-2.1 6C6.6 10.6 5.5 12.4 5.5 15c0 3.6 2.6 6 6.5 6z';
   const BARS_PATH = 'M5 20V12M12 20V4M19 20v-6';
   const CAL_PATH =
     'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11zM8 2.5V5M16 2.5V5M4 8.5h16';
+  const CLOCK_PATH = 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2';
   const lastWeekAll = data.habits.reduce(
     (a, h) => a + ctx.habitStats[h.id].lastWeek,
     0
   );
   const insights: Insight[] = [];
-  const topWeekHabit = data.habits
-    .slice()
-    .sort((a, b) => ctx.habitStats[b.id].week - ctx.habitStats[a.id].week)[0];
-  if (topWeekHabit && ctx.habitStats[topWeekHabit.id].week > 0) {
+  const byWeek = data.habits
+    .filter((h) => ctx.habitStats[h.id].week > 0)
+    .sort((a, b) => ctx.habitStats[b.id].week - ctx.habitStats[a.id].week);
+  const byLife = data.habits
+    .filter((h) => ctx.habitStats[h.id].life > 0)
+    .sort((a, b) => ctx.habitStats[b.id].life - ctx.habitStats[a.id].life);
+  // With a single habit these would only repeat the This week / Lifetime totals.
+  const weekLeader = byWeek.length >= 2 ? byWeek[0] : null;
+  const lifeLeader = byLife.length >= 2 ? byLife[0] : null;
+  if (weekLeader) {
+    const both = lifeLeader === weekLeader;
     insights.push({
       iconPath: FLAME_PATH,
       bg: '#FDE4D5',
       text:
-        topWeekHabit.name +
+        weekLeader.name +
         ' is leading this week with ' +
-        fmtHM(Math.floor(ctx.habitStats[topWeekHabit.id].week)) +
+        fmtH(ctx.habitStats[weekLeader.id].week) +
+        (both ? ', and overall with ' + fmtH(ctx.habitStats[weekLeader.id].life) : '') +
         '.',
+    });
+  }
+  if (lifeLeader && lifeLeader !== weekLeader) {
+    insights.push({
+      iconPath: FLAME_PATH,
+      bg: '#FDE4D5',
+      text: lifeLeader.name + ' is your most-tracked habit, with ' + fmtH(ctx.habitStats[lifeLeader.id].life) + ' in total.',
     });
   }
   if (weekAll > 0 || lastWeekAll > 0) {
@@ -886,6 +893,9 @@ export function selectStats(
       text: 'You log the most time on ' + DOWFULL[bestWd] + 's.',
     });
   }
+  // Time of day across all projects; the Patterns card no longer repeats it.
+  const tod = timeOfDay(data, null, now).insight;
+  if (tod) insights.push({ iconPath: CLOCK_PATH, bg: '#FFF1CC', text: tod });
 
   const projDist: DistRow[] = data.projects
     .map((p) => ({ p, t: ctx.projStats[p.id].life }))
@@ -934,23 +944,13 @@ export function selectStats(
     insights,
     hasInsights: insights.length > 0,
     lifetimeLabel: (lifeAll / 3600).toFixed(1) + ' hours',
+    // The average per day has its own tile, so it isn't repeated here.
     lifetimeSub:
-      'Since ' +
-      MONTHS[firstDay.getMonth()].slice(0, 3) +
-      ' ' +
-      firstDay.getDate() +
-      ' · avg ' +
-      fmtHM(Math.floor(avgSec)) +
-      ' / day',
+      'Since ' + MONTHS[firstDay.getMonth()].slice(0, 3) + ' ' + firstDay.getDate(),
     weekHours: fmtH(weekAll),
     monthHours: fmtH(monthAll),
     avgDaily: fmtHM(Math.floor(avgSec)),
     recStreak: recStreak + 'd',
-    hasTopHabit: !!topHabit && ctx.habitStats[topHabit.id].life > 0,
-    topHabitName: topHabit ? topHabit.name : '',
-    topHabitTile: topHabit ? topHabit.tile : '#EEE',
-    topHabitIcon: topHabit ? iconPath(topHabit.icon) : '',
-    topHabitHours: topHabit ? fmtH(ctx.habitStats[topHabit.id].life) : '',
     projDist,
     legendCells: HEAT_SCALE.slice(),
     dayHeads: DOWS.map((d) => d[0]),

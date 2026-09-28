@@ -68,7 +68,8 @@ test('selectToday / selectProjects / selectStats produce coherent output on seed
   const stats = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
   assert.ok(stats.heatRows.length >= 8);
   assert.equal(stats.projDist.length, 1);
-  assert.ok(stats.hasTopHabit);
+  // The most active habit is now a line in Insights.
+  assert.ok(stats.insights.some((i) => /leading this week|most-tracked/.test(i.text)));
 });
 
 test('selectStageSheet returns ladder with a current stage', () => {
@@ -250,27 +251,64 @@ test('activity heatmap: inline card caps at base weeks, full history extends bac
   assert.match(model.heatOpenLabel, /^See full history · \d+ weeks?$/);
 });
 
-test('stats insights surface a weekly leader and an ahead/behind-pace note', () => {
+test('stats insights: one card, each fact once', () => {
   const thisWeek = new Date(2026, 6, 7, 10, 0, 0).getTime(); // Tue in NOW's week
   const lastWeek = new Date(2026, 5, 30, 10, 0, 0).getTime(); // prior week
-  const data: PersistedState = {
+  const habit = (id: string, name: string) => ({
+    id,
+    projectId: 'p1',
+    name,
+    icon: 'book' as const,
+    tile: '#E3F2FD',
+    dailyTargetMin: 30,
+    weeklyTargetMin: 150,
+  });
+  const sess = (id: string, habitId: string, start: number, sec: number) => ({ id, habitId, start, end: start + sec * 1000, duration: sec });
+  const base: PersistedState = {
     schemaVersion: 3,
     projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: lastWeek }],
-    habits: [
-      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#E3F2FD', dailyTargetMin: 30, weeklyTargetMin: 150 },
-    ],
+    habits: [habit('h1', 'Reading'), habit('h2', 'Writing')],
     sessions: [
-      { id: 's1', habitId: 'h1', start: thisWeek, end: thisWeek + 2 * 3600_000, duration: 2 * 3600 },
-      { id: 's2', habitId: 'h1', start: lastWeek, end: lastWeek + 3600_000, duration: 3600 },
+      sess('s1', 'h1', thisWeek, 2 * 3600),
+      sess('s2', 'h2', thisWeek + 3 * 3600_000, 1800),
+      sess('s3', 'h1', lastWeek, 3600),
     ],
     active: null,
     historyClearedAt: 0,
   };
 
-  const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
-  assert.equal(model.hasInsights, true);
-  assert.ok(model.insights.some((i) => i.text.includes('Reading is leading this week')));
-  assert.ok(model.insights.some((i) => i.text.includes('ahead of last week')));
+  const texts = (d: PersistedState) => selectStats(d, DEFAULT_CONFIG, NOW, { heatSel: null }).insights.map((i) => i.text);
+
+  // Leading this week and overall: one line, not two.
+  const t = texts(base);
+  assert.ok(t.includes('Reading is leading this week with 2h, and overall with 3h.'));
+  assert.ok(!t.some((x) => x.includes('most-tracked')));
+  assert.ok(t.some((x) => x.includes('ahead of last week')));
+  assert.equal(new Set(t).size, t.length, 'no repeated lines');
+
+  // Different leaders: the lifetime one gets its own line (the old "Most active habit" card).
+  const other = { ...base, sessions: [...base.sessions, sess('s4', 'h2', lastWeek - 7 * 86_400_000, 5 * 3600)] };
+  const t2 = texts(other);
+  assert.ok(t2.includes('Reading is leading this week with 2h.'));
+  assert.ok(t2.includes('Writing is your most-tracked habit, with 5.5h in total.'));
+
+  // A single habit: nothing that would just repeat the This week / Lifetime totals.
+  const solo = { ...base, habits: [base.habits[0]], sessions: base.sessions.filter((s) => s.habitId === 'h1') };
+  assert.ok(!texts(solo).some((x) => x.includes('leading') || x.includes('most-tracked')));
+
+  // The time-of-day line (formerly on the Patterns card) joins once there are enough sessions.
+  assert.ok(!t.some((x) => x.startsWith('You track most')));
+  const many = {
+    ...base,
+    sessions: [0, 1, 2, 3, 4].map((i) => sess('m' + i, 'h1', new Date(2026, 6, 6 + (i % 4), 9, 0).getTime(), 3600)),
+  };
+  assert.equal(texts(many).filter((x) => x.startsWith('You track most')).length, 1);
+});
+
+test('stats lifetime line does not repeat the average-per-day tile', () => {
+  const m = selectStats(seed(NOW), DEFAULT_CONFIG, NOW, { heatSel: null });
+  assert.match(m.lifetimeSub, /^Since [A-Z][a-z]{2} \d+$/);
+  assert.ok(!m.lifetimeSub.includes(m.avgDaily));
 });
 
 test('project pace uses local Monday-start weeks across the New York DST switch', () => {

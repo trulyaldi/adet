@@ -38,6 +38,7 @@ import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './set
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
 export type Screen = 'today' | 'projects' | 'stats';
+export type StatsView = 'overview' | 'history';
 
 export interface HabitSheetState {
   id: string | null;
@@ -107,6 +108,8 @@ export interface UIState {
   /** A brief message (e.g. a timer that wasn't saved); cleared after TOAST_MS. */
   toast: string | null;
   settingsOpen: boolean;
+  /** Which half of Stats is showing; kept while switching tabs. */
+  statsView: StatsView;
 }
 
 const INITIAL_UI: UIState = {
@@ -125,6 +128,7 @@ const INITIAL_UI: UIState = {
   recapCard: null,
   toast: null,
   settingsOpen: false,
+  statsView: 'overview',
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -144,6 +148,7 @@ export interface StreakActions {
   setScreen(s: Screen): void;
   openSettings(): void;
   closeSettings(): void;
+  setStatsView(view: StatsView): void;
   // timer
   startTimer(habitId: string): void;
   openTimer(): void;
@@ -439,6 +444,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       setScreen: (screen) => patchUi({ screen }),
       openSettings: () => patchUi({ settingsOpen: true }),
       closeSettings: () => patchUi({ settingsOpen: false }),
+      setStatsView: (statsView) => patchUi({ statsView }),
 
       startTimer: (habitId) => {
         const now = Date.now();
