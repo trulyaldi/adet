@@ -17,6 +17,7 @@ import { RecapSheet } from './src/overlays/RecapSheet';
 import { SettingsSheet } from './src/overlays/SettingsSheet';
 import { StageSheet } from './src/overlays/StageSheet';
 import { TimerOverlay } from './src/overlays/TimerOverlay';
+import { WeekSheet } from './src/overlays/WeekSheet';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { SignInScreen } from './src/screens/SignInScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
@@ -67,6 +68,7 @@ function Root() {
       <RecapSheet />
       <SettingsSheet />
       <PlanPickerSheet />
+      <WeekSheet />
     </View>
   );
 }

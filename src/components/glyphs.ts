@@ -125,6 +125,7 @@ export const GLYPHS = {
   bars: [{ d: 'M5 20V12M12 20V4M19 20v-6' }],
   /** Chevrons. */
   chevronRight: [{ d: 'M9 6l6 6-6 6' }],
+  chevronLeft: [{ d: 'M15 6l-6 6 6 6' }],
   chevronDown: [{ d: 'M6 9l6 6 6-6' }],
   chevronUp: [{ d: 'M6 15l6-6 6 6' }],
   /** Info (i in a circle). */
