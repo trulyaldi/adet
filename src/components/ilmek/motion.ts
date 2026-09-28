@@ -171,7 +171,7 @@ export function useIlmekMotion(state: IlmekState, run: boolean): IlmekMotion {
       case 'cheering': {
         // One cheer every 2.6s (1.6s of motion, 1s rest): arms spring up into the V,
         // pump twice, then ease down; brows lift and the body squashes and stretches.
-        const DOWN = 62;
+        const DOWN = 40;
         const cheer = () => {
           const pump = (dir: number) =>
             withSequence(

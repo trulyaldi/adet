@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BadgeArt } from '../components/celebrate/BadgeArt';
-import { Ilmek } from '../components/ilmek/Ilmek';
+import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
 import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear } from '../components/motion/Appear';
@@ -46,7 +46,7 @@ export function StatsScreen() {
 
       {!data.sessions.length && (
         <View accessible accessibilityLabel="Nothing tracked yet" style={{ alignItems: 'center', paddingVertical: 24 }}>
-          <Ilmek state="relaxed" size={110} decorative />
+          <ScreenIlmek state="relaxed" size={110} decorative />
         </View>
       )}
 

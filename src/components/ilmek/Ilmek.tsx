@@ -52,8 +52,14 @@ export interface IlmekProps {
 
 const ARect = Animated.createAnimatedComponent(Rect);
 
-/** A 0..200 canvas point as a view transform origin. */
-const origin = ([x, y]: [number, number]) => `${x / 2}% ${y / 2}%`;
+// Layers draw on a canvas padded past the 200×200 art so swinging arms and
+// bursting confetti aren't clipped; the view itself stays size × size.
+const PAD = 24;
+const SPAN = 200 + PAD * 2;
+const VIEWBOX = `${-PAD} ${-PAD} ${SPAN} ${SPAN}`;
+
+/** A canvas point as a view transform origin on a padded layer. */
+const origin = ([x, y]: [number, number]) => `${((x + PAD) / SPAN) * 100}% ${((y + PAD) / SPAN) * 100}%`;
 
 /**
  * Ilmek, Adet's mascot (assets/mascot/ILMEK_SPEC.md). Each moving part is its
@@ -100,9 +106,10 @@ export const Ilmek = memo(function Ilmek({ state = 'idle', size = 120, tint, ani
   const arcsStyle = useAnimatedStyle(() => ({ opacity: m.fx.value }));
   const glintProps = useAnimatedProps(() => ({ x: -30 + m.fx.value * 190 }));
 
+  const box = { position: 'absolute' as const, left: -PAD * k, top: -PAD * k, width: SPAN * k, height: SPAN * k };
   const layer = (key: string, children: React.ReactNode, animatedStyle?: object, pivot?: [number, number]) => (
-    <Animated.View key={key} pointerEvents="none" style={[StyleSheet.absoluteFill, pivot && { transformOrigin: origin(pivot) }, animatedStyle]}>
-      <Svg width={size} height={size} viewBox="0 0 200 200">
+    <Animated.View key={key} pointerEvents="none" style={[pivot ? [box, { transformOrigin: origin(pivot) }] : box, animatedStyle]}>
+      <Svg width={SPAN * k} height={SPAN * k} viewBox={VIEWBOX}>
         {children}
       </Svg>
     </Animated.View>
@@ -123,7 +130,8 @@ export const Ilmek = memo(function Ilmek({ state = 'idle', size = 120, tint, ani
   return (
     <View {...a11y} style={[{ width: size, height: size }, style]}>
       {layer('shadow', <Shadow color={t.colors.shadow} opacity={t.dark ? 0.35 : 0.12} />, shadowStyle, [100, 186])}
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transformOrigin: origin([100, 180]) }, rigStyle]}>
+      {/* The rig is the unpadded size × size box; its layers sit on it like the outer ones. */}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transformOrigin: '50% 90%' }, rigStyle]}>
         {behind && arms}
         {layer('tuft', <Tuft tones={tones} small={small} />, tuftStyle, [100, 52])}
         {layer(
