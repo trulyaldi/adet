@@ -204,6 +204,26 @@ function weekProgress(weekSec: number, targetHours: number, now: number) {
   };
 }
 
+/** Local clock time, e.g. "14:05". */
+function clockTime(ms: number): string {
+  const t = new Date(ms);
+  return pad(t.getHours()) + ':' + pad(t.getMinutes());
+}
+
+/** A session's start time and duration, e.g. "14:05 · 45m", plus a manual-log marker. */
+export function sessionLine(s: Session): string {
+  return clockTime(s.start) + ' · ' + fmtHM(s.duration) + (s.manual ? ' · logged manually' : '');
+}
+
+/** "Today", "Yesterday", else e.g. "Sun, Sep 27". */
+export function dayLabel(key: string, now: number): string {
+  const today = new Date(now);
+  if (key === dkey(today)) return 'Today';
+  if (key === dkey(addDays(today, -1))) return 'Yesterday';
+  const d = pkey(key);
+  return DOWFULL[d.getDay()].slice(0, 3) + ', ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate();
+}
+
 /** "5d streak", "5d streak · track today" when at risk, "" with no streak. */
 function streakText(streak: { current: number; atRisk: boolean }): string {
   return streak.current > 0 ? streak.current + 'd streak' + (streak.atRisk ? ' · track today' : '') : '';
@@ -604,11 +624,10 @@ export interface HeatSelSession {
   iconPath: string;
   tile: string;
   name: string;
-  /** e.g. "14:05–15:10" */
+  /** Start time and duration, e.g. "14:05 · 45m" (see sessionLine). */
   sub: string;
   /** The session note, shown on its own line; "" when none. */
   note: string;
-  timeLabel: string;
 }
 export interface DistRow {
   name: string;
@@ -620,10 +639,17 @@ export interface HistoryRow {
   iconPath: string;
   tile: string;
   name: string;
+  /** Start time and duration, e.g. "14:05 · 45m · logged manually" (see sessionLine). */
   sub: string;
   /** The session note, shown on its own line; "" when none. */
   note: string;
-  timeLabel: string;
+}
+/** Recent sessions that started on one local day, newest first. */
+export interface HistoryDay {
+  key: string;
+  /** "Today", "Yesterday" or e.g. "Sun, Sep 27". */
+  label: string;
+  rows: HistoryRow[];
 }
 export interface Insight {
   iconPath: string;
@@ -656,6 +682,8 @@ export interface StatsModel {
   heatSelRows: HeatSelRow[];
   heatSelSessions: HeatSelSession[];
   historyRows: HistoryRow[];
+  /** historyRows grouped under a header per day. */
+  historyDays: HistoryDay[];
   historyHasRows: boolean;
 }
 
@@ -667,7 +695,6 @@ export function selectStats(
 ): StatsModel {
   const ctx = buildContext(data, now);
   const todayD = ctx.todayD;
-  const today = ctx.today;
   const mon = ctx.mon;
   const dayMap = daySecMap(data, now);
 
@@ -798,10 +825,6 @@ export function selectStats(
       .map(({ sec, ...rest }) => rest);
     const tot = Object.values(perHabit).reduce((a, x) => a + x, 0);
     heatSelInfo = tot > 0 ? fmtHM(Math.floor(tot)) + ' total' : 'No time logged';
-    const hm = (ms: number) => {
-      const t = new Date(ms);
-      return pad(t.getHours()) + ':' + pad(t.getMinutes());
-    };
     heatSelSessions = data.sessions
       .filter((s) => dkey(new Date(s.start)) === ui.heatSel)
       .sort((a, b) => a.start - b.start)
@@ -813,9 +836,8 @@ export function selectStats(
               iconPath: iconPath(h.icon),
               tile: h.tile,
               name: h.name,
-              sub: hm(s.start) + '–' + hm(s.end),
+              sub: sessionLine(s),
               note: s.notes ?? '',
-              timeLabel: fmtHM(s.duration),
             }
           : null;
       })
@@ -909,35 +931,29 @@ export function selectStats(
       barW: lifeAll > 0 ? Math.max(2, Math.round((t / lifeAll) * 100)) : 2,
     }));
 
-  const historyRows: HistoryRow[] = data.sessions
-    .slice()
-    .filter((s) => s.start > (data.historyClearedAt || 0))
+  const recent = data.sessions
+    .filter((s) => s.start > (data.historyClearedAt || 0) && data.habits.some((h) => h.id === s.habitId))
     .sort((a, b) => b.start - a.start)
-    .slice(0, 10)
-    .map((s) => {
-      const h = data.habits.find((x) => x.id === s.habitId);
-      if (!h) return null;
-      const d = new Date(s.start);
-      const k = dkey(d);
-      const dateLabel =
-        k === today
-          ? 'Today'
-          : DOWFULL[d.getDay()].slice(0, 3) +
-            ', ' +
-            MONTHS[d.getMonth()].slice(0, 3) +
-            ' ' +
-            d.getDate();
-      return {
-        id: s.id,
-        iconPath: iconPath(h.icon),
-        tile: h.tile,
-        name: h.name,
-        sub: dateLabel + (s.manual ? ' · logged manually' : ''),
-        note: s.notes ?? '',
-        timeLabel: fmtHM(s.duration),
-      };
-    })
-    .filter((x): x is HistoryRow => !!x);
+    .slice(0, 10);
+  const historyDays: HistoryDay[] = [];
+  for (const s of recent) {
+    const h = data.habits.find((x) => x.id === s.habitId)!;
+    const key = dkey(new Date(s.start));
+    let day = historyDays[historyDays.length - 1];
+    if (!day || day.key !== key) {
+      day = { key, label: dayLabel(key, now), rows: [] };
+      historyDays.push(day);
+    }
+    day.rows.push({
+      id: s.id,
+      iconPath: iconPath(h.icon),
+      tile: h.tile,
+      name: h.name,
+      sub: sessionLine(s),
+      note: s.notes ?? '',
+    });
+  }
+  const historyRows: HistoryRow[] = historyDays.flatMap((d) => d.rows);
 
   return {
     sub: data.sessions.length + ' sessions logged',
@@ -988,6 +1004,7 @@ export function selectStats(
     heatSelRows,
     heatSelSessions,
     historyRows,
+    historyDays,
     historyHasRows: historyRows.length > 0,
   };
 }

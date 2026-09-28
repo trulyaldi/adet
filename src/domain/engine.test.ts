@@ -186,7 +186,7 @@ test('manual sessions show a "logged manually" marker and their note in history'
   assert.ok(!row!.sub.includes('chapter 3'), 'the note has its own line');
 });
 
-test('selected heatmap day lists each session in time order with its range and note', () => {
+test('selected heatmap day lists each session in time order with its start, duration and note', () => {
   const at = (h: number, m: number) => new Date(2026, 6, 8, h, m).getTime(); // Wed Jul 8
   const habit = (id: string, name: string) => ({
     id,
@@ -213,10 +213,10 @@ test('selected heatmap day lists each session in time order with its range and n
 
   const model = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: '2026-07-08' });
   assert.deepEqual(
-    model.heatSelSessions.map((s) => [s.id, s.name, s.sub, s.note, s.timeLabel]),
+    model.heatSelSessions.map((s) => [s.id, s.name, s.sub, s.note]),
     [
-      ['early', 'Writing', '09:05–10:10', '', '1h 05m'],
-      ['late', 'Reading', '20:00–20:30', 'chapter 3', '30m'],
+      ['early', 'Writing', '09:05 · 1h 05m', ''],
+      ['late', 'Reading', '20:00 · 30m', 'chapter 3'],
     ]
   );
   assert.deepEqual(selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null }).heatSelSessions, []);
@@ -545,4 +545,36 @@ test('Projects card: each number once; habit share only with two or more habits'
 
   // A single habit's numbers are the project's: no share, no stats.
   assert.deepEqual(one.habits.map((h) => [h.shareLabel, h.sub]), [['', '']]);
+});
+
+test('recent sessions are grouped by day with Today / Yesterday / date headers', () => {
+  const at = (d: number, h: number, m = 0) => new Date(2026, 6, d, h, m).getTime();
+  const data: PersistedState = {
+    schemaVersion: 3,
+    projects: [{ id: 'p1', name: 'Practice', weeklyTarget: 8, started: at(1, 9) }],
+    habits: [
+      { id: 'h1', projectId: 'p1', name: 'Reading', icon: 'book', tile: '#fff', dailyTargetMin: 30, weeklyTargetMin: 150 },
+    ],
+    sessions: [
+      { id: 'a', habitId: 'h1', start: at(10, 8, 5), end: at(10, 8, 50), duration: 45 * 60 }, // today (NOW = Jul 10 12:00)
+      { id: 'b', habitId: 'h1', start: at(10, 10), end: at(10, 11), duration: 3600, manual: true },
+      { id: 'c', habitId: 'h1', start: at(9, 21), end: at(9, 21, 30), duration: 1800 },
+      { id: 'd', habitId: 'h1', start: at(5, 7), end: at(5, 8), duration: 3600 }, // Sun Jul 5
+      { id: 'x', habitId: 'gone', start: at(10, 9), end: at(10, 10), duration: 3600 },
+    ],
+    active: null,
+    historyClearedAt: 0,
+  };
+  const m = selectStats(data, DEFAULT_CONFIG, NOW, { heatSel: null });
+  assert.deepEqual(
+    m.historyDays.map((d) => [d.label, d.rows.map((r) => r.sub)]),
+    [
+      ['Today', ['10:00 · 1h 00m · logged manually', '08:05 · 45m']],
+      ['Yesterday', ['21:00 · 30m']],
+      ['Sun, Jul 5', ['07:00 · 1h 00m']],
+    ]
+  );
+  assert.deepEqual(m.historyRows.map((r) => r.id), ['b', 'a', 'c', 'd']);
+  // The date is in the header, never repeated on the rows.
+  assert.ok(m.historyRows.every((r) => !/Today|Jul/.test(r.sub)));
 });

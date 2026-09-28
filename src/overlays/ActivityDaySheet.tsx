@@ -83,13 +83,13 @@ export function ActivityDaySheet() {
                   <Icon path={s.iconPath} size={17} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>{s.name}</Text>
-                  <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>{s.sub}</Text>
+                  <Text numberOfLines={2} style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>{s.name}</Text>
+                  <Text style={{ fontSize: 12.5, color: colors.subtext, marginTop: 1, fontVariant: ['tabular-nums'] }}>{s.sub}</Text>
                   {s.note ? (
                     <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{s.note}</Text>
                   ) : null}
                 </View>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{s.timeLabel}</Text>
+                <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
               </Pressable>
             ))}
           </View>

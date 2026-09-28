@@ -261,31 +261,38 @@ export function StatsScreen() {
               </Text>
             )}
 
-            {model.historyRows.map((hr) => (
-              <Pressable
-                key={hr.id}
-                onPress={() => actions.openSessionSheet(hr.id)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 11,
-                  paddingVertical: 11,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.hairline,
-                }}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: radius.sm, backgroundColor: hr.tile, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon path={hr.iconPath} size={18} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hr.name}</Text>
-                  <Text numberOfLines={1} style={{ fontSize: 12, color: colors.subtext, marginTop: 1 }}>{hr.sub}</Text>
-                  {hr.note ? (
-                    <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{hr.note}</Text>
-                  ) : null}
-                </View>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hr.timeLabel}</Text>
-              </Pressable>
+            {model.historyDays.map((day) => (
+              <View key={day.key}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.subtext, letterSpacing: 0.4, paddingTop: 12, paddingBottom: 2 }}>
+                  {day.label}
+                </Text>
+                {day.rows.map((hr, i) => (
+                  <Pressable
+                    key={hr.id}
+                    onPress={() => actions.openSessionSheet(hr.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 11,
+                      paddingVertical: 10,
+                      borderBottomWidth: i === day.rows.length - 1 ? 0 : 1,
+                      borderBottomColor: colors.hairline,
+                    }}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: radius.sm, backgroundColor: hr.tile, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon path={hr.iconPath} size={18} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text numberOfLines={2} style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{hr.name}</Text>
+                      <Text style={{ fontSize: 12.5, color: colors.subtext, marginTop: 1, fontVariant: ['tabular-nums'] }}>{hr.sub}</Text>
+                      {hr.note ? (
+                        <Text numberOfLines={2} style={{ fontSize: 12, fontStyle: 'italic', color: colors.muted, marginTop: 2 }}>{hr.note}</Text>
+                      ) : null}
+                    </View>
+                    <Icon path="M9 6l6 6-6 6" size={16} color={colors.faint} />
+                  </Pressable>
+                ))}
+              </View>
             ))}
             <View style={{ height: 8 }} />
           </View>
