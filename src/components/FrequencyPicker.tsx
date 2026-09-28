@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Frequency, frequencyLabel, normalizeFrequency, WEEKDAY_LETTERS, weeklyTargetOf } from '../domain/frequency';
 import { useTheme } from '../theme/ThemeProvider';
 import { Glyph, IconButton } from './Glyph';
+import { Press } from './motion/Press';
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -75,7 +76,8 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
           {WEEKDAY_LETTERS.map((letter, d) => {
             const on = byDays && value.days.includes(d);
             return (
-              <Pressable
+              <Press
+                kind="icon"
                 key={d}
                 onPress={() => toggleDay(d)}
                 accessibilityRole="button"
@@ -93,7 +95,7 @@ export function FrequencyPicker({ value, onChange, accent, compact }: FrequencyP
                 }}
               >
                 <Text style={{ fontSize: 12.5, fontWeight: '800', color: on ? colors.onBrand : colors.sub }}>{letter}</Text>
-              </Pressable>
+              </Press>
             );
           })}
         </View>

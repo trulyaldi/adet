@@ -20,7 +20,7 @@ export function useEnter(index = 0) {
 /** Layout transition for list reorder and rows collapsing (none with reduce motion). */
 export function useLayoutMotion() {
   const reduced = useReducedMotion();
-  return reduced ? undefined : LinearTransition.springify().damping(springs.reorder.damping).stiffness(springs.reorder.stiffness);
+  return reduced ? undefined : LinearTransition.springify().damping(springs.reorder.damping).stiffness(springs.reorder.stiffness).mass(springs.reorder.mass).overshootClamping(1);
 }
 
 /** A card that rises in with the list's stagger and moves smoothly when the list changes. */

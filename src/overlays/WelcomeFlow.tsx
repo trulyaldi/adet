@@ -81,7 +81,7 @@ function Pages({ hasProjects }: { hasProjects: boolean }) {
         ))}
       </View>
       <View style={{ paddingHorizontal: 24 }}>
-        <Button icon={last ? 'done' : 'chevronRight'} label={last ? 'Start' : 'Next'} onPress={next} />
+        <Button icon={last ? 'done' : 'chevronRight'} label={last ? 'Start' : 'Next'} haptic={last} onPress={next} />
       </View>
     </View>
   );

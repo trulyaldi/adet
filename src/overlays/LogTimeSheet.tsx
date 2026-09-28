@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
+import { Press } from '../components/motion/Press';
 import { Sheet } from '../components/Sheet';
 import { activeHabits } from '../domain/projects';
 import { checkSessionTimes, fitManualStart, SESSION_MAX_SEC } from '../domain/sessions';
@@ -144,12 +145,13 @@ export function LogTimeSheet() {
 
           {/* Save; a session over 8 hours asks to be confirmed in words */}
           {confirming && check?.ok ? (
-            <Pressable
+            <Press
+              kind="button"
               onPress={actions.saveLogSheet}
               style={{ borderRadius: radius.lg, padding: 16, alignItems: 'center', backgroundColor: colors.brand }}
             >
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.onBrand }}>{`Yes, save ${fmtHM(check.duration)}`}</Text>
-            </Pressable>
+            </Press>
           ) : (
             <IconButton
               label="Save session"
@@ -171,7 +173,8 @@ export function LogTimeSheet() {
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): void }) {
   const { colors, radius, shadow } = useTheme();
   return (
-    <Pressable
+    <Press
+      kind="icon"
       onPress={onPress}
       style={{
         borderRadius: radius.pill,
@@ -181,7 +184,7 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress(): v
       }}
     >
       <Text style={{ fontSize: 13, fontWeight: '700', color: on ? colors.onBrand : colors.ink }}>{label}</Text>
-    </Pressable>
+    </Press>
   );
 }
 

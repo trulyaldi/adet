@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 import { feedback } from '../feedback/feedback';
-import { springs } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 import { EDGE } from '../theme/theme';
 import { GLYPH_STROKE, GLYPHS, GlyphName, GlyphPart } from './glyphs';
+import { usePressMotion } from './motion/Press';
 
 export type { GlyphName } from './glyphs';
 
@@ -147,14 +147,9 @@ export function IconButton({
 }: IconButtonProps) {
   const { colors, radius, dark } = useTheme();
   const { show, tip } = useTip(label, tipBelow);
-  const press = useSharedValue(0);
   const chunky = variant === 'chunky' && !disabled;
+  const press = usePressMotion('icon', { disabled, edge: chunky, opacity: disabled ? 0.35 : 1 });
   const edgeColor = edge ?? (bg === 'transparent' ? colors.line : dark ? colors.line : colors.track);
-  const face = useAnimatedStyle(() =>
-    chunky
-      ? { transform: [{ translateY: press.value * EDGE }] }
-      : { transform: [{ scale: 1 - press.value * 0.08 }] }
-  );
   const content = children ?? (name ? <Glyph name={name} size={size} color={color ?? colors.ink} bg={bg === 'transparent' ? colors.card : bg} /> : null);
   const shape: ViewStyle = diameter ? { width: diameter, height: diameter, borderRadius: radius.pill } : {};
   const flat = (style ?? {}) as ViewStyle;
@@ -164,11 +159,12 @@ export function IconButton({
     <View style={{ position: 'relative' }}>
       <Pressable
         onPress={() => {
-          if (!quiet) feedback('tap');
+          // Chunky icon buttons are actions (start, done, add): a light haptic. Plain ones navigate: sound only.
+          if (!quiet) feedback('tap', { haptic: chunky });
           onPress();
         }}
-        onPressIn={() => (press.value = withSpring(1, springs.press))}
-        onPressOut={() => (press.value = withSpring(0, springs.press))}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
         onLongPress={show}
         delayLongPress={450}
         disabled={disabled}
@@ -192,7 +188,7 @@ export function IconButton({
             { alignItems: 'center', justifyContent: 'center', backgroundColor: bg, opacity: disabled ? 0.35 : 1 },
             shape,
             style,
-            face,
+            press.style,
           ]}
         >
           {content}

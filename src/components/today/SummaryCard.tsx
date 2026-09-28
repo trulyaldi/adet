@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
@@ -8,6 +8,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { Flame } from '../Flame';
 import { Glyph, GlyphName } from '../Glyph';
+import { Press } from '../motion/Press';
 import { DoneRow } from './PlanRow';
 
 /**
@@ -24,7 +25,8 @@ export function SummaryCard({ items, trackedSec, streak, animateIn, onRow }: { i
 
   return (
     <Animated.View entering={entering} style={{ marginTop: 18 }}>
-      <Pressable
+      <Press
+        kind="card"
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -47,7 +49,7 @@ export function SummaryCard({ items, trackedSec, streak, animateIn, onRow }: { i
             ))}
           </View>
         )}
-      </Pressable>
+      </Press>
     </Animated.View>
   );
 }

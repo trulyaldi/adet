@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
@@ -11,6 +11,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { Glyph, IconButton } from '../Glyph';
 import { Icon } from '../Icon';
+import { Press } from '../motion/Press';
 import { ProgressRing } from '../motion/ProgressRing';
 import { SessionClock } from '../SessionClock';
 
@@ -33,7 +34,8 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
 
   return (
     <Animated.View entering={reduced ? FadeIn : ZoomIn.springify().damping(14)} style={{ marginTop: 18 }}>
-      <Pressable
+      <Press
+        kind="hero"
         onPress={actions.openTimer}
         accessibilityRole="button"
         accessibilityLabel={`${item.name}, ${p.paused ? 'paused' : 'running'}, ${sayDur(p.sessionSec)}. Open focus`}
@@ -79,7 +81,7 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
             />
           </View>
         </View>
-      </Pressable>
+      </Press>
     </Animated.View>
   );
 }

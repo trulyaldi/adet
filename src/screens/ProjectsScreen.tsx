@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { CapacityIndicator } from '../components/CapacityIndicator';
@@ -8,12 +8,14 @@ import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear, useLayoutMotion } from '../components/motion/Appear';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
+import { Press } from '../components/motion/Press';
 import { QuickAdd } from '../components/QuickAdd';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { ICONS } from '../domain/constants';
 import { ProjectView, sessionWhen } from '../domain/projectsView';
 import { projectsViewOf } from '../domain/selectors';
 import { fmtDur, sayDur } from '../domain/time';
+import { feedback } from '../feedback/feedback';
 import { useActions, useData, useSettings, useStoreNow } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -92,9 +94,14 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
         pc.reached ? { shadowColor: sw.base, shadowOpacity: t.dark ? 0.55 : 0.35, shadowRadius: 14, borderWidth: 2, borderColor: sw.light } : null,
       ]}
     >
-      <Pressable
+      <Press
+        kind="card"
         onPress={onToggle}
-        onLongPress={() => actions.openEditProject(pc.projectId)}
+        onLongPress={() => {
+          // The press-in already shows; the long press itself is just a light haptic.
+          feedback('tap');
+          actions.openEditProject(pc.projectId);
+        }}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityLabel={`${pc.name}, ${sayDur(pc.weekSec)} of ${pc.weeklyTargetH} hours this week${pc.reached ? ', weekly target reached' : ''}`}
@@ -124,7 +131,7 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
             {fmtDur(pc.weekSec)} <Text style={{ color: colors.sub }}>/ {fmtDur(pc.weeklyTargetH * 3600)}</Text>
           </Text>
         </View>
-      </Pressable>
+      </Press>
 
       {expanded && (
         <Appear style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
@@ -132,11 +139,11 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
             <View key={h.habitId} style={{ backgroundColor: sw.light, borderRadius: radius.lg, padding: 12, gap: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Icon path={h.iconPath} size={20} color={ink} />
-                <Pressable onPress={() => actions.openEditHabitById(h.habitId)} accessibilityRole="button" accessibilityLabel={`Edit ${h.name}`} style={{ flex: 1 }}>
+                <Press kind="card" onPress={() => actions.openEditHabitById(h.habitId)} accessibilityRole="button" accessibilityLabel={`Edit ${h.name}`} style={{ flex: 1 }}>
                   <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '800', color: colors.ink }}>
                     {h.name}
                   </Text>
-                </Pressable>
+                </Press>
                 {h.weekSec > 0 && <Text style={{ fontSize: 13, fontWeight: '800', color: ink, fontVariant: ['tabular-nums'] }}>{fmtDur(h.weekSec)}</Text>}
                 <IconButton
                   label={h.kind === 'check' ? `Check off ${h.name}` : `Start ${h.name}`}
@@ -158,12 +165,13 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
             <View style={{ gap: 2 }}>
               <Glyph name="list" size={18} color={colors.sub} label="This week's sessions" />
               {pc.sessions.slice(0, 8).map((s) => (
-                <Pressable
+                <Press
+                  kind="card"
                   key={s.id}
                   onPress={() => actions.openSessionSheet(s.id)}
                   accessibilityRole="button"
                   accessibilityLabel={`${s.habitName}, ${sessionWhen(s.start)}, ${sayDur(s.duration)}. Edit`}
-                  style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.6 : 1 })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}
                 >
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.manual ? 'transparent' : sw.base, borderWidth: 2, borderColor: sw.base }} />
                   <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '700', color: colors.ink }}>
@@ -171,7 +179,7 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
                   </Text>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sub, fontVariant: ['tabular-nums'] }}>{sessionWhen(s.start)}</Text>
                   <Text style={{ width: 56, textAlign: 'right', fontSize: 14, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>{fmtDur(s.duration)}</Text>
-                </Pressable>
+                </Press>
               ))}
             </View>
           )}
@@ -194,7 +202,8 @@ function Archived({ items }: { items: { projectId: string; name: string; lifetim
   const [open, setOpen] = useState(false);
   return (
     <View style={{ marginTop: 24 }}>
-      <Pressable
+      <Press
+        kind="icon"
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
         accessibilityLabel={`Archived projects, ${items.length}`}
@@ -204,7 +213,7 @@ function Archived({ items }: { items: { projectId: string; name: string; lifetim
         <Glyph name="archive" size={18} color={colors.sub} />
         <Text style={{ fontSize: 14, fontWeight: '800', color: colors.sub }}>{items.length}</Text>
         <Glyph name={open ? 'chevronUp' : 'chevronDown'} size={16} color={colors.sub} />
-      </Pressable>
+      </Press>
       {open &&
         items.map((a) => {
           const sw = t.swatch(a.look.color);

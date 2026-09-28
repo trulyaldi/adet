@@ -1,10 +1,11 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import React from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 
 import { DOWFULL, MONTHS } from '../domain/constants';
 import { pad } from '../domain/time';
 import { useTheme } from '../theme/ThemeProvider';
+import { Press } from './motion/Press';
 
 interface DateTimeFieldProps {
   label: string;
@@ -77,11 +78,12 @@ export function DateTimeField({ label, value, onChange, max }: DateTimeFieldProp
 function FieldButton({ text, onPress }: { text: string; onPress(): void }) {
   const { colors, radius, shadow } = useTheme();
   return (
-    <Pressable
+    <Press
+      kind="button"
       onPress={onPress}
       style={{ backgroundColor: colors.bg, borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 12 }}
     >
       <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{text}</Text>
-    </Pressable>
+    </Press>
   );
 }

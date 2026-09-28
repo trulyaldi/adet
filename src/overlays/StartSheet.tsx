@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
+import { Press } from '../components/motion/Press';
 import { Sheet } from '../components/Sheet';
 import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
@@ -48,12 +49,13 @@ export function StartSheet() {
           const first = habits.find((h) => !isCheck(h)) ?? habits[0];
           return (
             <View key={p.id} style={{ backgroundColor: sw.light, borderRadius: radius.xl, padding: 12, gap: 10 }}>
-              <Pressable
+              <Press
+                kind="card"
                 disabled={!first}
                 onPress={() => first && start(first.id)}
                 accessibilityRole="button"
                 accessibilityLabel={first ? `Start ${p.name}` : p.name}
-                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.8 : 1 })}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
               >
                 <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
                   <Icon path={ICONS[look.icon]} size={22} color={sw.on} />
@@ -65,7 +67,7 @@ export function StartSheet() {
                   <AnimatedBar value={p.weeklyTarget > 0 ? weekSec(p.id) / (p.weeklyTarget * 3600) : 0} color={sw.base} track={t.dark ? colors.track : '#FFFFFF'} height={8} />
                 </View>
                 {first && <Glyph name="play" size={20} color={t.dark ? sw.base : sw.dark} bg={sw.light} />}
-              </Pressable>
+              </Press>
               {habits.length > 1 && (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {habits.map((h) => (

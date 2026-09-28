@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { BadgeArt } from '../components/celebrate/BadgeArt';
 import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
@@ -7,6 +7,7 @@ import { Glyph, GlyphName, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear } from '../components/motion/Appear';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
+import { Press } from '../components/motion/Press';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TimeHeatmap } from '../components/stats/TimeHeatmap';
 import { WeeklyBars } from '../components/stats/WeeklyBars';
@@ -116,12 +117,13 @@ export function StatsScreen() {
               const p = h ? data.projects.find((x) => x.id === h.projectId) : undefined;
               const sw = t.swatch(projectLook(p ?? { id: h?.projectId ?? '' }).color);
               return (
-                <Pressable
+                <Press
+                  kind="card"
                   key={s.id}
                   onPress={() => actions.openSessionSheet(s.id)}
                   accessibilityRole="button"
                   accessibilityLabel={`${h?.name ?? 'Session'}, ${sessionWhen(s.start)}, ${sayDur(s.duration)}. Edit`}
-                  style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, opacity: pressed ? 0.6 : 1 })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}
                 >
                   <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: sw.light, alignItems: 'center', justifyContent: 'center' }}>
                     <Icon path={h ? ICONS[h.icon] || ICONS.code : ICONS.code} size={15} color={t.dark ? sw.base : sw.dark} />
@@ -131,7 +133,7 @@ export function StatsScreen() {
                   </Text>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sub, fontVariant: ['tabular-nums'] }}>{sessionWhen(s.start)}</Text>
                   <Text style={{ width: 56, textAlign: 'right', fontSize: 14, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>{fmtDur(s.duration)}</Text>
-                </Pressable>
+                </Press>
               );
             })}
           </Card>
