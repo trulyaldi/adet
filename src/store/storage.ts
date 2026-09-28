@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { hydrate, persistedSlice } from '../domain/migrations';
+import { hydrate, MigrationContext, persistedSlice } from '../domain/migrations';
 import { Outbox, SyncTable } from '../domain/sync';
 import { PersistedState } from '../domain/types';
 
@@ -23,7 +23,7 @@ export const EMPTY_SYNC_META: SyncMeta = { ownerId: null, outbox: {}, cursors: {
  * Handles the legacy goals->projects / goalId->projectId migration and
  * backfills each project's `started` from its earliest session.
  */
-export async function loadState(now: number = Date.now()): Promise<PersistedState> {
+export async function loadState(now: number = Date.now(), ctx?: MigrationContext): Promise<PersistedState> {
   let v3: string | null = null;
   let v2: string | null = null;
   try {
@@ -33,7 +33,7 @@ export async function loadState(now: number = Date.now()): Promise<PersistedStat
     v3 = null;
     v2 = null;
   }
-  return hydrate({ v3, v2 }, now);
+  return hydrate({ v3, v2 }, now, ctx);
 }
 
 export async function loadSyncMeta(): Promise<SyncMeta> {

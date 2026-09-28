@@ -421,14 +421,17 @@ export function StreakProvider({ userId, children }: { userId: string; children:
   // Load persisted state once.
   useEffect(() => {
     let mounted = true;
-    Promise.all([loadState(), loadSyncMeta(), loadSettings()]).then(([loaded, meta, prefs]) => {
-      if (!mounted) return;
-      const next = forUser(loaded, meta, userId, Date.now());
-      setStore(next);
-      setSettings(prefs);
-      if (next.sync !== meta) saveState(next.data, next.sync);
-      setReady(true);
-    });
+    // Settings first: upgrading judges the old streak by the old daily budget.
+    loadSettings()
+      .then((prefs) => Promise.all([loadState(Date.now(), { planSettings: { budgetMin: prefs.budgetMin, planCap: prefs.planCap } }), loadSyncMeta(), prefs]))
+      .then(([loaded, meta, prefs]) => {
+        if (!mounted) return;
+        const next = forUser(loaded, meta, userId, Date.now());
+        setStore(next);
+        setSettings(prefs);
+        if (next.sync !== meta) saveState(next.data, next.sync);
+        setReady(true);
+      });
     return () => {
       mounted = false;
     };

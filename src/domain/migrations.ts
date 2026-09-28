@@ -1,6 +1,7 @@
 import { clampMinMin, DAILY, defaultMinMin, parseFrequency } from './frequency';
 import { seed } from './seed';
-import { dailyStreak } from './streaks';
+import { DEFAULT_BUDGET_MIN, DEFAULT_PLAN_CAP, habitDaySec, PlanSettings } from './plan';
+import { dailyStreak, dayRecords, planStreak } from './streaks';
 import { addDays, dkey } from './time';
 import { DEFAULT_PREFS, parsePrefs } from './capacity';
 import { Badge, CURRENT_SCHEMA_VERSION, DailyLog, DayOverride, Mark, PersistedState, StreakCarry } from './types';
@@ -24,7 +25,36 @@ function legacyCarry(sessions: any[], now: number): StreakCarry | null {
   return { current: old.current, longest: old.longest, day };
 }
 
-export const MIGRATIONS: Array<(s: any, now: number) => any> = [
+/** Device settings the old rules depended on (the v4 daily budget and cap). */
+export interface MigrationContext {
+  planSettings: PlanSettings;
+}
+
+const DEFAULT_CONTEXT: MigrationContext = { planSettings: { budgetMin: DEFAULT_BUDGET_MIN, planCap: DEFAULT_PLAN_CAP } };
+
+/**
+ * The streak a v4 build showed (plan-based, rest days, its own carry), kept
+ * as the v5 carry so the new rules never show less. Its day is today when
+ * today already counted, else yesterday.
+ */
+function v4Carry(s: any, now: number, ctx: MigrationContext): StreakCarry | null {
+  const state = {
+    ...s,
+    habits: s.habits || [],
+    sessions: s.sessions || [],
+    projects: s.projects || [],
+    plans: s.plans || {},
+    planSince: typeof s.planSince === 'string' ? s.planSince : dkey(new Date(now)),
+  } as PersistedState;
+  const today = dkey(new Date(now));
+  const carry = s.streakCarry && typeof s.streakCarry.current === 'number' ? (s.streakCarry as StreakCarry) : null;
+  const old = planStreak(dayRecords(state, habitDaySec(state, now), today, ctx.planSettings), today, carry);
+  if (!old.current && !old.longest) return null;
+  const day = old.marks.get(today) === 'complete' ? today : dkey(addDays(new Date(now), -1));
+  return { current: old.current, longest: old.longest, day };
+}
+
+export const MIGRATIONS: Array<(s: any, now: number, ctx: MigrationContext) => any> = [
   (s: any) => {
     const { goals: _goals, ...rest } = s;
     return {
@@ -69,10 +99,12 @@ export const MIGRATIONS: Array<(s: any, now: number) => any> = [
   }),
   // v5: the redesign. Every existing habit is timed (its length becomes a
   // target marker, not a deadline); done marks start empty; days from the
-  // update on are planned by capacity.
-  (s: any, now: number) => ({
+  // update on are planned by capacity; the streak the old rules showed
+  // becomes the floor for the new ones.
+  (s: any, now: number, ctx: MigrationContext) => ({
     ...s,
     schemaVersion: 5,
+    streakCarry: v4Carry(s, now, ctx),
     planSince: dkey(new Date(now)),
     habits: (s.habits || []).map((h: any) => ({ ...h, kind: h.kind === 'check' ? 'check' : 'timed' })),
     marks: Array.isArray(s.marks) ? s.marks : [],
@@ -85,10 +117,10 @@ export const MIGRATIONS: Array<(s: any, now: number) => any> = [
   }),
 ];
 
-export function migrate(state: any, fromVersion: number, now: number): any {
+export function migrate(state: any, fromVersion: number, now: number, ctx: MigrationContext = DEFAULT_CONTEXT): any {
   let migrated = state;
   for (let version = Math.max(1, Math.floor(fromVersion)); version < CURRENT_SCHEMA_VERSION; version++) {
-    migrated = MIGRATIONS[version - 1](migrated, now);
+    migrated = MIGRATIONS[version - 1](migrated, now, ctx);
   }
   return migrated;
 }
@@ -142,7 +174,8 @@ function daysOf(v: unknown): Record<string, DayOverride> {
 
 export function hydrate(
   raw: { v3: string | null; v2: string | null },
-  now: number
+  now: number,
+  ctx: MigrationContext = DEFAULT_CONTEXT
 ): PersistedState {
   const cameFromV3 = raw.v3 !== null;
   const value = cameFromV3 ? raw.v3 : raw.v2;
@@ -166,7 +199,7 @@ export function hydrate(
       : cameFromV3
         ? 2
         : 1;
-  const migrated = migrate(saved, sourceVersion, now);
+  const migrated = migrate(saved, sourceVersion, now, ctx);
   const projects = migrated.projects.map((p: any) => ({ ...p }));
   const habits = migrated.habits || [];
   const sessions = migrated.sessions || [];

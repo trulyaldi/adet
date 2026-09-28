@@ -19,7 +19,7 @@ import { SummaryCard } from '../components/today/SummaryCard';
 import { selectToday, TodayItem } from '../domain/day';
 import { fmtDur } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
-import { usePlanStreak } from '../store/usePlanStreak';
+import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
 
 const GAP = 10;
@@ -30,7 +30,7 @@ export function TodayScreen() {
   const { colors, radius } = t;
   const { data, now, settings, actions } = useStreak();
   const model = useMemo(() => selectToday(data, now), [data, now]);
-  const streak = usePlanStreak().current;
+  const streak = useDayStreak().current;
   // Only a day that finishes on screen animates into the check.
   const opened = useRef({ day: model.day, complete: model.complete });
   const animateIn = !(opened.current.complete && opened.current.day === model.day);

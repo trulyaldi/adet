@@ -5,7 +5,7 @@ import { newBadges, qualifiedBadges } from '../domain/milestones';
 import { useTheme } from '../theme/ThemeProvider';
 import { useStreak } from './StreakStore';
 import { TargetWatcher } from './TargetWatcher';
-import { usePlanStreak } from './usePlanStreak';
+import { useDayStreak } from './useDayStreak';
 
 /**
  * Milestones: badges earned since the last look are recorded and queued for
@@ -14,7 +14,7 @@ import { usePlanStreak } from './usePlanStreak';
  */
 function MilestoneWatcher() {
   const { data, now, ready, actions } = useStreak();
-  const streak = usePlanStreak().current;
+  const streak = useDayStreak().current;
   const minute = Math.floor(now / 60_000);
   useEffect(() => {
     if (!ready) return;
