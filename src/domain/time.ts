@@ -72,6 +72,25 @@ export function fmtHM(sec: number): string {
   return h ? h + 'h ' + pad(m) + 'm' : m + 'm';
 }
 
+/** "1h 20m" / "45m" / "0m" from seconds (no zero padding, for labels). */
+export function fmtDur(sec: number): string {
+  const total = Math.max(0, Math.floor(sec / 60));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (!h) return m + 'm';
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/** Spoken duration: "1 hour 20 minutes". */
+export function sayDur(sec: number): string {
+  const total = Math.max(0, Math.floor(sec / 60));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  const hs = h ? `${h} hour${h === 1 ? '' : 's'}` : '';
+  const ms = m || !h ? `${m} minute${m === 1 ? '' : 's'}` : '';
+  return [hs, ms].filter(Boolean).join(' ');
+}
+
 /** "1h 30m" / "45m" from a minute count. */
 export function fmtMin(min: number): string {
   return fmtHM(min * 60);

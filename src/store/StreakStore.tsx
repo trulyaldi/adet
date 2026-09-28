@@ -15,22 +15,13 @@ import { clampMinMin, defaultMinMin, Frequency, normalizeFrequency, weeklyTarget
 import { activeSec } from '../domain/engine';
 import { clampCapacity, DEFAULT_PREFS, raiseCapacityToFit, scaleTargetsToFit, targetCheck } from '../domain/capacity';
 import { missingLogs } from '../domain/dailyLog';
+import { selectToday } from '../domain/day';
 import { nextProjectColor, nextScene, withLooks } from '../domain/look';
 import { addMark, moveMarks, removeMark } from '../domain/marks';
 import type { GlyphName } from '../components/glyphs';
 import { feedback } from '../feedback/feedback';
 import { activeHabits } from '../domain/projects';
-import {
-  addToPlan,
-  clampBudgetMin,
-  clampPlanCap,
-  completionOn,
-  habitDaySec,
-  planFor,
-  PlanSettings,
-  suggestPlan,
-  swapInPlan,
-} from '../domain/plan';
+import { clampBudgetMin, clampPlanCap } from '../domain/plan';
 import { clampReminderHours, reminderFireAt } from '../domain/reminder';
 import { finishRebalance } from '../domain/rebalance';
 import { seed } from '../domain/seed';
@@ -63,11 +54,6 @@ import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMe
 export type Screen = 'today' | 'projects' | 'stats';
 export type StatsView = 'overview' | 'history';
 
-/**
- * The plan editor on Today: swap a planned habit for another, add one to a
- * plan with room, or start a bonus habit once the day is done.
- */
-export type PlanPicker = { mode: 'swap'; habitId: string } | { mode: 'add' } | { mode: 'bonus' };
 
 export interface HabitSheetState {
   id: string | null;
@@ -153,10 +139,9 @@ export interface UIState {
   settingsOpen: boolean;
   /** Which half of Stats is showing; kept while switching tabs. */
   statsView: StatsView;
-  planPicker: PlanPicker | null;
-  /** Bumped when a plan edit is blocked by the budget: budget bars flash amber and shake. */
-  budgetShake: number;
   weekOpen: boolean;
+  /** The "+" sheet: start any project's habit, planned or not. */
+  startSheet: boolean;
 }
 
 const INITIAL_UI: UIState = {
@@ -176,9 +161,8 @@ const INITIAL_UI: UIState = {
   toast: null,
   settingsOpen: false,
   statsView: 'overview',
-  planPicker: null,
-  budgetShake: 0,
   weekOpen: false,
+  startSheet: false,
 };
 
 /** Time for a full-screen modal to finish its dismiss animation. */
@@ -245,7 +229,8 @@ export interface StreakActions {
   openStageSheet(projectId: string): void;
   closeStageSheet(): void;
   // log-time sheet
-  openLogSheet(): void;
+  /** Log time after the fact, for `habitId` (default: the next planned habit). */
+  openLogSheet(habitId?: string): void;
   closeLogSheet(): void;
   patchLogSheet(patch: Partial<LogSheetState>): void;
   saveLogSheet(): void;
@@ -259,16 +244,10 @@ export interface StreakActions {
   // weekly recap
   openRecap(weekStart: string): void;
   closeRecap(): void;
-  // today's plan
-  openPlanPicker(picker: PlanPicker): void;
-  closePlanPicker(): void;
-  /** Swap a planned habit for another; false (and a budget shake) when it wouldn't fit. */
-  swapPlan(outId: string, inId: string): boolean;
-  removeFromPlan(habitId: string): void;
-  /** Add a habit to today's plan; false (and a budget shake) when it wouldn't fit. */
-  addToPlan(habitId: string): boolean;
   // week view
   openWeek(): void;
+  openStartSheet(): void;
+  closeStartSheet(): void;
   closeWeek(): void;
   /**
    * Close the one-time rebalance screen for good, applying the chosen
@@ -346,6 +325,8 @@ interface StoreState {
 }
 
 const SAVE_DEBOUNCE_MS = 500;
+/** How often the store's `now` refreshes. */
+const STORE_TICK_MS = 15_000;
 
 /**
  * Prepare freshly loaded data for `userId`. On this device's first sign-in to
@@ -537,45 +518,6 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     setData(withLooks);
   }, [ready, wiped, data.projects, data.habits, setData]);
 
-  // Today's plan is fixed the first time the day is shown, so it doesn't
-  // reshuffle as habits are done (completing one changes the weekly counts the
-  // suggestion is based on). Re-suggested when the budget or cap changes. An
-  // empty suggestion isn't fixed, so habits added (or synced) later that day
-  // are still picked up; a plan the user emptied stays empty.
-  const todayPinned = data.plans[today] !== undefined;
-  const planSettings: PlanSettings = useMemo(
-    () => ({ budgetMin: settings.budgetMin, planCap: settings.planCap }),
-    [settings.budgetMin, settings.planCap]
-  );
-  const planSettingsRef = useRef(planSettings);
-  planSettingsRef.current = planSettings;
-  const pinnedWith = useRef<PlanSettings | null>(null);
-  useEffect(() => {
-    if (!ready || wiped) return;
-    const settingsChanged = pinnedWith.current !== null && pinnedWith.current !== planSettings;
-    pinnedWith.current = planSettings;
-    if (todayPinned && !settingsChanged) return;
-    setData((d) => {
-      const days = habitDaySec(d);
-      const suggested = suggestPlan(d, days, today, planSettings);
-      // After a settings change, habits already done today stay in the plan when they still fit.
-      const kept = settingsChanged
-        ? (d.plans[today] ?? []).filter((id) => {
-            const h = d.habits.find((x) => x.id === id);
-            return h && completionOn(h, habitDaySec(d, Date.now()), today);
-          })
-        : [];
-      let plan = kept;
-      for (const id of suggested) plan = addToPlan(plan, id, d, planSettings) ?? plan;
-      if (!plan.length) {
-        if (d.plans[today] === undefined) return d;
-        const { [today]: _dropped, ...rest } = d.plans;
-        return { ...d, plans: rest };
-      }
-      return { ...d, plans: { ...d.plans, [today]: plan } };
-    });
-  }, [ready, wiped, today, todayPinned, planSettings, data.habits, setData]);
-
   // The undo toast expires on its own; a newer delete restarts the clock.
   useEffect(() => {
     if (!ui.undo) return;
@@ -588,11 +530,19 @@ export function StreakProvider({ userId, children }: { userId: string; children:
     return () => clearTimeout(t);
   }, [ui.toast]);
 
-  // 1s tick drives the running timer + "Start" button clocks.
+  // A slow tick keeps minute-level views (today's total, the day turning)
+  // current; live clocks tick on their own (useNow), so a running timer
+  // doesn't re-render the whole app every second.
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const t = setInterval(() => setNow(Date.now()), STORE_TICK_MS);
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setNow(Date.now()));
+    return () => {
+      clearInterval(t);
+      sub.remove();
+    };
   }, []);
+  // Any data change (start, stop, a log) refreshes it too.
+  useEffect(() => setNow(Date.now()), [store.data]);
 
   /** Latest actions, for calls deferred past a render (stopTimer's editAfter). */
   const actionsRef = useRef<StreakActions | null>(null);
@@ -922,16 +872,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       openStageSheet: (projectId) => patchUi({ stageSheet: projectId }),
       closeStageSheet: () => patchUi({ stageSheet: null }),
 
-      openLogSheet: () => {
-        // Default to the first planned habit not done yet today.
+      openLogSheet: (habitId) => {
+        // Default to the given habit, else the first planned one not done yet today.
         const now = Date.now();
-        const day = dkey(new Date(now));
-        const days = habitDaySec(data, now);
-        const next = planFor(data, days, day, planSettingsRef.current).find((id) => {
-          const h = data.habits.find((x) => x.id === id);
-          return h && !completionOn(h, days, day);
-        });
-        const def = next ?? activeHabits(data)[0]?.id ?? null;
+        const next = selectToday(data, now).items.find((i) => !i.done && i.kind === 'timed')?.habitId;
+        const def = habitId ?? next ?? activeHabits(data)[0]?.id ?? null;
         const start = defaultManualStart(Date.now(), 30);
         patchUi({
           logSheet: {
@@ -1046,42 +991,9 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       openRecap: (weekStart) => patchUi({ recapSheet: weekStart }),
       closeRecap: () => patchUi({ recapSheet: null }),
 
-      openPlanPicker: (planPicker) => patchUi({ planPicker }),
-      closePlanPicker: () => patchUi({ planPicker: null }),
-      swapPlan: (outId, inId) => {
-        const d = storeRef.current.data;
-        const day = dkey(new Date());
-        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
-        const next = swapInPlan(current, outId, inId, d, planSettingsRef.current);
-        if (!next) {
-          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
-          return false;
-        }
-        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
-        patchUi({ planPicker: null });
-        return true;
-      },
-      removeFromPlan: (habitId) => {
-        const day = dkey(new Date());
-        setData((d) => {
-          const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
-          return { ...d, plans: { ...d.plans, [day]: current.filter((id) => id !== habitId) } };
-        });
-      },
-      addToPlan: (habitId) => {
-        const d = storeRef.current.data;
-        const day = dkey(new Date());
-        const current = planFor(d, habitDaySec(d), day, planSettingsRef.current);
-        const next = addToPlan(current, habitId, d, planSettingsRef.current);
-        if (!next) {
-          setUi((p) => ({ ...p, budgetShake: p.budgetShake + 1 }));
-          return false;
-        }
-        setData((x) => ({ ...x, plans: { ...x.plans, [day]: next } }));
-        patchUi({ planPicker: null });
-        return true;
-      },
       openWeek: () => patchUi({ weekOpen: true }),
+      openStartSheet: () => patchUi({ startSheet: true }),
+      closeStartSheet: () => patchUi({ startSheet: false }),
       closeWeek: () => patchUi({ weekOpen: false }),
       finishRebalance: (chosen) => setData((d) => finishRebalance(d, chosen, dkey(new Date()))),
 

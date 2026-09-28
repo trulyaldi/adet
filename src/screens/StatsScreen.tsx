@@ -238,7 +238,7 @@ export function StatsScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingBottom: 4 }}>
               <Glyph name="list" size={20} color={colors.ink} label="Recent sessions" />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <IconButton label="Log time" name="plus" size={17} color={config.accent} bg={colors.track} diameter={32} onPress={actions.openLogSheet} />
+                <IconButton label="Log time" name="plus" size={17} color={config.accent} bg={colors.track} diameter={32} onPress={() => actions.openLogSheet()} />
                 {model.historyHasRows &&
                   (ui.clearArmed ? (
                     <>

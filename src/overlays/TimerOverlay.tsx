@@ -9,6 +9,7 @@ import { MessageToast } from '../components/UndoToast';
 import { selectTimer } from '../domain/engine';
 import { fmtClock } from '../domain/time';
 import { useStreak } from '../store/StreakStore';
+import { useNow } from '../store/useNow';
 import { useStopTimer } from '../store/useStopTimer';
 import { colors, radius } from '../theme/tokens';
 
@@ -17,7 +18,8 @@ const CIRC = 2 * Math.PI * R;
 const DONE_GREEN = '#1F8A3B';
 
 export function TimerOverlay() {
-  const { data, ui, now, config, actions } = useStreak();
+  const { data, ui, config, actions } = useStreak();
+  const now = useNow(1000, ui.timerOpen);
   const goal = ui.timerGoal && data.active && ui.timerGoal.habitId === data.active.habitId ? ui.timerGoal.min : undefined;
   const model = selectTimer(data, config, now, goal);
   const open = ui.timerOpen && !!model;
