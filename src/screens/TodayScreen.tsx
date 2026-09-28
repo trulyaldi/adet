@@ -25,7 +25,7 @@ export function TodayScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 20, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 20, paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
@@ -34,7 +34,7 @@ export function TodayScreen() {
           <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>
             Today
           </Text>
-          <Text numberOfLines={1} style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>
+          <Text style={{ fontSize: 15, color: colors.subtext, marginTop: 3 }}>
             {model.todayDateLabel}
           </Text>
           <View style={{ marginTop: 6 }}>
@@ -124,8 +124,19 @@ export function TodayScreen() {
               <ProgressBar pct={g.weekPct} color={g.barColor} />
             </View>
             {(!!g.paceLabel || !!g.streakLabel) && (
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
-                <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink }}>
+              // Wraps so the streak drops below a long pace line on narrow phones.
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  columnGap: 10,
+                  rowGap: 2,
+                  marginTop: 8,
+                }}
+              >
+                <Text style={{ fontSize: 12.5, fontWeight: '600', color: g.paceMet ? '#1F8A3B' : colors.ink }}>
                   {g.paceLabel}
                 </Text>
                 {!!g.streakLabel && (
@@ -239,8 +250,10 @@ function HabitRow({ row: r }: { row: TodayRow }) {
 
       {/* Running timer: elapsed time and controls stay on the row */}
       {r.running && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingLeft: 52 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               flex: 1,
               fontSize: 22,

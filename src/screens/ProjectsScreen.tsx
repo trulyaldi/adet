@@ -26,7 +26,7 @@ export function ProjectsScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 20, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 20, paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
@@ -93,8 +93,10 @@ function ProjectCardView({ pc, expanded, onToggle }: { pc: ProjectCard; expanded
           </Pressable>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
-          <Text style={{ flexShrink: 1, fontSize: 13, fontWeight: '700', color: colors.subtext }}>{pc.weekLabel}</Text>
+        <View
+          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', columnGap: 10, rowGap: 2, marginTop: 8 }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.subtext }}>{pc.weekLabel}</Text>
           {!!pc.streakLabel && (
             <Text
               style={{

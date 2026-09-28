@@ -176,12 +176,14 @@ function buildContext(data: PersistedState, now: number): StatContext {
   };
 }
 
-function trendOf(ps: { week: number; lastWeek: number }) {
-  // Non-punitive: gains read as progress; shortfalls read as an actionable
-  // "to match last week" rather than a red penalty.
+/**
+ * This week vs last week. Non-punitive: gains read as progress, shortfalls as
+ * a plain amount, and a change under a minute is neutral ("—"), never an arrow.
+ */
+export function trendOf(ps: { week: number; lastWeek: number }) {
   const d = ps.week - ps.lastWeek;
-  if (d >= 0)
-    return { label: '↑ ' + fmtH(d), sub: 'vs last week', color: '#1F8A3B' };
+  if (Math.abs(d) < 60) return { label: '—', sub: 'same as last week', color: '#8A8D93' };
+  if (d > 0) return { label: '↑ ' + fmtH(d), sub: 'vs last week', color: '#1F8A3B' };
   return { label: '↓ ' + fmtH(-d), sub: 'vs last week', color: '#FF3B30' };
 }
 
@@ -722,6 +724,18 @@ export interface StatsModel {
   historyHasRows: boolean;
 }
 
+/**
+ * The vs-last-week insight (this week so far against last week in full), or
+ * null when last week had nothing to compare with.
+ */
+export function weekVsLastWeek(weekSec: number, lastWeekSec: number, iconPath = ''): Insight | null {
+  if (lastWeekSec <= 0) return null;
+  const d = weekSec - lastWeekSec;
+  if (Math.abs(d) < 60) return { iconPath, bg: '#D9F2E3', text: 'You’ve matched last week’s total.' };
+  if (d > 0) return { iconPath, bg: '#D9F2E3', text: 'You’re ' + fmtH(d) + ' past last week’s total.' };
+  return { iconPath, bg: '#D8EAF9', text: fmtH(-d) + ' more to match last week.' };
+}
+
 export function selectStats(
   data: PersistedState,
   config: AppConfig,
@@ -924,21 +938,8 @@ export function selectStats(
       text: lifeLeader.name + ' is your most-tracked habit, with ' + fmtH(ctx.habitStats[lifeLeader.id].life) + ' in total.',
     });
   }
-  if (weekAll > 0 || lastWeekAll > 0) {
-    const d = weekAll - lastWeekAll;
-    if (d >= 0)
-      insights.push({
-        iconPath: BARS_PATH,
-        bg: '#D9F2E3',
-        text: 'You’re ' + fmtH(d) + ' ahead of last week’s pace.',
-      });
-    else
-      insights.push({
-        iconPath: BARS_PATH,
-        bg: '#D8EAF9',
-        text: 'About ' + fmtHM(Math.floor(-d)) + ' more this week matches last week.',
-      });
-  }
+  const vsLast = weekVsLastWeek(weekAll, lastWeekAll, BARS_PATH);
+  if (vsLast) insights.push(vsLast);
   const wdTotals = [0, 0, 0, 0, 0, 0, 0];
   for (const s of data.sessions) wdTotals[new Date(s.start).getDay()] += s.duration;
   let bestWd = 0;
@@ -947,7 +948,7 @@ export function selectStats(
     insights.push({
       iconPath: CAL_PATH,
       bg: '#E4E0F7',
-      text: 'You log the most time on ' + DOWFULL[bestWd] + 's.',
+      text: DOWFULL[bestWd] + 's are your busiest day.',
     });
   }
   // Time of day across all projects; the Patterns card no longer repeats it.

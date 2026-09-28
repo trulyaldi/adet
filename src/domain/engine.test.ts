@@ -4,6 +4,8 @@ import { test } from 'node:test';
 import { DEFAULT_CONFIG } from './config';
 import {
   activeSec,
+  trendOf,
+  weekVsLastWeek,
   daySecMap,
   recommendedHabitId,
   selectProjects,
@@ -283,7 +285,7 @@ test('stats insights: one card, each fact once', () => {
   const t = texts(base);
   assert.ok(t.includes('Reading is leading this week with 2h, and overall with 3h.'));
   assert.ok(!t.some((x) => x.includes('most-tracked')));
-  assert.ok(t.some((x) => x.includes('ahead of last week')));
+  assert.ok(t.includes('You’re 1.5h past last week’s total.'));
   assert.equal(new Set(t).size, t.length, 'no repeated lines');
 
   // Different leaders: the lifetime one gets its own line (the old "Most active habit" card).
@@ -577,4 +579,19 @@ test('recent sessions are grouped by day with Today / Yesterday / date headers',
   assert.deepEqual(m.historyRows.map((r) => r.id), ['b', 'a', 'c', 'd']);
   // The date is in the header, never repeated on the rows.
   assert.ok(m.historyRows.every((r) => !/Today|Jul/.test(r.sub)));
+});
+
+test('week-over-week copy: neutral under a minute, natural sentences otherwise', () => {
+  assert.deepEqual(trendOf({ week: 3600, lastWeek: 3600 }), { label: '—', sub: 'same as last week', color: '#8A8D93' });
+  assert.equal(trendOf({ week: 3659, lastWeek: 3600 }).label, '—');
+  assert.equal(trendOf({ week: 3541, lastWeek: 3600 }).label, '—', 'never a red arrow with 0m');
+  assert.equal(trendOf({ week: 7200, lastWeek: 3600 }).label, '↑ 1h');
+  assert.equal(trendOf({ week: 0, lastWeek: 1080 }).label, '↓ 18m');
+
+  const text = (w: number, l: number) => weekVsLastWeek(w, l)?.text ?? null;
+  assert.equal(text(3600, 3600 + 18 * 60), '18m more to match last week.');
+  assert.equal(text(0, 5400), '1.5h more to match last week.');
+  assert.equal(text(7200, 3600), 'You’re 1h past last week’s total.');
+  assert.equal(text(3630, 3600), 'You’ve matched last week’s total.');
+  assert.equal(text(3600, 0), null, 'nothing to compare with');
 });

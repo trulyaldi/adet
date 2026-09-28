@@ -18,7 +18,7 @@ export function StatsScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 20, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 20, paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}
     >
       <Text style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.5, color: colors.ink }}>Stats</Text>
@@ -179,7 +179,7 @@ export function StatsScreen() {
 
             {/* Day-of-week header */}
             <View style={{ flexDirection: 'row', gap: 6 }}>
-              <View style={{ width: 30 }} />
+              <View style={{ width: 34 }} />
               {model.dayHeads.map((t, i) => (
                 <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600', color: colors.muted }}>
                   {t}
@@ -190,7 +190,7 @@ export function StatsScreen() {
             {/* Weeks */}
             {model.heatRows.map((row, ri) => (
               <View key={ri} style={{ flexDirection: 'row', gap: 6, marginTop: 6, alignItems: 'center' }}>
-                <Text style={{ width: 30, fontSize: 10, fontWeight: '700', color: colors.muted, textAlign: 'right', paddingRight: 2 }}>
+                <Text style={{ width: 34, fontSize: 10, fontWeight: '700', color: colors.muted, textAlign: 'right', paddingRight: 2 }}>
                   {row.monthLabel}
                 </Text>
                 {row.cells.map((cell, ci) => (

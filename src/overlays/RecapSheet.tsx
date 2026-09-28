@@ -80,7 +80,7 @@ function Tile({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.screen, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: '800', color: colors.ink }}>{value}</Text>
-      <Text numberOfLines={1} style={{ fontSize: 11.5, fontWeight: '600', color: colors.subtext, marginTop: 3 }}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 11.5, fontWeight: '600', color: colors.subtext, marginTop: 3 }}>{label}</Text>
     </View>
   );
 }

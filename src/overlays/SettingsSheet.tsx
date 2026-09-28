@@ -159,7 +159,12 @@ function AccountCard() {
     >
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 12, color: colors.subtext }}>Signed in as</Text>
-        <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink, marginTop: 2 }}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          style={{ fontSize: 14.5, fontWeight: '700', color: colors.ink, marginTop: 2 }}
+        >
           {session?.user.email ?? 'Unknown account'}
         </Text>
         <View style={{ marginTop: 4 }}>

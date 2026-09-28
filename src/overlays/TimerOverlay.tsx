@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Icon } from '../components/Icon';
@@ -19,11 +20,12 @@ export function TimerOverlay() {
   const open = ui.timerOpen && !!model;
 
   const stop = useStopTimer();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={open} animationType="fade" transparent={false} onRequestClose={actions.closeTimer}>
       {model && (
-        <View style={{ flex: 1, backgroundColor: colors.screen, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40 }}>
+        <View style={{ flex: 1, backgroundColor: colors.screen, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 24) + 16 }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>

@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabBar } from './src/components/TabBar';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
@@ -25,6 +25,7 @@ import { colors } from './src/theme/tokens';
 
 function Root() {
   const { ready, ui, actions } = useStreak();
+  const insets = useSafeAreaInsets();
 
   if (!ready) {
     return (
@@ -36,6 +37,8 @@ function Root() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.screen }}>
+      {/* Screens scroll below the status bar, never under it. */}
+      <View style={{ height: insets.top, backgroundColor: colors.screen }} />
       <View style={{ flex: 1 }}>
         {ui.screen === 'today' && <TodayScreen />}
         {ui.screen === 'projects' && <ProjectsScreen />}
