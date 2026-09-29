@@ -14,6 +14,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { feedback } from '../../feedback/feedback';
 import { press, springs } from '../../theme/motion';
 
+const WEB = process.env.EXPO_OS === 'web';
+
 interface SortableListProps<T> {
   items: T[];
   keyOf(item: T): string;
@@ -137,6 +139,14 @@ function SortableRow({
     [count, slot, id, positions, top, dragging, start, onDrop]
   );
 
+  // The lifted row's shadow, sprung in and out (a string on web, so it's driven from a value).
+  const lift = useSharedValue(0);
+  useAnimatedReaction(
+    () => dragging.value,
+    (d) => {
+      lift.value = withSpring(d ? 0.18 : 0);
+    },
+  );
   const style = useAnimatedStyle(() => ({
     position: 'absolute',
     left: 0,
@@ -144,9 +154,7 @@ function SortableRow({
     top: top.value,
     zIndex: dragging.value ? 10 : 0,
     transform: [{ scale: dragging.value ? withTiming(1.03, press.in) : withSpring(1, press.out) }],
-    shadowOpacity: withSpring(dragging.value ? 0.18 : 0),
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+    ...(WEB ? { boxShadow: `0px 6px 14px rgba(0,0,0,${lift.value})` } : { shadowOpacity: lift.value, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }),
   }));
 
   return <Animated.View style={style}>{children(drag)}</Animated.View>;

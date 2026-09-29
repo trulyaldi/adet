@@ -14,7 +14,7 @@ export function Burst({ x, y, color }: { x: number; y: number; color: string }) 
     p.value = withTiming(1, { duration: 750, easing: Easing.out(Easing.cubic) });
   }, [p]);
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill]}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       {Array.from({ length: N }, (_, i) => (
         <Particle key={i} i={i} x={x} y={y} p={p} color={color} />
       ))}
@@ -45,7 +45,7 @@ export function BurstHost() {
   const reduced = useReducedMotion();
   if (reduced || !bursts.length) return null;
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       {bursts.map((b) => (
         <Burst key={b.key} x={b.x} y={b.y} color={b.color} />
       ))}

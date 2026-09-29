@@ -79,9 +79,8 @@ export function useTip(label: string, below = false) {
   };
   const tip = shown ? (
     <View
-      pointerEvents="none"
       style={[
-        { position: 'absolute', left: -80, right: -80, alignItems: 'center', zIndex: 20 },
+        { position: 'absolute', left: -80, right: -80, alignItems: 'center', zIndex: 20, pointerEvents: 'none' },
         below ? { top: '100%', marginTop: 6 } : { bottom: '100%', marginBottom: 6 },
       ]}
     >
