@@ -3,7 +3,7 @@
 import React from 'react';
 import { StyleProp, Text, TextProps, TextStyle } from 'react-native';
 
-import { PIXEL_FONT, PIXEL_FONT_BOLD, TINY_FONT } from '../assets/fonts';
+import { PIXEL_FONT, PIXEL_FONT_BOLD, PIXEL_TEXT, TINY_FONT } from '../assets/fonts';
 import { QUI } from './theme';
 
 export type PixelSize = 'tiny' | 'sm' | 'md' | 'lg' | 'xl' | 'hero';
@@ -24,7 +24,7 @@ export function PixelText({
       {...rest}
       // The pixel font is readable, but Dynamic Type would break its grid: cap it.
       maxFontSizeMultiplier={1.3}
-      style={[{ fontFamily, fontSize: SIZES[size], lineHeight: Math.round(SIZES[size] * 1.3), color }, style]}
+      style={[PIXEL_TEXT, { fontFamily, fontSize: SIZES[size], lineHeight: Math.round(SIZES[size] * 1.3), color }, style]}
     >
       {children}
     </Text>

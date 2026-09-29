@@ -16,7 +16,7 @@ import { MAX_CRITS, NODE_MOBS } from '../../../domain/game/balance';
 import { ClaimPreview, gameStateOf, previewClaim } from '../../../domain/game/fromData';
 import { LOG_BODY_MAX, openTasksFor } from '../../../domain/items/ops';
 import { itemsOfType } from '../../../domain/items/types';
-import { PIXEL_FONT } from '../../../game/assets/fonts';
+import { PIXEL_FONT, PIXEL_TEXT } from '../../../game/assets/fonts';
 import { bossId, mobId, ROSTER } from '../../../game/content/roster';
 import { feedback } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
@@ -178,7 +178,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
                 returnKeyType="done"
                 blurOnSubmit
                 accessibilityLabel="What did you do? One line"
-                style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: u, borderColor: QUI.ink }}
+                style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: u, borderColor: QUI.ink }}
               />
             </View>
             <View style={{ flexDirection: 'row', gap: 3 * u }}>
