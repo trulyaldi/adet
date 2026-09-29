@@ -66,6 +66,20 @@ repo; their text was recovered from Codex's session log into
   `main` (`expo` 57.0.25 installed, ~57.0.26 expected), not an Expo Go
   incompatibility.
 
+## Polish pass baseline — 2026-09-29
+
+Measured on a clean worktree of `79a9dfc` before any polish-pass change.
+
+| Check | Result |
+|---|---|
+| Typecheck (app, worker) | pass, pass |
+| Tests | 396 pass, 0 fail |
+| `expo export --platform ios` | ok; Hermes bytecode 5,115,347 B; assets 616,750 B (22 files) |
+| `expo export --platform web` | ok; 3,960,144 B total |
+| Game atlases (`src/game/assets/atlases/`) | 76,528 B (8 PNGs) |
+| Entry point | `package.json` `main` = `index.ts`, which exists |
+| `assets/game/raw/` | empty (no licensed packs installed) |
+
 ## Codex handoff notes
 
 ### Inconsistencies found
