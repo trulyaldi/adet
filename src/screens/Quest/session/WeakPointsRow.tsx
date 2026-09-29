@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { Glyph } from '../../../components/Glyph';
-import { useQuestMeta, useQuestWrites } from '../../../data/itemsRepo';
+import { useQuestStarted, useQuestWrites } from '../../../data/itemsRepo';
 import { openTasksFor, TASK_TITLE_MAX } from '../../../domain/items/ops';
 import { setActivePlan, useQuestLocal } from '../../../game/state/local';
 import { useData } from '../../../store/StreakStore';
@@ -18,7 +18,7 @@ const MAX = 3;
 export function WeakPointsRow({ habitId }: { habitId: string }) {
   const { colors, radius } = useTheme();
   const data = useData();
-  const meta = useQuestMeta();
+  const started = useQuestStarted();
   const tables = useQuestTables();
   const writes = useQuestWrites();
   const local = useQuestLocal();
@@ -34,7 +34,7 @@ export function WeakPointsRow({ habitId }: { habitId: string }) {
     setActivePlan({ habitId, createdAt: Date.now(), taskIds: tasks.slice(0, MAX).map((t) => t.id) });
   }, [open, plan, tasks, habitId]);
 
-  if (!meta || tables !== 'available') return null;
+  if (!started || tables !== 'available') return null;
 
   const toggle = (id: string) => {
     const on = picked.includes(id);

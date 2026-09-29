@@ -218,10 +218,12 @@ export function startQuest(q: QuestSlice, now: number): QuestSlice {
   return { ...q, items: [...q.items, meta] };
 }
 
-/** Edit quest_meta's props (starting the quest first if needed). */
-export function updateQuestMeta(q: QuestSlice, fn: (p: QuestMetaProps) => QuestMetaProps, now: number): QuestSlice {
-  const started = startQuest(q, now);
-  return replaceItem(started, QUEST_META_ID, (i) => {
+/**
+ * Edit quest_meta's props. Nothing happens before the journey starts: only
+ * onboarding may write `startedAt`, since it decides which sessions have chests.
+ */
+export function updateQuestMeta(q: QuestSlice, fn: (p: QuestMetaProps) => QuestMetaProps, _now: number): QuestSlice {
+  return replaceItem(q, QUEST_META_ID, (i) => {
     if (i.type !== 'quest_meta') return i;
     const props = fn(i.props);
     return props === i.props ? i : { ...i, props };

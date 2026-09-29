@@ -6,7 +6,7 @@
 
 import { useCallback } from 'react';
 
-import { useQuestMeta, useQuestWrites } from '../../data/itemsRepo';
+import { useQuestStarted, useQuestWrites } from '../../data/itemsRepo';
 import { MIN_SESSION_MIN } from '../../domain/game/balance';
 import type { Session } from '../../domain/types';
 import { questTablesReady } from '../../sync/questTables';
@@ -15,9 +15,8 @@ import { getQuestLocal, planForSession, setActivePlan } from './local';
 import { openLoot } from './loot';
 
 export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?: boolean }) => void {
-  const meta = useQuestMeta();
+  const started = useQuestStarted();
   const writes = useQuestWrites();
-  const started = !!meta;
   return useCallback(
     (saved, opts) => {
       const plan = getQuestLocal().plan;

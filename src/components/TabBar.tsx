@@ -10,7 +10,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
 import { Glyph, GlyphName } from './Glyph';
 import { usePressMotion } from './motion/Press';
-import { QuestBadge, useFreshChest } from './QuestBadge';
+import { QuestBadge, useFreshChest, useQuestInvite } from './QuestBadge';
 
 const TAB_FADE = { duration: 180, easing: Easing.out(Easing.quad) };
 
@@ -58,7 +58,9 @@ export function TabBar({ active, onChange }: { active: Screen; onChange(s: Scree
  */
 function QuestTabItem({ on, onPress }: { on: boolean; onPress(): void }) {
   const fresh = useFreshChest();
-  return <Tab label={fresh ? 'Quest, a chest is waiting' : 'Quest'} glyph="quest" on={on} onPress={onPress} badge={fresh ? <QuestBadge /> : null} />;
+  const invite = useQuestInvite();
+  const label = fresh ? 'Quest, a chest is waiting' : invite ? 'Quest, a journey awaits' : 'Quest';
+  return <Tab label={label} glyph="quest" on={on} onPress={onPress} badge={fresh || invite ? <QuestBadge /> : null} />;
 }
 
 function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: GlyphName; on: boolean; onPress(): void; badge?: React.ReactNode }) {

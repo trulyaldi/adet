@@ -82,8 +82,10 @@ test('quest meta is created once and edited in place', () => {
   const edited = ops.updateQuestMeta(started, (p) => ({ ...p, companion: 'pet.fox' }), NOW);
   assert.equal(ops.questMetaOf(edited.items)?.props.companion, 'pet.fox');
   assert.equal(ops.updateQuestMeta(edited, (p) => p, NOW), edited);
-  // Editing before the quest started starts it.
-  assert.ok(ops.questMetaOf(ops.updateQuestMeta(empty, (p) => p, NOW).items));
+  // Editing before the quest started changes nothing (only onboarding starts it).
+  assert.equal(ops.updateQuestMeta(empty, (p) => ({ ...p, companion: 'pet.fox' }), NOW), empty);
+  // Starting again keeps the original start.
+  assert.equal(ops.startQuest(edited, NOW + 1000), edited);
 });
 
 test('purchases and logs', () => {

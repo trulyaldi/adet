@@ -5,9 +5,9 @@
 import React from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
-import { useQuestMeta } from '../../../data/itemsRepo';
+import { useQuestStarted } from '../../../data/itemsRepo';
 import { SkiaGate } from '../../../game/render/SkiaGate';
-import { useQuestReduced } from '../../../game/state/settings';
+import { useQuestReduced, useQuestSettings } from '../../../game/state/settings';
 import { useQuestTables } from '../../../sync/questTables';
 import { useAppActive } from '../../../theme/useMotion';
 import { STRIP_H } from './stripSize';
@@ -22,12 +22,13 @@ export function QuestFocusRow({ habitId, top }: { habitId: string; top: number }
 }
 
 export function QuestFocusStrip({ bottom, left, paused, dimmed }: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
-  const meta = useQuestMeta();
+  const started = useQuestStarted();
+  const { battleStrip } = useQuestSettings();
   const tables = useQuestTables();
   const reduced = useQuestReduced();
   const active = useAppActive();
   const { width } = useWindowDimensions();
-  if (!meta || tables !== 'available' || !meta.props.settings.battleStrip) return null;
+  if (!started || tables !== 'available' || !battleStrip) return null;
   const w = width - left - 16;
   return (
     <View style={{ position: 'absolute', left, bottom, width: w, height: STRIP_H }}>

@@ -35,6 +35,14 @@ export function useQuestMeta(): ItemOf<'quest_meta'> | null {
   return useMemo(() => ops.questMetaOf(items), [items]);
 }
 
+/**
+ * The journey has started (onboarding done). Before that, sessions end
+ * exactly as they did before Quest Mode: no loot, strip or weak points.
+ */
+export function useQuestStarted(): boolean {
+  return useQuestMeta() !== null;
+}
+
 export interface QuestWrites {
   addTask(habitId: string, title: string): void;
   renameTask(id: string, title: string): void;

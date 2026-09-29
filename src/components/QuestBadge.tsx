@@ -1,8 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
 
+import { useQuestStarted } from '../data/itemsRepo';
 import { gameStateOf, hasFreshChest } from '../domain/game/fromData';
 import { useData, useStoreNow } from '../store/StreakStore';
+import { useQuestTables } from '../sync/questTables';
 import { useTheme } from '../theme/ThemeProvider';
 
 export function useFreshChest(): boolean {
@@ -11,7 +13,16 @@ export function useFreshChest(): boolean {
   return hasFreshChest(gameStateOf(data), now);
 }
 
-/** The dot on the Quest tab while a chest from the last day waits. Older chests just sit at camp. */
+/** Quest Mode is set up but the journey hasn't begun: a gentle invitation. */
+export function useQuestInvite(): boolean {
+  const started = useQuestStarted();
+  return useQuestTables() === 'available' && !started;
+}
+
+/**
+ * The dot on the Quest tab while a chest from the last day waits (older chests
+ * just sit at camp), or until the journey begins.
+ */
 export function QuestBadge() {
   const { colors } = useTheme();
   return (
