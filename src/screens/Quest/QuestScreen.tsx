@@ -33,6 +33,7 @@ import { campLayout, hitTest, planReveal, spotFor, Target, targetAt } from './mo
 import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
+import { useActions } from '../../store/StreakStore';
 import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
 
@@ -50,6 +51,9 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
   const [replayIntro, setReplayIntro] = useState(false);
+  // Android back during onboarding: step out of the Quest tab (nothing is written).
+  const actions = useActions();
+  const leaveQuest = useCallback(() => actions.setScreen('today'), [actions]);
   const bossTaps = useRef(0);
   // Ceremonies wait while a sheet, a panel or the intro replay is up.
   const busy = !!sheet || !!panel || replayIntro;
@@ -299,7 +303,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         </View>
       )}
       {!m.meta && local.loaded && (
-        <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
+        <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={leaveQuest}>
           <Onboarding
             game={m.game}
             look={m.look}

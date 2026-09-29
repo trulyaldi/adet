@@ -72,7 +72,7 @@ export function Onboarding({ game, look, sageName, onBegin, reduced, replay = fa
   return (
     <CeremonyStage
       background={PALETTES.forest.layers[2]}
-      onTap={panel === 0 ? next : () => {}}
+      onTap={panel === 0 ? next : undefined}
       label={panel === 0 ? 'You wake by a campfire in the Whispering Forest' : panel === 2 ? game.rank.title : sageName}
       scene={
         <>

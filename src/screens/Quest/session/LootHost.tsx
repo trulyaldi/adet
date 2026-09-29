@@ -3,7 +3,7 @@
 // opened or "Later", asks the ceremony host to evaluate.
 
 import React, { useCallback } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ceremonyHost } from '../../../game/ceremonies/host';
@@ -26,7 +26,6 @@ export function LootHost() {
   return (
     <Modal visible={!!req} transparent animationType={reduced ? 'fade' : 'slide'} onRequestClose={close} statusBarTranslucent>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,20,0.55)' }]} />
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => {}} accessible={false} />
       <View style={{ marginTop: 'auto', paddingHorizontal: 12, paddingBottom: Math.max(insets.bottom, 12) + 8 }}>
         {req && <SkiaGate key={req.sessionId} load={loadLootSheet} props={{ sessionId: req.sessionId, fresh: req.fresh, onClose: close }} />}
       </View>

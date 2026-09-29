@@ -17,7 +17,7 @@ export const volcano: BiomeDef = {
   lore: [
     'The Drake feeds on nights without sleep.',
     'Steady days hit harder than scorched ones.',
-    'A rest day is not lost. It is armour.',
+    'A rest day is armour, too.',
     'Grinding only makes the Drake stronger.',
     'One to four hours: the sweet spot.',
     'Cool water, warm fire, gentle pace.',

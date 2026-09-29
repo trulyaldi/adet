@@ -22,7 +22,8 @@ export function CeremonyStage({
   children,
 }: {
   background: string;
-  onTap(): void;
+  /** Tap anywhere to skip or continue; without it the scene waits for its own button. */
+  onTap?(): void;
   /** What VoiceOver reads (the scene itself is pictures). */
   label: string;
   /** Skia children in world coordinates. */
@@ -38,7 +39,11 @@ export function CeremonyStage({
         <Group transform={[{ scale }]}>{scene}</Group>
       </Canvas>
       {/* Tap anywhere (a sibling under the content: buttons never nest). */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={onTap} accessibilityRole="button" accessibilityLabel={label} accessibilityHint="Tap to continue" />
+      {onTap ? (
+        <Pressable style={StyleSheet.absoluteFill} onPress={onTap} accessibilityRole="button" accessibilityLabel={label} accessibilityHint="Tap to continue" />
+      ) : (
+        <View style={StyleSheet.absoluteFill} accessible accessibilityLabel={label} />
+      )}
       <View style={[StyleSheet.absoluteFill, PE.boxNone]}>{children}</View>
     </View>
   );
