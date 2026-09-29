@@ -2,7 +2,7 @@
 // whenever the worker cannot answer safely.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { fallbackInsight, fallbackRecap, fallbackSuggestions, SageAdvice } from '../domain/game/sageFallback';
 import { activeHabits } from '../domain/projects';
@@ -40,9 +40,16 @@ export function enableSage(settings: QuestSettings, save: (next: QuestSettings) 
     save({ ...settings, ai: true });
     return Promise.resolve(true);
   }
+  const enable = () => save({ ...settings, ai: true, aiNoticeSeen: true });
+  // react-native-web's Alert shows nothing, so the web build asks the browser.
+  if (Platform.OS === 'web') {
+    const ok = typeof window !== 'undefined' && window.confirm('Chronicle entries are sent to generate suggestions.');
+    if (ok) enable();
+    return Promise.resolve(ok);
+  }
   return new Promise((resolve) => Alert.alert('Aqyl the Sage', 'Chronicle entries are sent to generate suggestions.', [
     { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-    { text: 'Enable', onPress: () => { save({ ...settings, ai: true, aiNoticeSeen: true }); resolve(true); } },
+    { text: 'Enable', onPress: () => { enable(); resolve(true); } },
   ], { cancelable: true, onDismiss: () => resolve(false) }));
 }
 
