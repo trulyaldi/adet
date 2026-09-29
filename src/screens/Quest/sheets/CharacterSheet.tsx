@@ -173,7 +173,6 @@ export function CharacterSheet({ model, onClose, reduced }: { model: QuestModel;
         columns={trophyCell * BIOME_IDS.length <= width - 64 ? BIOME_IDS.length : 4}
         cell={trophyCell}
         scale={2}
-        onPress={() => {}}
       />
     </QuestSheet>
   );
