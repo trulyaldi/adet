@@ -38,6 +38,8 @@ are signed in.
 - [ ] Pixels are crisp: no blur or smearing on sprites or pixel text.
 - [ ] No clipped text in panels or buttons. Try a long habit name on the Quest Board.
 - [ ] Nothing sits under the notch, the Dynamic Island or the home indicator.
+- [ ] Aqyl's hint on a new map reads "…strike your **first** foe", not "Arst" (a broken
+      ligature in the font, turned off; checked on web only).
 - [ ] **Readability of the pixel font:** credits, XP and level numbers. In Pixelify Sans a
       "5" can look like an "S", and a bold "C" like an "O" (the welcome "50" may read
       "S0"). Note whether that bothers you: swapping the font is a design choice.

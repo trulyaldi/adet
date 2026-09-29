@@ -342,6 +342,75 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
     syncing so nothing is lost, and freezes bought from the Merchant keep counting in the streak: removing them
     would retroactively break a streak.
 
+41. **PR #21 was already merged.** This pass was committed on `feat/quest` (as D2
+    asked) from a worktree branch, `quest-polish`, pushed to `origin/feat/quest`,
+    and goes to `main` as a new PR; the merged #21 is left as it was.
+42. **The Sage is an Edge Function (D1).** JWT verification uses Supabase Auth
+    (`auth.getUser`), which works for HS256 and asymmetric projects alike. The
+    daily limit is a server-only table with an atomic `sage_take_call()` that
+    only the service role may call (migration 007). CLAUDE.md's "no server code
+    beyond SQL migrations" still literally conflicts with any Edge Function: this
+    is flagged for the owner, and CLAUDE.md is not edited.
+43. **"Zero generated placeholders" is read as "zero unlisted stand-ins".**
+    322 ids still ship Adet's original stand-in art, because removing them would
+    leave the game with invisible bosses and NPCs. Each is on
+    `assets/game/needs-art.json` with its reason, the build refuses any other
+    stand-in, and nothing the app bundles imports the generator. It is not "all
+    art is real", and the PR says so.
+44. **Consistency over coverage.** A category is replaced only when it can be
+    covered consistently across all 7 biomes. Ground and path (Tiny Town grass
+    and dirt, tone-remapped per biome) and the chest pass. Tiny Dungeon's floor
+    tiles showed a grid and were dropped. Icons stay stand-ins as a whole set
+    (half would mix styles in one row). Trees and decor stay because of
+    proportion (16 px trees beside 26 px people).
+45. **One P9 commit, not one per biome.** The ground mapping is one rule applied
+    to all seven biomes, reviewed together in one before/after sheet; splitting
+    it would have needed throwaway intermediate allowlist reasons.
+46. **Sounds chosen by measurement, not by ear.** Duration, spectral centroid
+    (soft rather than shrill), and melodic contour (rising reads as success).
+    Loudness is evened to a −22 dBFS mean with peaks capped at −4, a little
+    under the app's own sounds. The device checklist asks the owner to listen.
+47. **The pixel font's legibility is left to the owner.** In Pixelify Sans a "5"
+    can read as "S" and a bold "C" as "O". Swapping fonts is a design decision.
+    Its broken "fi" ligature (which drew "first" as "Arst") was a bug and is off
+    everywhere.
+48. **A scene hidden by a session waits its turn.** A ceremony interrupted by a
+    session starting is hidden, not dropped (a lint-pass change). It comes back
+    only when no session, Loot sheet or other sheet is up (`ceremonyVisible`).
+49. **Lint scope.** Expo's rules are errors in Quest code and warnings
+    elsewhere, so no unrelated file changed. One inline disable remains, in the
+    ceremony host's transition into "playing" (it records a mark exactly once).
+50. **Quest works on web.** Checked in headless Chromium: CanvasKit loads when the
+    Quest tab first opens. A test keeps Skia out of native and web start-up.
+
+## Polish pass results
+
+| Check (clean worktree) | Result |
+|---|---|
+| Typecheck (app; Sage function via `deno check`) | pass; pass |
+| Lint | 0 errors (Quest code error-level; 84 warnings elsewhere, unchanged files) |
+| Tests | 444 pass, 0 fail (the SQL kit on PGlite included) |
+| `npm run check:size` | within every budget (JS 5,125,322 B, +10 KB; images 66 KB; audio 53 KB) |
+| Exports | iOS and web, Quest on and off; `npx expo start` serves the iOS bundle (HTTP 200) |
+| Fresh clone → fetch → assets → audio → report | byte-identical to the committed outputs |
+| Release bundle | no Playground/QA strings; no `ANTHROPIC`, `sk-ant` or `service_role` |
+
+### Remaining issues
+
+- **Art:** 322 stand-ins wait for a pack with 64 px bosses, animated mobs, the owl,
+  fox and tortoise, critters and layered characters. Ninja Adventure is the
+  likely one and needs a browser download (`docs/quest/OWNER_ACTIONS.md`).
+- **Music:** none. No CC0 loop pack is downloadable without a browser.
+- **Plainer ground:** the astral citadel's ground and the iron kingdom's path are
+  plainer than their stand-ins. The device art review decides.
+- **Font legibility** (47): owner's call.
+- **PR #22 and this PR** both change `package.json` and `package-lock.json`.
+  Merge #22 first, then regenerate this branch's lockfile (`npm install`), or the
+  reverse.
+- **Not verified here:** anything on a physical iPhone; how the sounds sound; the
+  Edge Function with a real JWT and the Anthropic API; iOS ligature rendering (the
+  fix is verified on web).
+
 ## Risks
 
 - **Skia Atlas performance / memory on older iPhones.** Mitigations: only visible biomes and their neighbours are mounted;
