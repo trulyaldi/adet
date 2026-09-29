@@ -147,14 +147,12 @@ generated placeholder art. The fonts (Pixelify Sans, Silkscreen) are SIL OFL
 1.1. The one Quest sound (`ui_tap`) is the app's own generated tap
 (`scripts/generate-sounds.js`). The in-app Credits entry is at the Scribe.
 
-## The Sage worker
+## The Sage (Edge Function)
 
 Optional. Aqyl works fully offline on local rules
 (`src/domain/game/sageFallback.ts`). AI is opt-in (off by default) and asks once
-with a one-line privacy note. `worker/` is a Cloudflare Worker, not deployed
-by this branch. Setup, secrets and deploy steps are in `worker/README.md`.
-The app only needs `EXPO_PUBLIC_SAGE_URL`. The Anthropic key lives only in the
-worker's secrets, never in an `EXPO_PUBLIC_*` variable.
-
-The worker is the one piece outside Supabase (CLAUDE.md says Supabase is the
-only backend); it is isolated in `worker/` so it can be dropped in one step.
+with a one-line privacy note. The proxy is a Supabase Edge Function,
+`supabase/functions/sage`, not deployed by this repo; setup, secrets and deploy
+steps are in its README. It needs migration 007 for its daily limit. The app
+only needs `EXPO_PUBLIC_SAGE_URL` (the functions base URL). The Anthropic key
+lives only in the function's secrets, never in an `EXPO_PUBLIC_*` variable.

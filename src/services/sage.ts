@@ -1,5 +1,5 @@
 // Aqyl's opt-in AI answers. A local answer is shown immediately and kept
-// whenever the worker cannot answer safely.
+// whenever the Sage endpoint cannot answer safely.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform } from 'react-native';

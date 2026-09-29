@@ -62,7 +62,7 @@ supabase/functions/sage/index.ts` typechecks it (`npx deno` works).
 
 `npm test` covers the pure contract (`_shared/sageContract.test.ts`: routes,
 fences, limits, unknown habits, the data delimiter) and the client
-(`src/services/sageClient.test.ts`: malformed output, worker failure,
+(`src/services/sageClient.test.ts`: malformed output, endpoint errors,
 unreachable endpoint, cache). The handler itself has no automated test here.
 It was smoke-tested locally under Deno for CORS preflight, the origin check,
 unknown routes and missing or invalid tokens.

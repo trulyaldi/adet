@@ -36,7 +36,7 @@ test('a same-day cache hit avoids another request', async () => {
   assert.equal(calls(), 1);
 });
 
-test('worker failure keeps the local recap', async () => {
+test('an endpoint error keeps the local recap', async () => {
   const client = createSageClient({
     url: 'https://example.test', token: async () => 'jwt',
     storage: { getItem: async () => null, setItem: async () => {} },
