@@ -151,7 +151,7 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
                                           │
         user actions (itemsRepo) ◀────────┤ Quest tab / Loot sheet / battle strip / tab badge
         tasks, logs, chest_claims,        │
-        purchases, quest_meta             └─▶ QuestWatcher (after sync settles):
+        purchases, quest_meta             └─▶ QuestWatcher (deterministic ids):
                                                 writes achievement(boss_defeated) append-only
 ```
 
@@ -186,11 +186,11 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
 | Q6 tab + map | `src/screens/Quest/QuestScreen.tsx`, `JourneyMap.tsx`, `Hud.tsx`, `Camp.tsx`, `reveal.ts` | `TabBar.tsx` (4th tab + badge), `glyphs.ts` (controller), `StreakStore.tsx` (`Screen` += `'quest'`), `App.tsx` (screen switch) |
 | Q7 NPCs | `src/screens/Quest/sheets/{Sage,QuestBoard,Merchant,Scribe}Sheet.tsx`, `src/game/content/shop.ts` | `streaks.ts` (+ optional extra freezes), `selectors.ts` (pass them) |
 | Q8 loop | `src/screens/Quest/session/{WeakPointsRow,BattleStrip,LootSheet}.tsx`, `src/game/state/activePlan.ts` | `FocusView.tsx` (mount row + strip), `StreakStore.tsx` (`stopTimer` returns the session; `anyModalOpen`), `useStopTimer.ts` |
-| Q9 ceremonies | `src/screens/Quest/ceremonies/*`, `src/game/state/played.ts` | — |
+| Q9 ceremonies | `src/domain/game/ceremonies.ts`, `src/game/ceremonies/{host.tsx,marks.ts,gate.ts}`, `src/screens/Quest/ceremonies/*` | `App.tsx` (root host), `CelebrationHost.tsx` (waits for ceremonies) |
 | Q10 character | `src/screens/Quest/sheets/CharacterSheet.tsx`, `src/game/render/Avatar.tsx` | — |
 | Q11 Sage | `worker/*`, `src/services/sage.ts`, `src/domain/game/sageFallback.ts` + tests | `.env.example` |
 | Q12 A/V/settings | `src/game/audio.ts`, `src/game/haptics.ts`, settings UI in Scribe | — |
-| Q13 polish | `docs/quest/README.md`, PR | — |
+| Q13 polish | `docs/quest/README.md`, `src/game/enabled.ts`, edge tests, PR | `App.tsx`, `TabBar.tsx` (kill switch) |
 
 ---
 
@@ -242,8 +242,8 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
     days). Days over 240 effective minutes also lose the ×1.3 day bonus.
 24. **Only qualifying sessions (10+ min) fill the day's 100% / 50% bands**, in start order. A session counts on the day
     it started.
-25. **Ceremonies are primed**, like `badgesPrimed`. A device that first sees a started journey records everything
-    reached so far as played. Level-ups count from the last level shown, so history never replays.
+25. **Ceremonies are primed** (superseded by the revised Q9: see 34, 35 and 37). A device that first sees a
+    started journey seeds high-water marks from the current state and plays nothing.
 26. **The derived game is memoised on data only.** Chest freshness, the only clock-dependent part, is a separate
     selector, so a ticking store never re-derives.
 27. **Welcome credits (A1).** `WELCOME_CREDITS = 50` is part of the balance once `startedAt` is set (`credits.welcome`),
@@ -295,6 +295,10 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
 39. **The spec lives in the repo now.** `QUEST_PROMPT.md` and
     `QUEST_PROMPT_PART2.md` were never committed; their text was recovered
     from the Codex session into `docs/quest/spec/`.
+
+40. **The kill switch hides, it doesn't erase.** With `EXPO_PUBLIC_QUEST_ENABLED=false`, items and links keep
+    syncing so nothing is lost, and freezes bought from the Merchant keep counting in the streak: removing them
+    would retroactively break a streak.
 
 ## Risks
 
