@@ -1,49 +1,34 @@
-// Level up: a short burst, "LV N" in the pixel font, the XP bar refilling.
-
+// A short, non-blocking level moment near the top edge.
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { GameState } from '../../../domain/game/derive';
 import { feedback } from '../../../game/feedback';
-import { useGameClock } from '../../../game/render/clock';
-import { Particles } from '../../../game/render/Particles';
+import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
-import { CeremonyStage, useCeremonySize } from './Stage';
-import { PE } from '../../../game/ui/pointer';
 
 export function LevelUp({ level, game, onDone, reduced }: { level: number; game: GameState; onDone(): void; reduced: boolean }) {
-  const { worldW, worldH, width } = useCeremonySize();
-  const clock = useGameClock(!reduced);
-  const burst = useSharedValue(-1e9);
+  const insets = useSafeAreaInsets();
   const fill = useSharedValue(0);
+  const progress = game.xp.xpForNextLevel ? game.xp.xpIntoLevel / game.xp.xpForNextLevel : 0;
   useEffect(() => {
     feedback.sfx('level_up', 'ceremony');
-    feedback.haptic('success', 'ceremony');
-    burst.value = clock.value;
-    const f = game.xp.xpForNextLevel ? game.xp.xpIntoLevel / game.xp.xpForNextLevel : 0;
-    fill.value = reduced ? f : withTiming(f, { duration: 900 });
-    const t = setTimeout(onDone, reduced ? 2400 : 2200);
-    return () => clearTimeout(t);
-  }, [burst, clock, fill, game, onDone, reduced]);
-  const barW = Math.min(260, width - 80);
-  const barStyle = useAnimatedStyle(() => ({ width: Math.round(fill.value * barW) }));
+    fill.value = reduced ? progress : withTiming(progress, { duration: 900 });
+    const timer = setTimeout(onDone, 1500);
+    return () => clearTimeout(timer);
+  }, [level, onDone, reduced, progress, fill]);
+  const bar = useAnimatedStyle(() => ({ width: Math.round(fill.value * 150) }));
   return (
-    <CeremonyStage
-      background={QUI.night}
-      onTap={onDone}
-      label={`Level ${level}`}
-      scene={!reduced && <Particles kind="sparkle" x={worldW / 2 - 30} y={worldH / 2 - 50} w={60} h={60} count={40} clock={clock} startAt={burst} />}
-    >
-      <View style={[PE.boxNone, { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }]}>
-        <PixelText size="hero" bold color={QUI.goldLight}>
-          LV {level}
-        </PixelText>
-        <View style={{ width: barW, height: 10, backgroundColor: QUI.ink, padding: 2 }}>
-          <Animated.View style={[{ height: '100%', backgroundColor: QUI.xp }, barStyle]} />
+    <View pointerEvents="none" style={{ position: 'absolute', top: Math.max(insets.top, 8) + 8, left: 24, right: 24, alignItems: 'center' }}>
+      <PixelPanel tone="gold" padding={2} style={{ alignItems: 'center', gap: 6 }}>
+        <PixelText size="lg" bold accessibilityLiveRegion="polite" accessibilityLabel={`Level ${level}`}>LV {level}</PixelText>
+        <View style={{ width: 154, height: 8, padding: 2, backgroundColor: QUI.ink }}>
+          <Animated.View style={[{ height: 4, backgroundColor: QUI.xp }, bar]} />
         </View>
-      </View>
-    </CeremonyStage>
+      </PixelPanel>
+    </View>
   );
 }

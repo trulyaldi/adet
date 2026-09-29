@@ -16,7 +16,7 @@ is present; physical-device acceptance is part of Q13.
 | Q6 | done | Quest tab, map reveal, HUD, badge and map model tests exist. |
 | Q7 | done | Board, Merchant, Scribe and rule-based Sage sheets exist. |
 | Q8 | done | Weak points, battle strip and Loot sheet are wired into the session flow. |
-| Q9 | partial | Map-only `CeremonyHost` exists; revised pure detection, root host and Ascension are absent. |
+| Q9 | done | Pure high-water detection, per-user marks, root host, Ascension and tests replace map-only playback. |
 | Q10 | done | Layered Avatar, gear eligibility, sheet and tests pass; 3×/4× previews were inspected without clipping. |
 | Q11 | done | Worker, authenticated opt-in client, local fallback, cache and validation tests pass typecheck. |
 | Q12 | done | Context gate mutes running/paused timers; local Scribe controls, replay, tests and licensed-file no-ops exist. |
@@ -25,7 +25,7 @@ is present; physical-device acceptance is part of Q13.
 | A1 | done | Welcome credits and journey-only chests/credits have tests. |
 | A2 | done | Only boss defeats are written; legacy achievement kinds are deprecated. |
 | A3 | done | `useQuestStarted()` gates Loot, strip and weak points; badge invites onboarding. |
-| A4 | partial | Loot calls `ceremonyHost.evaluate()`, but no component registers an evaluator. |
+| A4 | done | The root host registers the evaluator called after Loot closes. |
 
 ### Inconsistencies found
 
@@ -233,6 +233,14 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
     local `DevicePrefs`; motion uses its existing local system/on/off control.
     Legacy synced Quest audio and motion fields remain parseable but no longer
     drive feedback. Synced settings retain battle strip, AI and NPC names.
+34. **Boss ceremonies wait for the achievement item.** The pure game state
+    exposes recorded boss refs separately from derived defeats. The watcher
+    writes deterministic boss achievements locally even while offline; sync
+    merges their IDs later. Ceremony marks seed silently after the initial
+    sync settles, and new boss events play after the achievement is recorded.
+35. **Old ceremony marks are ignored.** The previous map-only local `played`
+    list could miss an event on a second device. The new per-user key
+    `adet.quest.ceremonyMarks.v1` seeds current history on first load instead.
 
 ## Risks
 

@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { BIOME_IDS, parseBiomeRef } from '../../../domain/game/biomes';
+import { BOSS_CREDITS, BOSS_XP } from '../../../domain/game/balance';
 import type { GameState } from '../../../domain/game/derive';
 import { sprite } from '../../../game/assets/manifest';
 import { bossRun } from '../../../game/ceremonies';
@@ -19,6 +20,7 @@ import { Camera } from '../../../game/render/PixelStage';
 import { AnimatedSprite } from '../../../game/render/Sprite';
 import { SpriteBatch } from '../../../game/render/SpriteBatch';
 import { DialogBox } from '../../../game/ui/DialogBox';
+import { CountUp } from '../../../game/ui/CountUp';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
 import { useSageRecap } from '../../../services/sage';
@@ -105,10 +107,16 @@ export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: 
     >
       <View style={[PE.boxNone, { flex: 1, justifyContent: 'flex-end', padding: 16, paddingBottom: 48, gap: 12 }]}>
         {step === 'report' && (
-          <DialogBox name={npcName('sage', settings)} portrait="npc.sage" lines={splitSentences(recap)} onDone={() => {
-            feedback.sfx('gate_open', 'ceremony');
-            setStep('gate');
-          }} reduced={reduced} />
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+              <CountUp from={0} to={BOSS_XP} prefix="+" color={QUI.goldLight} reduced={reduced} accessibilityLabel={`${BOSS_XP} boss XP`} />
+              <CountUp from={0} to={BOSS_CREDITS} prefix="+" color={QUI.goldLight} reduced={reduced} accessibilityLabel={`${BOSS_CREDITS} credits`} />
+            </View>
+            <DialogBox name={npcName('sage', settings)} portrait="npc.sage" lines={splitSentences(recap)} onDone={() => {
+              if (b === 'astral') onDone();
+              else { feedback.sfx('gate_open', 'ceremony'); setStep('gate'); }
+            }} reduced={reduced} />
+          </>
         )}
         {step === 'gate' && (
           <View style={{ alignItems: 'center', gap: 6 }}>

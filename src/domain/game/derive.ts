@@ -147,6 +147,8 @@ export interface GameState {
   sessions: SessionResult[];
   /** Milestones reached but not stored yet (the watcher appends them). */
   newAchievements: AchievementProps[];
+  /** Boss-defeat achievements already recorded in items, for ceremonies. */
+  bossAchievements: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -449,5 +451,6 @@ export function deriveGameState(input: DeriveInput): GameState {
     chests: { unopened, hasFreshChest: unopened.some((c) => c.fresh) },
     sessions: results,
     newAchievements,
+    bossAchievements: [...new Set(storedBosses.map((d) => biomeRef(d.biome, d.loop)))],
   };
 }

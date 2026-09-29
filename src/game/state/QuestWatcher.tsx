@@ -1,19 +1,17 @@
 // Quest bookkeeping that runs whatever tab is open: loads this account's
-// device-local quest state, and records newly reached milestones
-// (append-only achievements) once sync has settled, so a device that hasn't
-// pulled yet never re-records what another already did.
+// device-local map state and writes deterministic boss achievements. Their
+// IDs merge harmlessly across devices, including after an offline session.
 
 import { useEffect } from 'react';
 
 import { useQuestWrites } from '../../data/itemsRepo';
 import { gameStateOf } from '../../domain/game/fromData';
-import { useData, useStoreNow, useSyncStatus } from '../../store/StreakStore';
+import { useData, useStoreNow } from '../../store/StreakStore';
 import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
 import { useQuestFonts } from '../assets/fonts';
-import { primeIds } from '../ceremonies';
 import { feedback } from '../feedback';
-import { primeLocal, useQuestLocal, useQuestLocalFor } from './local';
+import { useQuestLocalFor } from './local';
 
 export function QuestWatcher() {
   // The pixel fonts, app-wide (a Loot sheet can open before the Quest tab ever has).
@@ -22,24 +20,16 @@ export function QuestWatcher() {
   useQuestLocalFor(session?.user.id ?? 'anon');
   const data = useData();
   const now = useStoreNow();
-  const { settled } = useSyncStatus();
   const tables = useQuestTables();
   const writes = useQuestWrites();
   const game = gameStateOf(data);
   const pending = game.newAchievements;
   const started = game.journey.started;
   useEffect(() => {
-    if (!settled || tables !== 'available' || !started || !pending.length) return;
+    if (tables !== 'available' || !started || !pending.length) return;
     writes.addAchievements(pending);
-  }, [settled, tables, started, pending, writes]);
+  }, [tables, started, pending, writes]);
 
-  // A device seeing an already-started journey for the first time (a second
-  // device, a reinstall) records the history as played: no replayed cutscenes.
-  const local = useQuestLocal();
-  useEffect(() => {
-    if (!local.loaded || local.primed || !started || !settled) return;
-    primeLocal(primeIds(game), game.xp.level);
-  }, [local.loaded, local.primed, started, settled, game]);
   // Quest sounds stay off while a timer runs; toggles apply at once.
   const running = !!data.active;
   useEffect(() => {

@@ -8,6 +8,7 @@ import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'rea
 import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { NODE_MOBS } from '../../domain/game/balance';
+import { seedCeremonyMarks } from '../../domain/game/ceremonies';
 import { nodeAt } from '../../domain/game/derive';
 import { npcName, npcTitle } from '../../game/content/npcs';
 import { bossId, mobId, NpcId, ROSTER } from '../../game/content/roster';
@@ -21,11 +22,10 @@ import { PixelButton } from '../../game/ui/PixelButton';
 import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { QUI } from '../../game/ui/theme';
-import { primeIds } from '../../game/ceremonies';
+import { ceremonyHost } from '../../game/ceremonies/host';
+import { saveCeremonyMarks } from '../../game/ceremonies/marks';
 import { preloadQuestSounds } from '../../game/audio';
 import { feedback } from '../../game/feedback';
-import { primeLocal } from '../../game/state/local';
-import { CeremonyHost } from './ceremonies';
 import { echoQuote } from './ceremonies/BossIntro';
 import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
@@ -36,12 +36,14 @@ import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
 import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
+import { useAuth } from '../../sync/AuthProvider';
 
 const POPS = 12;
 
 export default function QuestScreen({ onPlayground }: { onPlayground?(): void }) {
   useQuestFonts();
   const m = useQuestModel();
+  const { session } = useAuth();
   const reduced = useQuestReduced();
   const running = useWorldRunning();
   const clock = useGameClock(running);
@@ -112,6 +114,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       avatarY.value = m.at.y;
       avatarMode.value = 0;
       updateQuestLocal((s) => ({ ...s, seen: cur }));
+      ceremonyHost.evaluate();
     };
     const plan = seen ? planReveal(m.maps, seen.global, cur.global) : null;
     if (!seen || !plan || reduced) {
@@ -308,8 +311,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
             sageName={npcName('sage')}
             reduced={reduced}
             onBegin={() => {
-              // Everything reached before the journey is recorded quietly (no replays).
-              primeLocal(primeIds(m.game), m.game.xp.level);
+              if (session) saveCeremonyMarks(session.user.id, seedCeremonyMarks(m.game));
               writes.startQuest();
             }}
           />
@@ -320,7 +322,6 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           <Onboarding game={m.game} look={m.look} sageName={npcName('sage', m.meta.props.settings)} reduced={reduced} replay onBegin={() => setReplayIntro(false)} />
         </Modal>
       )}
-      {m.meta && <CeremonyHost game={m.game} blocked={!!sheet || !!panel || replayIntro} reduced={reduced} />}
       <QuestSheets sheet={sheet} onClose={() => setSheet(null)} onOpen={setSheet} onReplayIntro={() => {
         setSheet(null);
         setTimeout(() => setReplayIntro(true), MODAL_GAP_MS);

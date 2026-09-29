@@ -1,6 +1,6 @@
 // Quest state that stays on this device (never synced): the journey
-// position last shown (for the reveal), ceremonies already played, and the
-// weak points picked for the running timer. Kept per account.
+// position last shown (for the reveal) and the weak points picked for the
+// running timer. Kept per account. Ceremony marks have their own v1 key.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
@@ -20,17 +20,10 @@ export interface ActivePlan {
 export interface QuestLocal {
   /** Journey position when the map was last shown: node index and HP left. */
   seen: { global: number; hp: number } | null;
-  /** Ceremony event ids already played (level:12, rank:Knight, boss:forest:0…). */
-  played: string[];
   plan: ActivePlan | null;
-  /** The level the ceremonies last caught up to. */
-  shownLevel: number | null;
-  /** History up to the first view was recorded as played (no replays). */
-  primed: boolean;
 }
 
-const EMPTY: QuestLocal = { seen: null, played: [], plan: null, shownLevel: null, primed: false };
-const MAX_PLAYED = 400;
+const EMPTY: QuestLocal = { seen: null, plan: null };
 
 let user: string | null = null;
 let state: QuestLocal = EMPTY;
@@ -53,10 +46,7 @@ function parse(raw: string | null): QuestLocal {
         : null;
     return {
       seen,
-      played: Array.isArray(v.played) ? v.played.filter((p: unknown) => typeof p === 'string').slice(-MAX_PLAYED) : [],
       plan,
-      shownLevel: Number.isFinite(v.shownLevel) ? v.shownLevel : null,
-      primed: v.primed === true,
     };
   } catch {
     return EMPTY;
@@ -99,15 +89,6 @@ export function updateQuestLocal(fn: (s: QuestLocal) => QuestLocal): void {
   state = next;
   if (user) AsyncStorage.setItem(key(user), JSON.stringify(state)).catch(() => {});
   emit();
-}
-
-/** Record every event reached so far as played (first view on this device). */
-export function primeLocal(ids: string[], level: number): void {
-  updateQuestLocal((s) => (s.primed ? s : { ...s, primed: true, shownLevel: level, played: [...new Set([...s.played, ...ids])].slice(-MAX_PLAYED) }));
-}
-
-export function markPlayed(id: string): void {
-  updateQuestLocal((s) => (s.played.includes(id) ? s : { ...s, played: [...s.played, id].slice(-MAX_PLAYED) }));
 }
 
 const subscribe = (l: () => void) => {

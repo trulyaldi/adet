@@ -103,7 +103,7 @@ export function Onboarding({ game, look, sageName, onBegin, reduced, replay = fa
               {game.rank.title}
             </PixelText>
             <PixelText size="md" color={QUI.white} style={{ textAlign: 'center' }}>
-              {already ? `Your past focus already made you a ${game.rank.title}.` : 'Every journey starts with one step.'}
+              {already ? `Your past focus already made you a ${game.rank.title}.` : 'Every focused minute counts.'}
             </PixelText>
             <PixelButton label={replay ? 'Done' : 'Begin'} accessibilityLabel={replay ? 'Close Quest introduction' : 'Begin the journey'} onPress={onBegin} style={{ alignSelf: 'stretch' }} />
           </View>
