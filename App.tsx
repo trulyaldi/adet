@@ -27,6 +27,7 @@ import { QuestTab } from './src/screens/Quest/QuestTab';
 import { StreakProvider, useActions, useReady, useUi } from './src/store/StreakStore';
 import { Watchers } from './src/store/Watchers';
 import { QuestWatcher } from './src/game/state/QuestWatcher';
+import { QUEST_ENABLED } from './src/game/enabled';
 import { RootCeremonyHost } from './src/game/ceremonies/host';
 import { LootHost } from './src/screens/Quest/session/LootHost';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
@@ -68,7 +69,7 @@ const Root = memo(function Root() {
             {screen === 'today' && <TodayScreen />}
             {screen === 'projects' && <ProjectsScreen />}
             {screen === 'stats' && <StatsScreen />}
-            {screen === 'quest' && <QuestTab />}
+            {screen === 'quest' && QUEST_ENABLED && <QuestTab />}
           </ScreenIn>
         </ErrorBoundary>
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
@@ -84,9 +85,13 @@ const Root = memo(function Root() {
       <CelebrationHost />
       <WelcomeFlow />
       <Watchers />
-      <QuestWatcher />
-      <LootHost />
-      <RootCeremonyHost />
+      {QUEST_ENABLED && (
+        <>
+          <QuestWatcher />
+          <LootHost />
+          <RootCeremonyHost />
+        </>
+      )}
       <ConfettiHost />
       <BurstHost />
       <HabitSheet />

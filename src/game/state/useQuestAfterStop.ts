@@ -8,6 +8,7 @@ import { useCallback } from 'react';
 
 import { useQuestStarted, useQuestWrites } from '../../data/itemsRepo';
 import { MIN_SESSION_MIN } from '../../domain/game/balance';
+import { QUEST_ENABLED } from '../enabled';
 import type { Session } from '../../domain/types';
 import { questTablesReady } from '../../sync/questTables';
 import { MODAL_GAP_MS } from '../../theme/motion';
@@ -21,7 +22,7 @@ export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?
     (saved, opts) => {
       const plan = getQuestLocal().plan;
       setActivePlan(null);
-      if (!saved || !started || !questTablesReady()) return;
+      if (!QUEST_ENABLED || !saved || !started || !questTablesReady()) return;
       const ids = planForSession(plan, saved);
       if (ids.length) writes.planTasks(saved.id, ids);
       // Editing the times first: the chest waits at camp instead.

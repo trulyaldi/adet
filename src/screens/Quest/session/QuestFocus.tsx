@@ -6,6 +6,7 @@ import React from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
 import { useQuestStarted } from '../../../data/itemsRepo';
+import { QUEST_ENABLED } from '../../../game/enabled';
 import { SkiaGate } from '../../../game/render/SkiaGate';
 import { useQuestReduced, useQuestSettings } from '../../../game/state/settings';
 import { useQuestTables } from '../../../sync/questTables';
@@ -14,6 +15,7 @@ import { STRIP_H } from './stripSize';
 import { WeakPointsRow } from './WeakPointsRow';
 
 export function QuestFocusRow({ habitId, top }: { habitId: string; top: number }) {
+  if (!QUEST_ENABLED) return null;
   return (
     <View style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 6 }}>
       <WeakPointsRow habitId={habitId} />
@@ -21,7 +23,11 @@ export function QuestFocusRow({ habitId, top }: { habitId: string; top: number }
   );
 }
 
-export function QuestFocusStrip({ bottom, left, paused, dimmed }: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
+export function QuestFocusStrip(p: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
+  return QUEST_ENABLED ? <Strip {...p} /> : null;
+}
+
+function Strip({ bottom, left, paused, dimmed }: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
   const started = useQuestStarted();
   const { battleStrip } = useQuestSettings();
   const tables = useQuestTables();
