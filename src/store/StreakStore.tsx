@@ -36,6 +36,7 @@ import {
   sessionFromTimer,
   subMinuteSessions,
 } from '../domain/sessions';
+import type { QuestSlice } from '../domain/items/ops';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -47,13 +48,14 @@ import {
   SceneKind,
   Session,
 } from '../domain/types';
+import { isLootOpen } from '../game/state/loot';
 import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
-export type Screen = 'today' | 'projects' | 'stats';
+export type Screen = 'today' | 'projects' | 'stats' | 'quest';
 export type StatsView = 'overview' | 'history';
 
 
@@ -198,6 +200,7 @@ const INITIAL_UI: UIState = {
 /** Whether any sheet or the focus view is up (full-screen celebrations wait for them). */
 export function anyModalOpen(ui: UIState): boolean {
   return (
+    isLootOpen() ||
     ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix ||
     !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet
   );
@@ -227,8 +230,9 @@ export interface StreakActions {
   /**
    * Save the running timer as a session. `done` also marks the habit done for
    * today (the done button); `editAfter` then opens it in the edit sheet.
+   * Returns the saved session (null when it was too short to keep).
    */
-  stopTimer(opts?: { editAfter?: boolean; done?: boolean }): void;
+  stopTimer(opts?: { editAfter?: boolean; done?: boolean }): Session | null;
   /** Log `minutes` ending now (the +15 / +30 / +60 chips). */
   quickLog(habitId: string, minutes: number): void;
   /** Check-off habits: mark done for today, or clear the mark. */
@@ -319,6 +323,9 @@ export interface StreakActions {
   setBudgetMin(min: number): void;
   /** Most habits in a day's plan (1..5). */
   setPlanCap(cap: number): void;
+  // Quest Mode (src/data/itemsRepo.ts builds typed writes on this)
+  /** Edit items and links; return the same slice for no change. */
+  editQuest(fn: (q: QuestSlice) => QuestSlice): void;
 }
 
 /**
@@ -379,6 +386,8 @@ function emptyData(now: number): PersistedState {
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
     badges: [],
+    items: [],
+    links: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -702,6 +711,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           // edit sheet while another modal is animating out.
           setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_GAP_MS);
         }
+        return saved;
       },
 
       quickLog: (habitId, minutes) => {
@@ -1161,6 +1171,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       markWelcomeSeen: () => updateSettings({ welcomeSeen: true }),
       setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
       setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
+      editQuest: (fn) =>
+        setData((d) => {
+          const q = fn({ items: d.items, links: d.links });
+          return q.items === d.items && q.links === d.links ? d : { ...d, items: q.items, links: q.links };
+        }),
     };
     // Reads go through storeRef (the latest committed data), so actions never
     // change identity and memoized children don't re-render for them.

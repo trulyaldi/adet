@@ -85,6 +85,8 @@ export function seed(now: number = Date.now()): PersistedState {
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
     badges: [],
+    items: [],
+    links: [],
     active: null,
     historyClearedAt: 0,
     plans: {},

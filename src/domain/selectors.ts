@@ -7,6 +7,7 @@ import { planFor } from './dailyLog';
 import { selectToday, TodayItem, TodayModel } from './day';
 import { selectProjectsView } from './projectsView';
 import { badgeCollection, chart, dayIndex, focusHours, Period, projectProgress, QUARTER_HOUR_MS, records, thisWeek } from './stats';
+import { boughtFreezes } from './game/freezes';
 import { streakV5 } from './streaks';
 import { dkey, weekStartDay } from './time';
 import { PersistedState } from './types';
@@ -48,9 +49,9 @@ export const todayListsOf = memoLast((model: TodayModel): TodayLists => ({
   summary: [...model.items, ...model.bonus.filter((b) => b.done)],
 }));
 
-/** The day streak (v5 rules) as of `day`. */
+/** The day streak (v5 rules) as of `day`, with any freezes bought from the Quest Merchant. */
 export const dayStreakOf = memoLast((data: PersistedState, day: string) =>
-  streakV5(data, day, data.streakCarry, planFor(data, day).items.length === 0)
+  streakV5(data, day, data.streakCarry, planFor(data, day).items.length === 0, boughtFreezes(data.items))
 );
 
 export const projectsViewOf = memoLast((data: PersistedState, now: number) => selectProjectsView(data, now));

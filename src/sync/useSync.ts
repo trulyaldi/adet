@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import { confirmPushed, mergeRemote } from '../domain/sync';
 import { PersistedState } from '../domain/types';
 import type { SyncMeta } from '../store/storage';
+import { sendableCount } from './questTables';
 import { pullChanges, pushChanges } from './remote';
 
 export type SyncState = 'synced' | 'syncing' | 'offline';
@@ -111,7 +112,7 @@ export function useSync<S extends SyncStore>({
         // Let React apply the merge, then go again if anything is still queued
         // (edits made while syncing, or follow-ups the merge produced).
         await new Promise((resolve) => setTimeout(resolve, 0));
-        if (Object.keys(storeRef.current.sync.outbox).length) again.current = true;
+        if (sendableCount(storeRef.current.sync.outbox)) again.current = true;
       } while (again.current && enabledRef.current && ++round < MAX_ROUNDS);
       failures.current = 0;
       setPhase('idle');
@@ -187,7 +188,7 @@ export function useSync<S extends SyncStore>({
     if (activeRev && enabled) run();
   }, [activeRev, enabled, run]);
 
-  const pending = Object.keys(storeRef.current.sync.outbox).length;
+  const pending = sendableCount(storeRef.current.sync.outbox);
   const state: SyncState =
     phase === 'error' ? 'offline' : phase === 'syncing' || pending > 0 ? 'syncing' : 'synced';
   return useMemo(() => ({ state, pending, settled }), [state, pending, settled]);

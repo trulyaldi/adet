@@ -1,0 +1,8 @@
+{
+  "name": "adet-sage-worker",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "wrangler dev", "typecheck": "tsc --noEmit", "deploy": "wrangler deploy" },
+  "dependencies": { "jose": "^6.1.0", "zod": "^4.1.0" },
+  "devDependencies": { "@cloudflare/workers-types": "*", "typescript": "~6.0.3", "wrangler": "^4.0.0" }
+}

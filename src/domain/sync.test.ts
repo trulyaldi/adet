@@ -51,6 +51,8 @@ function state(partial: Partial<PersistedState>): PersistedState {
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
     badges: [],
+    items: [],
+    links: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -331,4 +333,35 @@ test('prefs: the later edit wins; a merged-away habit takes its marks along', ()
   assert.deepEqual(data.marks.map((m) => m.id).sort(), ['h2:2026-09-27', 'h2:2026-09-28']);
   const newer = mergeRemote(local, {}, [{ ...remote[1], record: { ...(remote[1].record as any), updatedAt: 300 } } as Change], 1000);
   assert.equal(newer.data.prefs.weekStart, 0);
+});
+
+// ---------- Quest Mode: items and links ----------
+
+test('items and links are stamped, queued and merged like any simple table', () => {
+  const prev = state({});
+  const task = { id: 't1', type: 'task' as const, title: 'A', body: '', props: { status: 'open' as const, order: 0 }, habitId: 'h1', createdAt: NOW };
+  const link = { id: 'planned_for:t1:s1', fromType: 'item' as const, fromId: 't1', toType: 'session' as const, toId: 's1', kind: 'planned_for' as const, createdAt: NOW };
+  const { data, changes } = stampLocalChanges(prev, { ...prev, items: [task], links: [link] }, NOW);
+  assert.deepEqual(changes.map((c) => c.table).sort(), ['items', 'links']);
+  assert.equal(data.items[0].updatedAt, NOW);
+
+  // A newer remote edit wins; an older one doesn't.
+  const newer: Change = { table: 'items', id: 't1', deletedAt: null, record: { ...task, title: 'B', updatedAt: NOW + 10 } };
+  const merged = mergeRemote(data, {}, [newer], NOW + 20);
+  assert.equal(merged.data.items[0].title, 'B');
+  const older: Change = { table: 'items', id: 't1', deletedAt: null, record: { ...task, title: 'C', updatedAt: NOW - 10 } };
+  assert.equal(mergeRemote(merged.data, {}, [older], NOW + 30).data.items[0].title, 'B');
+
+  // A remote soft delete removes the link.
+  const del: Change = { table: 'links', id: link.id, deletedAt: NOW + 50, record: { ...link, updatedAt: NOW + 50 } };
+  assert.deepEqual(mergeRemote(merged.data, {}, [del], NOW + 60).data.links, []);
+});
+
+test('deleting a local item queues a soft delete', () => {
+  const task = { id: 't1', type: 'task' as const, title: 'A', body: '', props: { status: 'open' as const, order: 0 }, habitId: 'h1', createdAt: NOW, updatedAt: NOW };
+  const prev = state({ items: [task] });
+  const { changes } = stampLocalChanges(prev, { ...prev, items: [] }, NOW + 5);
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].table, 'items');
+  assert.equal(changes[0].deletedAt, NOW + 5);
 });

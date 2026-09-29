@@ -14,9 +14,12 @@ export interface DevicePrefs {
   haptics: boolean;
   appearance: Appearance;
   motion: MotionPref;
+  questSfx: boolean;
+  questMusic: boolean;
+  questHaptics: boolean;
 }
 
-export const DEFAULT_DEVICE_PREFS: DevicePrefs = { sound: true, haptics: true, appearance: 'system', motion: 'system' };
+export const DEFAULT_DEVICE_PREFS: DevicePrefs = { sound: true, haptics: true, appearance: 'system', motion: 'system', questSfx: true, questMusic: false, questHaptics: true };
 
 function parse(raw: string | null): DevicePrefs {
   try {
@@ -27,6 +30,9 @@ function parse(raw: string | null): DevicePrefs {
       haptics: v.haptics !== false,
       appearance: v.appearance === 'light' || v.appearance === 'dark' ? v.appearance : 'system',
       motion: v.motion === 'reduce' || v.motion === 'full' ? v.motion : 'system',
+      questSfx: v.questSfx !== false,
+      questMusic: v.questMusic === true,
+      questHaptics: v.questHaptics !== false,
     };
   } catch {
     return DEFAULT_DEVICE_PREFS;

@@ -294,9 +294,16 @@ export function activityDays(data: PersistedState): Set<string> {
  * is a rest day, and up to FREEZES_PER_MONTH more per month are frozen;
  * only a quiet day beyond those breaks it. `todayFree` is today's plan being
  * empty. `carry` keeps the streak from before the redesign as a floor while
- * it hasn't broken since (see planStreak).
+ * it hasn't broken since (see planStreak). `extraFreezes` adds bought freezes
+ * (Quest Mode's Merchant) to a month's allowance, by 'YYYY-MM'.
  */
-export function streakV5(data: PersistedState, today: string, carry: StreakCarry | null, todayFree = false): StreakV5 {
+export function streakV5(
+  data: PersistedState,
+  today: string,
+  carry: StreakCarry | null,
+  todayFree = false,
+  extraFreezes: Record<string, number> = {}
+): StreakV5 {
   const active = activityDays(data);
   const marks = new Map<string, DayMark5>();
   let first: string | null = null;
@@ -333,7 +340,7 @@ export function streakV5(data: PersistedState, today: string, carry: StreakCarry
       if (restWeek !== week) {
         restWeek = week;
         marks.set(k, 'rest');
-      } else if ((frozen[month] || 0) < FREEZES_PER_MONTH && run > 0) {
+      } else if ((frozen[month] || 0) < FREEZES_PER_MONTH + (extraFreezes[month] || 0) && run > 0) {
         frozen[month] = (frozen[month] || 0) + 1;
         marks.set(k, 'freeze');
       } else {

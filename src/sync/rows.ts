@@ -6,13 +6,16 @@ import { isIconKey, isProjectColor, isScene } from '../domain/look';
 import { parsePrefs } from '../domain/capacity';
 import { ACTIVE_ID, Change, parseTimestamp, PREFS_ID, SyncTable } from '../domain/sync';
 import { IconKey, LogItem } from '../domain/types';
+import { itemToRow, linkToRow, rowToItem, rowToLink } from './questRows';
 
 export type Row = Record<string, unknown>;
 
-/** Push order: parents before children. The redesign's tables (005) go last. */
-export const PUSH_ORDER: SyncTable[] = ['projects', 'habits', 'sessions', 'active_timers', 'habit_marks', 'daily_logs', 'badges', 'user_prefs'];
+/** Push order: parents before children. The redesign's tables (005) go last, then Quest Mode's (006). */
+export const PUSH_ORDER: SyncTable[] = ['projects', 'habits', 'sessions', 'active_timers', 'habit_marks', 'daily_logs', 'badges', 'user_prefs', 'items', 'links'];
 /** Pull order: children before parents, so a child is never fetched after a parent it depends on is. */
-export const PULL_ORDER: SyncTable[] = ['sessions', 'habit_marks', 'active_timers', 'daily_logs', 'badges', 'user_prefs', 'habits', 'projects'];
+export const PULL_ORDER: SyncTable[] = ['links', 'items', 'sessions', 'habit_marks', 'active_timers', 'daily_logs', 'badges', 'user_prefs', 'habits', 'projects'];
+/** Tables a server may not have yet (migration 006): missing ones are skipped, never fatal. */
+export const OPTIONAL_TABLES: SyncTable[] = ['items', 'links'];
 
 export const CONFLICT_TARGET: Record<SyncTable, string> = {
   projects: 'user_id,id',
@@ -23,6 +26,8 @@ export const CONFLICT_TARGET: Record<SyncTable, string> = {
   daily_logs: 'user_id,id',
   badges: 'user_id,id',
   user_prefs: 'user_id,id',
+  items: 'user_id,id',
+  links: 'user_id,id',
 };
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -115,6 +120,11 @@ export function changeToRow(c: Change, userId: string): Row {
       const r = c.record;
       return { ...meta, id: PREFS_ID, capacity_min: r.capacityMin, week_start: r.weekStart };
     }
+    // Quest Mode (migration 006_quest).
+    case 'items':
+      return { ...meta, ...itemToRow(c.record) };
+    case 'links':
+      return { ...meta, ...linkToRow(c.record) };
   }
 }
 
@@ -133,7 +143,11 @@ function logItems(v: unknown): LogItem[] {
     .map((x) => ({ habitId: x.habitId, projectId: x.projectId, shareMin: Number(x.shareMin) || 0 }));
 }
 
-export function rowToChange(table: SyncTable, row: Row): Change {
+/**
+ * A pulled row as a change, or null for a row this build can't read (an item
+ * type from a newer version), which is skipped.
+ */
+export function rowToChange(table: SyncTable, row: Row): Change | null {
   const updatedAt = ms(row.updated_at) ?? 0;
   const deletedAt = ms(row.deleted_at);
   switch (table) {
@@ -237,6 +251,14 @@ export function rowToChange(table: SyncTable, row: Row): Change {
     case 'user_prefs': {
       const prefs = parsePrefs({ capacityMin: row.capacity_min, weekStart: num(row.week_start) });
       return { table, id: PREFS_ID, deletedAt, record: { ...prefs, updatedAt } };
+    }
+    case 'items': {
+      const record = rowToItem(row, updatedAt, ms);
+      return record ? { table, id: record.id, deletedAt, record } : null;
+    }
+    case 'links': {
+      const record = rowToLink(row, updatedAt, ms);
+      return record ? { table, id: record.id, deletedAt, record } : null;
     }
   }
 }

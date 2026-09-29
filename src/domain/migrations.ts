@@ -4,6 +4,7 @@ import { DEFAULT_BUDGET_MIN, DEFAULT_PLAN_CAP, habitDaySec, PlanSettings } from 
 import { dailyStreak, dayRecords, planStreak } from './streaks';
 import { addDays, dkey } from './time';
 import { DEFAULT_PREFS, parsePrefs } from './capacity';
+import { Item, Link, parseItem, parseLink } from './items/types';
 import { Badge, CURRENT_SCHEMA_VERSION, DailyLog, DayOverride, Mark, PersistedState, StreakCarry } from './types';
 
 /**
@@ -117,6 +118,14 @@ export const MIGRATIONS: Array<(s: any, now: number, ctx: MigrationContext) => a
     // The welcome flow's rebalance step replaces the v4 rebalance screen.
     rebalancePending: false,
   }),
+  // v6: Quest Mode. Items and links start empty (the journey starts when the
+  // Quest tab is first opened).
+  (s: any) => ({
+    ...s,
+    schemaVersion: 6,
+    items: Array.isArray(s.items) ? s.items : [],
+    links: Array.isArray(s.links) ? s.links : [],
+  }),
 ];
 
 export function migrate(state: any, fromVersion: number, now: number, ctx: MigrationContext = DEFAULT_CONTEXT): any {
@@ -155,6 +164,16 @@ function logsOf(v: unknown): DailyLog[] {
 function badgesOf(v: unknown): Badge[] {
   if (!Array.isArray(v)) return [];
   return v.filter((b): b is Badge => !!b && typeof b.id === 'string' && typeof b.earnedAt === 'number');
+}
+
+/** Saved items and links, with anything malformed dropped. */
+function itemsOf(v: unknown): Item[] {
+  if (!Array.isArray(v)) return [];
+  return v.map(parseItem).filter((i): i is Item => i !== null);
+}
+function linksOf(v: unknown): Link[] {
+  if (!Array.isArray(v)) return [];
+  return v.map(parseLink).filter((l): l is Link => l !== null);
 }
 
 /** Local per-day overrides, keeping only well-formed recent ones. */
@@ -229,6 +248,8 @@ export function hydrate(
     prefs: parsePrefs(migrated.prefs),
     dailyLogs: logsOf(migrated.dailyLogs),
     badges: badgesOf(migrated.badges),
+    items: itemsOf(migrated.items),
+    links: linksOf(migrated.links),
     active: migrated.active || null,
     historyClearedAt: migrated.historyClearedAt || 0,
     plans: plansOf(migrated.plans),
@@ -249,7 +270,7 @@ export function hydrate(
  * are saved here too; they're never synced.
  */
 export function persistedSlice(data: PersistedState): PersistedState {
-  const { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, badges, active, historyClearedAt } = data;
+  const { schemaVersion, projects, habits, sessions, marks, prefs, dailyLogs, badges, items, links, active, historyClearedAt } = data;
   const { plans, planSince, streakCarry, rebalancePending, days, badgesPrimed } = data;
   return {
     schemaVersion,
@@ -260,6 +281,8 @@ export function persistedSlice(data: PersistedState): PersistedState {
     prefs,
     dailyLogs,
     badges,
+    items,
+    links,
     active,
     historyClearedAt,
     plans,

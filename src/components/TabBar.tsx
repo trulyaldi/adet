@@ -10,17 +10,22 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
 import { Glyph, GlyphName } from './Glyph';
 import { usePressMotion } from './motion/Press';
+import { QuestBadge, useFreshChest, useQuestInvite } from './QuestBadge';
+import { QUEST_ENABLED } from '../game/enabled';
 
 const TAB_FADE = { duration: 180, easing: Easing.out(Easing.quad) };
 
-const TABS: { key: Screen; label: string; glyph: GlyphName }[] = [
+const ALL_TABS: { key: Screen; label: string; glyph: GlyphName }[] = [
   { key: 'today', label: 'Today', glyph: 'today' },
   { key: 'projects', label: 'Projects', glyph: 'target' },
   { key: 'stats', label: 'Stats', glyph: 'stats' },
+  { key: 'quest', label: 'Quest', glyph: 'quest' },
 ];
+/** The Quest tab disappears with the kill switch. */
+const TABS = ALL_TABS.filter((t) => QUEST_ENABLED || t.key !== 'quest');
 
 /**
- * Three icon tabs. Inactive icons use the secondary ink (readable in bright
+ * Four icon tabs. Inactive icons use the secondary ink (readable in bright
  * light); the active one sits on a colored pill that fades in, no bounce.
  */
 export function TabBar({ active, onChange }: { active: Screen; onChange(s: Screen): void }) {
@@ -35,18 +40,33 @@ export function TabBar({ active, onChange }: { active: Screen; onChange(s: Scree
         borderTopColor: colors.line,
         flexDirection: 'row',
         paddingTop: 8,
-        paddingHorizontal: 20,
+        paddingHorizontal: 12,
         paddingBottom: Math.max(insets.bottom, 10),
       }}
     >
       {TABS.map((tab) => (
-        <Tab key={tab.key} label={tab.label} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} />
+        tab.key === 'quest' ? (
+          <QuestTabItem key={tab.key} on={active === tab.key} onPress={() => onChange(tab.key)} />
+        ) : (
+          <Tab key={tab.key} label={tab.label} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} />
+        )
       ))}
     </View>
   );
 }
 
-function Tab({ label, glyph, on, onPress }: { label: string; glyph: GlyphName; on: boolean; onPress(): void }) {
+/**
+ * The Quest tab reads the game (for its badge) on its own, so data changes
+ * re-render just this item, not the whole bar.
+ */
+function QuestTabItem({ on, onPress }: { on: boolean; onPress(): void }) {
+  const fresh = useFreshChest();
+  const invite = useQuestInvite();
+  const label = fresh ? 'Quest, a chest is waiting' : invite ? 'Quest, a journey awaits' : 'Quest';
+  return <Tab label={label} glyph="quest" on={on} onPress={onPress} badge={fresh || invite ? <QuestBadge /> : null} />;
+}
+
+function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: GlyphName; on: boolean; onPress(): void; badge?: React.ReactNode }) {
   const { colors, radius } = useTheme();
   const reduced = useReducedMotion();
   const pressMotion = usePressMotion('icon');
@@ -79,6 +99,7 @@ function Tab({ label, glyph, on, onPress }: { label: string; glyph: GlyphName; o
           <Animated.View style={iconStyle}>
             <Glyph name={glyph} size={25} color={on ? colors.brand : colors.sub} bg={on ? colors.brandLight : colors.card} />
           </Animated.View>
+          {badge}
         </Animated.View>
       </Pressable>
     </View>

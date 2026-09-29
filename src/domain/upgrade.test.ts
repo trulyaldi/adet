@@ -14,7 +14,7 @@ import { seed } from './seed';
 import { dailyStreak, streakV5 } from './streaks';
 import { isUntouchedSeed } from './sync';
 import { addDays, dkey } from './time';
-import { PersistedState } from './types';
+import { CURRENT_SCHEMA_VERSION, PersistedState } from './types';
 
 // Wednesday Sep 30, 2026, 08:00.
 const NOW = new Date(2026, 8, 30, 8, 0).getTime();
@@ -86,7 +86,7 @@ const streakOf = (d: PersistedState, now: number) => streakV5(d, dkey(new Date(n
 
 test('upgrade: loads with nothing lost', () => {
   const { old, data } = upgraded();
-  assert.equal(data.schemaVersion, 5);
+  assert.equal(data.schemaVersion, CURRENT_SCHEMA_VERSION);
   assert.deepEqual(data.projects, old.projects);
   assert.deepEqual(data.sessions, old.sessions, 'every session, note and manual flag kept as is');
   assert.deepEqual(data.active, old.active, 'the running timer keeps running');

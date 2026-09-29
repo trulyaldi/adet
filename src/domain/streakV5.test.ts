@@ -71,3 +71,18 @@ test('upgrading from v4 never shows a lower streak', () => {
   assert.ok(s.current >= r.streakCarry!.current, `${s.current} >= ${r.streakCarry!.current}`);
   assert.ok(s.longest >= 70);
 });
+
+test('v5: freezes bought for a month extend that month only', () => {
+  // Three quiet days in one week after a streak: rest, then two freezes, then a break.
+  const day = (k: string, min = 30) => ({ id: 's' + k, habitId: 'h', start: new Date(k + 'T09:00:00').getTime(), end: new Date(k + 'T09:00:00').getTime() + min * 60000, duration: min * 60 });
+  const sessions = ['2026-09-07', '2026-09-08', '2026-09-12'].map((k) => day(k));
+  const data = state([habit('h', 30, 5)], sessions);
+  // Sep 9 rest, 10 and 11 frozen (2/month) → streak survives to the 12th.
+  const plain = streakV5(data, '2026-09-12', null);
+  assert.equal(plain.current, 3);
+  // Four quiet days: the 4th breaks it, unless a freeze was bought for September.
+  const gap = { ...data, sessions: ['2026-09-07', '2026-09-08', '2026-09-13'].map((k) => day(k)) };
+  assert.equal(streakV5(gap, '2026-09-13', null).current, 1);
+  assert.equal(streakV5(gap, '2026-09-13', null, false, { '2026-09': 1 }).current, 3);
+  assert.equal(streakV5(gap, '2026-09-13', null, false, { '2026-10': 1 }).current, 1);
+});

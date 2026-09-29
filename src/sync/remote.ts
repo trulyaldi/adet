@@ -1,7 +1,9 @@
 // Network side of sync: push outbox changes and pull rows changed since a cursor.
 
 import { Change, parseTimestamp, SyncTable } from '../domain/sync';
-import { changeToRow, CONFLICT_TARGET, PULL_ORDER, PUSH_ORDER, Row, rowToChange } from './rows';
+import { isMissingTableError } from './questRows';
+import { setQuestTables } from './questTables';
+import { changeToRow, CONFLICT_TARGET, OPTIONAL_TABLES, PULL_ORDER, PUSH_ORDER, Row, rowToChange } from './rows';
 import { supabase } from './supabase';
 
 const PUSH_CHUNK = 500;
@@ -13,23 +15,34 @@ const PULL_PAGE = 1000;
  */
 const PULL_OVERLAP_MS = 30_000;
 
+/** An optional table (Quest Mode, 006) the server doesn't have: skip it and say so. */
+function skipMissing(table: SyncTable, error: unknown): boolean {
+  if (!OPTIONAL_TABLES.includes(table) || !isMissingTableError(error)) return false;
+  setQuestTables('missing');
+  return true;
+}
+
 /**
  * Upsert changes parent tables first. `onConfirmed` runs after each chunk the
  * server accepts, so a failure part-way keeps only the unsent changes queued.
+ * Changes for an optional table the server lacks stay queued.
  */
 export async function pushChanges(
   changes: Change[],
   userId: string,
   onConfirmed: (confirmed: Change[]) => void
 ): Promise<void> {
-  for (const table of PUSH_ORDER) {
+  tables: for (const table of PUSH_ORDER) {
     const forTable = changes.filter((c) => c.table === table);
     for (let i = 0; i < forTable.length; i += PUSH_CHUNK) {
       const chunk = forTable.slice(i, i + PUSH_CHUNK);
       const { error } = await supabase
         .from(table)
         .upsert(chunk.map((c) => changeToRow(c, userId)), { onConflict: CONFLICT_TARGET[table] });
-      if (error) throw error;
+      if (error) {
+        if (skipMissing(table, error)) continue tables;
+        throw error;
+      }
       onConfirmed(chunk);
     }
   }
@@ -42,8 +55,9 @@ export async function pullChanges(
 ): Promise<{ changes: Change[]; cursors: Partial<Record<SyncTable, number>> }> {
   const changes: Change[] = [];
   const nextCursors: Partial<Record<SyncTable, number>> = {};
+  let questOk = true;
 
-  for (const table of PULL_ORDER) {
+  tables: for (const table of PULL_ORDER) {
     const since = cursors[table];
     // A fixed lower bound for the whole pull; one bulk write shares one
     // server_updated_at, so paging must be by offset, not by timestamp.
@@ -58,10 +72,17 @@ export async function pullChanges(
         .order('server_updated_at', { ascending: true })
         .order(tiebreak, { ascending: true })
         .range(from, from + PULL_PAGE - 1);
-      if (error) throw error;
+      if (error) {
+        if (skipMissing(table, error)) {
+          questOk = false;
+          continue tables;
+        }
+        throw error;
+      }
       const rows = (data ?? []) as Row[];
       for (const row of rows) {
-        changes.push(rowToChange(table, row));
+        const c = rowToChange(table, row);
+        if (c) changes.push(c);
         const ts = parseTimestamp(String(row.server_updated_at));
         if (ts > latest) latest = ts;
       }
@@ -71,5 +92,6 @@ export async function pullChanges(
     if (latest) nextCursors[table] = latest;
   }
 
+  if (questOk) setQuestTables('available');
   return { changes, cursors: nextCursors };
 }
