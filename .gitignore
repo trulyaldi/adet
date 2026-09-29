@@ -41,3 +41,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Quest art previews (npm run game:preview)
+/world-preview.png
+/avatar-preview.png
+/placeholders-preview.png

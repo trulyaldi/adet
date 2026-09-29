@@ -35,7 +35,8 @@
       "expo-status-bar",
       "@react-native-community/datetimepicker",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ]
   }
 }
