@@ -7,7 +7,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph';
 import { SkiaGate } from '../../game/render/SkiaGate';
-import { useQuestTables } from '../../sync/questTables';
+import { questTabView, useQuestTables } from '../../sync/questTables';
 import { useTheme } from '../../theme/ThemeProvider';
 
 function Note({ title, body, busy }: { title: string; body: string; busy?: boolean }) {
@@ -27,10 +27,11 @@ const loadPlayground = () => import('./Playground');
 export function QuestTab() {
   const tables = useQuestTables();
   const [playground, setPlayground] = useState(false);
-  if (tables === 'missing') {
+  const view = questTabView(tables);
+  if (view === 'setup') {
     return <Note title="The journey is almost ready" body={__DEV__ ? 'Run supabase/migrations/006_quest.sql in the Supabase SQL editor, then come back.' : 'Quest Mode is still being set up. Your focus time is safe and will count.'} />;
   }
-  if (tables === 'unknown') return <Note title="Finding the path…" body="Connecting once to set up the journey." busy />;
+  if (view === 'finding') return <Note title="Finding the path…" body="Connecting once to set up the journey." busy />;
   const fallback = <Note title="Finding the path…" body="" busy />;
   return (
     <>

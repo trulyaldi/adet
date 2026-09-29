@@ -39,6 +39,11 @@ export function setQuestTables(next: 'available' | 'missing'): void {
   set(next, true);
 }
 
+/** What the Quest tab shows: the setup note without 006, a short wait before the first answer, else the map. */
+export function questTabView(tables: QuestTables): 'setup' | 'finding' | 'map' {
+  return tables === 'missing' ? 'setup' : tables === 'unknown' ? 'finding' : 'map';
+}
+
 export function questTablesReady(): boolean {
   return state === 'available';
 }
