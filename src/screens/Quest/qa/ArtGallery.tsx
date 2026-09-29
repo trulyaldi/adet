@@ -14,11 +14,12 @@ import { useGameClock } from '../../../game/render/clock';
 import { BatchItem, SpriteBatch } from '../../../game/render/SpriteBatch';
 import { PixelButton } from '../../../game/ui/PixelButton';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
-import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
 import { packShelves } from './packShelves';
 
 const LABEL_H = 22;
+const TIERS_OPEN = 1000;
+const GEAR_OPEN = 1001;
 
 /** Sections: each biome's ids by category, then the shared sprites. */
 export function gallerySections(): { title: string; ids: string[] }[] {
@@ -46,7 +47,7 @@ export function ArtGallery({ reduced }: { reduced: boolean }) {
   const [scale, setScale] = useState(3);
   const sections = useMemo(() => gallerySections(), []);
   const clock = useGameClock(!reduced);
-  const [open, setOpen] = useState(0);
+  const [open, setOpen] = useState(TIERS_OPEN);
   return (
     <View style={{ gap: 12, paddingHorizontal: 12 }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -54,27 +55,30 @@ export function ArtGallery({ reduced }: { reduced: boolean }) {
           <PixelButton key={s} small tone={scale === s ? 'gold' : 'parchment'} label={`${s}×`} accessibilityLabel={`Show sprites at ${s} times`} onPress={() => setScale(s)} />
         ))}
       </View>
+      {/* One section open at a time: each avatar is its own canvas, and web browsers keep only ~16 WebGL contexts. */}
       <PixelPanel tone="night" padding={2} style={{ gap: 8 }}>
-        <PixelText size="sm" bold color={QUI.goldLight}>
-          Avatar: 7 tiers
-        </PixelText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {Array.from({ length: TIERS }, (_, t) => (
-            <Labelled key={t} label={`tier ${t}`}>
-              <Avatar tier={t} gear={{}} scale={scale} animate={!reduced} accessibilityLabel={`Avatar tier ${t}`} />
-            </Labelled>
-          ))}
-        </View>
-        <PixelText size="sm" bold color={QUI.goldLight}>
-          Avatar: every cosmetic (on tier 2)
-        </PixelText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {SHOP.filter((s) => s.kind === 'gear' && s.slot).map((s) => (
-            <Labelled key={s.sku} label={s.sku}>
-              <Avatar tier={2} gear={{ [s.slot!]: s.sku }} scale={scale} animate={!reduced} accessibilityLabel={`Avatar wearing ${s.name}`} />
-            </Labelled>
-          ))}
-        </View>
+        <PixelButton small tone={open === TIERS_OPEN ? 'gold' : 'parchment'} label="Avatar: 7 tiers" accessibilityLabel={`${open === TIERS_OPEN ? 'Hide' : 'Show'} the avatar's 7 tiers`} onPress={() => setOpen(open === TIERS_OPEN ? -1 : TIERS_OPEN)} />
+        {open === TIERS_OPEN && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {Array.from({ length: TIERS }, (_, t) => (
+              <Labelled key={t} label={`tier ${t}`}>
+                <Avatar tier={t} gear={{}} scale={scale} animate={!reduced} accessibilityLabel={`Avatar tier ${t}`} />
+              </Labelled>
+            ))}
+          </View>
+        )}
+      </PixelPanel>
+      <PixelPanel tone="night" padding={2} style={{ gap: 8 }}>
+        <PixelButton small tone={open === GEAR_OPEN ? 'gold' : 'parchment'} label="Avatar: every cosmetic" accessibilityLabel={`${open === GEAR_OPEN ? 'Hide' : 'Show'} every cosmetic on the avatar`} onPress={() => setOpen(open === GEAR_OPEN ? -1 : GEAR_OPEN)} />
+        {open === GEAR_OPEN && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {SHOP.filter((s) => s.kind === 'gear' && s.slot).map((s) => (
+              <Labelled key={s.sku} label={s.sku}>
+                <Avatar tier={2} gear={{ [s.slot!]: s.sku }} scale={scale} animate={!reduced} accessibilityLabel={`Avatar wearing ${s.name}`} />
+              </Labelled>
+            ))}
+          </View>
+        )}
       </PixelPanel>
       {sections.map((s, i) => (
         <PixelPanel key={s.title} tone="night" padding={2} style={{ gap: 8 }}>
