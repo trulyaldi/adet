@@ -26,7 +26,7 @@ repo; their text was recovered from Codex's session log into
 | Q10 | done (device QA open) | `resolveAvatarLayers`/`isEquippable` tests; previews at 3×/4×. Restart/sync persistence needs Expo Go. |
 | Q11 | done | Worker verifies JWT (JWKS or HS256), KV 30/day, 32 KB, zod output, drops unknown habits, CORS from `ALLOWED_ORIGINS`; client tests. |
 | Q12 | done | `feedback` gate (`timer` always muted, any active session mutes all); local SFX/music/haptics/motion; gate tests. |
-| Q13 | see Q13 commit | Safety switches, docs, QA script and PR. |
+| Q13 | done in code (device QA open) | Kill switch (`enabled.ts`, tested), missing-migration note, `__DEV__` playground, edge-case tests, VoiceOver labels, `README.md`. 3×/4× visuals, profiling and VoiceOver need Expo Go. |
 | R | done | This audit. |
 | A1 | done | Veteran test: zero unopened chests, balance = `WELCOME_CREDITS` (50). |
 | A2 | done | Only `boss_defeated` is written; the other kinds are `@deprecated`. |
@@ -44,7 +44,9 @@ repo; their text was recovered from Codex's session log into
 | bug | Boss pre-fight lines and defeat lines were never shown (Q5 content orphaned when the intro event was dropped). | `BossIntro.tsx` | `b4d1700` |
 | bug | The worker returned 502 for fenced JSON, and counted oversized requests against the rate limit. | `worker/src/index.ts` | `quest(fix): worker…` |
 | bug | `enableSage()` never resolved on web (`Alert` is a no-op there). | `src/services/sage.ts` | `quest(fix): the Sage privacy note…` |
-| cleanup | Rank-up unlock icons were buttons with a no-op press. | `RankUp.tsx`, `IconGrid` | `b4d1700` |
+| bug | App start loaded Skia (CanvasKit on web): App → ceremony host → LevelUp → pixel UI theme → `render/pixel.ts`. | `game/ui/theme.ts` | `fbc2484` (`render/grid.ts`) |
+| bug | Map tap panels read only "Close" to VoiceOver (boss lines, tips, enemy health unheard); the level-up wasn't announced on iOS. | `TapPanel.tsx`, `LevelUp.tsx` | `9932aae` |
+| cleanup | Rank-up unlock icons and the trophy shelf were buttons with a no-op press. | `RankUp.tsx`, `CharacterSheet.tsx`, `IconGrid` | `b4d1700`, `9932aae` |
 | cleanup | Level-up had no pixel burst; its timer restarted when XP changed; used the deprecated `pointerEvents` prop. | `LevelUp.tsx` | `b4d1700` |
 | cleanup | Two `expo-audio` modules each call `setAudioModeAsync`, with identical options (silent switch respected, mix with others). | `src/feedback/audio.ts`, `src/game/audio.ts` | Kept: same mode, no conflict; noted. |
 | cleanup | Legacy synced `sfx/music/haptics/motion` in `quest_meta.settings` are still parsed but read by nothing. | `items/types.ts` | Kept for older builds (see 33). |
@@ -54,11 +56,12 @@ repo; their text was recovered from Codex's session log into
 ### Health checks (clean worktree of the committed tree)
 
 - Typecheck: pass (`tsc --noEmit`; worker: `tsc --noEmit` in `worker/`).
-- Tests: 392 pass, 0 fail (`npm test`) at `b4d1700`.
+- Tests: 396 pass, 0 fail (`npm test`).
 - Lint: no lint script in the repo (see 9).
-- Bundle: `expo export --platform ios` succeeds on `main` and the branch.
-  Hermes bytecode 4,132,477 → 5,109,178 bytes (+977 KB, +23.6%); assets
-  282 KB → 617 KB (+335 KB).
+- `npx expo start`: Metro serves `index.bundle?platform=ios` with HTTP 200.
+- `expo export`: iOS (Quest on and off) and web succeed. iOS Hermes bytecode
+  4,132,477 → 5,113,971 bytes (+981 KB, +23.8%); assets 282 KB → 617 KB.
+- Static imports from `App.tsx` reach no Skia module (as on `main`).
 - `expo-doctor`: 20/21. The one failure is a patch mismatch inherited from
   `main` (`expo` 57.0.25 installed, ~57.0.26 expected), not an Expo Go
   incompatibility.
