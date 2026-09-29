@@ -75,7 +75,7 @@ test('empty history: level 1 Wanderer, journey at the first mob, nothing else', 
   assert.equal(g.journey.position.kind, 'mob');
   assert.equal(g.journey.hp, B.MOB_HP);
   assert.deepEqual(g.chests, { unopened: [], hasFreshChest: false });
-  assert.deepEqual(g.credits, { earned: 0, spent: 0, balance: 0 });
+  assert.deepEqual(g.credits, { earned: 0, welcome: 0, spent: 0, balance: 0 });
   assert.deepEqual(g.newAchievements, []);
   assert.deepEqual(g.skills, []);
 });
@@ -224,6 +224,23 @@ test('only sessions after the quest started move the journey; XP counts all hist
   assert.equal(none.xp.total, 80);
 });
 
+test('a veteran starting today: full XP and rank, no chests, only the welcome credits', () => {
+  // Two years of daily hour-long sessions before the journey began.
+  const history = Array.from({ length: 730 }, (_, i) => s(META_START - (i + 1) * 24 * HOUR, 60));
+  const g = run(history);
+  assert.equal(g.chests.unopened.length, 0);
+  assert.equal(g.credits.earned, 0);
+  assert.equal(g.credits.balance, B.WELCOME_CREDITS);
+  assert.equal(g.journey.totalDamage, 0);
+  assert.ok(g.xp.level > 20, 'history still levels the character');
+  assert.ok(g.rank.tier >= 5);
+  // A claim written for a pre-journey session (another build, a stray write) adds nothing.
+  const q = claimed([meta()], [], history[0].id, { tasks: 3, text: 'old work' });
+  const c = run(history, { items: q.items, links: q.links });
+  assert.equal(c.xp.total, g.xp.total);
+  assert.equal(c.credits.balance, B.WELCOME_CREDITS);
+});
+
 test('chest bonuses wait for the claim; base damage and XP apply right away', () => {
   const x = s(at(0, 9), 30);
   const open = run([x]);
@@ -256,8 +273,8 @@ test('credits: floor(eff/10) per session, balance after purchases never below ze
   assert.equal(g.credits.earned, 3 + 4);
   let q = ops.addPurchase({ items: [meta()], links: [] }, 'cloak.moss', 5, D0, undefined, 'p1');
   const spent = run([s(at(0, 9), 39), s(at(1, 9), 41)], { items: q.items });
-  assert.deepEqual(spent.credits, { earned: 7, spent: 5, balance: 2 });
-  q = ops.addPurchase(q, 'x', 50, D0, undefined, 'p2');
+  assert.deepEqual(spent.credits, { earned: 7, welcome: B.WELCOME_CREDITS, spent: 5, balance: B.WELCOME_CREDITS + 2 });
+  q = ops.addPurchase(q, 'x', B.WELCOME_CREDITS + 50, D0, undefined, 'p2');
   assert.equal(run([s(at(0, 9), 39)], { items: q.items }).credits.balance, 0);
   // Bosses pay 25 credits.
   assert.equal(run([s(at(0, 6), 140), s(at(1, 6), 140)]).credits.earned, 14 + 14 + B.BOSS_CREDITS);

@@ -74,6 +74,8 @@ export const SKILL_XP_BASE = 25;
 export const CREDIT_MINUTES = 10;
 export const CHRONICLE_CREDITS = 2;
 export const BOSS_CREDITS = 25;
+/** Granted once when the journey starts, so anyone can buy something on day one. */
+export const WELCOME_CREDITS = 50;
 
 // ---- Chests ------------------------------------------------------------------
 /** An unopened chest younger than this badges the Quest tab. */

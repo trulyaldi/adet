@@ -152,6 +152,9 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
     reached so far as played. Level-ups count from the last level shown, so history never replays.
 26. **The derived game is memoised on data only.** Chest freshness, the only clock-dependent part, is a separate
     selector, so a ticking store never re-derives.
+27. **Welcome credits (A1).** `WELCOME_CREDITS = 50` is part of the balance once `startedAt` is set (`credits.welcome`),
+    not a stored grant. Chest claims on sessions before `startedAt` are ignored entirely (no task or reflection XP,
+    no crits), so only journey sessions have chests at all.
 
 ## Risks
 

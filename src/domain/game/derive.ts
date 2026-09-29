@@ -139,7 +139,8 @@ export interface GameState {
   xp: LevelInfo & { total: number };
   rank: RankInfo;
   skills: SkillState[];
-  credits: { earned: number; spent: number; balance: number };
+  /** `earned` is from play; `welcome` is the one-time grant once the journey starts. */
+  credits: { earned: number; welcome: number; spent: number; balance: number };
   journey: JourneyState;
   chests: { unopened: ChestState[]; hasFreshChest: boolean };
   /** Qualifying sessions, oldest first. */
@@ -200,6 +201,8 @@ interface ClaimInfo {
   chronicle: string | null;
   completed: number;
 }
+
+const NO_CLAIM: ClaimInfo = { claimed: false, chronicle: null, completed: 0 };
 
 export function deriveGameState(input: DeriveInput): GameState {
   const tz = input.tz ?? DEVICE_TZ;
@@ -307,7 +310,8 @@ export function deriveGameState(input: DeriveInput): GameState {
     const eff = effOf.get(s.id)!;
     const day = dayOf.get(s.id)!;
     const onJourney = startedAt !== null && s.end >= startedAt;
-    const c = claimOf(s.id);
+    // Chests (and their bonuses) belong to the journey only; history before it counts for XP alone.
+    const c = onJourney ? claimOf(s.id) : NO_CLAIM;
     const hasChronicle = c.claimed && !!c.chronicle && c.chronicle.trim().length > 0;
     let baseDamage = 0;
     let critDamage = 0;
@@ -443,13 +447,14 @@ export function deriveGameState(input: DeriveInput): GameState {
     if (!storedIds.has(achievementId('rank_reached', ref))) newAchievements.push({ kind: 'rank_reached', ref, at: iso(rt.at) });
   }
 
+  const welcome = startedAt !== null ? B.WELCOME_CREDITS : 0;
   const bossPos = nodeAt(bossGlobal(pos.biomeIndex, pos.loop));
   return {
     balanceVersion: B.BALANCE_VERSION,
     xp: { total: xpTotal, ...lv },
     rank,
     skills,
-    credits: { earned, spent, balance: Math.max(0, earned - spent) },
+    credits: { earned, welcome, spent, balance: Math.max(0, welcome + earned - spent) },
     journey: {
       started: startedAt !== null,
       startedAt,
