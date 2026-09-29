@@ -6,10 +6,9 @@ import { claimChest, QuestSlice } from '../items/ops';
 import { activeHabits } from '../projects';
 import { memoLast } from '../selectors';
 import type { PersistedState } from '../types';
+import { FRESH_CHEST_MS } from './balance';
 import { DeriveInput, deriveGameState, GameState } from './derive';
 
-/** Freshness of chests only needs minute precision. */
-const bucket = (now: number) => Math.floor(now / 60_000);
 
 export function gameInput(data: PersistedState, now: number, quest?: QuestSlice): DeriveInput {
   return {
@@ -22,10 +21,21 @@ export function gameInput(data: PersistedState, now: number, quest?: QuestSlice)
   };
 }
 
+/**
+ * The game, memoised on the slices it reads only (never on the clock), so a
+ * ticking store or a timer starting elsewhere recomputes nothing. Nothing in
+ * it depends on `now` except chest freshness, which freshChests() works out
+ * separately (the `fresh` flags inside are never set).
+ */
 export const gameStateOf = memoLast(
-  (data: PersistedState, now: number): GameState => deriveGameState(gameInput(data, now)),
-  (data, now) => [data.sessions, data.habits, data.projects, data.items, data.links, bucket(now)]
+  (data: PersistedState): GameState => deriveGameState(gameInput(data, 0)),
+  (data) => [data.sessions, data.habits, data.projects, data.items, data.links]
 );
+
+/** Unopened chests younger than FRESH_CHEST_MS (the tab badge). */
+export function hasFreshChest(game: GameState, now: number): boolean {
+  return game.chests.unopened.some((c) => now - c.end < FRESH_CHEST_MS);
+}
 
 export interface ClaimPreview {
   before: GameState;
@@ -41,9 +51,9 @@ export function previewClaim(
   now: number,
   claim: { sessionId: string; habitId: string | null; doneTaskIds: string[]; text: string }
 ): ClaimPreview {
-  const before = gameStateOf(data, now);
+  const before = gameStateOf(data);
   const q = claimChest({ items: data.items, links: data.links }, { ...claim, now });
-  const after = deriveGameState(gameInput(data, now, q));
+  const after = deriveGameState(gameInput(data, 0, q));
   const r = after.sessions.find((x) => x.sessionId === claim.sessionId);
   return {
     before,

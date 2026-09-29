@@ -18,11 +18,13 @@ export interface QuestLocal {
   /** Ceremony event ids already played (level:12, rank:Knight, boss:forest:0…). */
   played: string[];
   plan: ActivePlan | null;
-  /** The level/rank the ceremonies last caught up to. */
+  /** The level the ceremonies last caught up to. */
   shownLevel: number | null;
+  /** History up to the first view was recorded as played (no replays). */
+  primed: boolean;
 }
 
-const EMPTY: QuestLocal = { seen: null, played: [], plan: null, shownLevel: null };
+const EMPTY: QuestLocal = { seen: null, played: [], plan: null, shownLevel: null, primed: false };
 const MAX_PLAYED = 400;
 
 let user: string | null = null;
@@ -49,6 +51,7 @@ function parse(raw: string | null): QuestLocal {
       played: Array.isArray(v.played) ? v.played.filter((p: unknown) => typeof p === 'string').slice(-MAX_PLAYED) : [],
       plan,
       shownLevel: Number.isFinite(v.shownLevel) ? v.shownLevel : null,
+      primed: v.primed === true,
     };
   } catch {
     return EMPTY;
@@ -91,6 +94,11 @@ export function updateQuestLocal(fn: (s: QuestLocal) => QuestLocal): void {
   state = next;
   if (user) AsyncStorage.setItem(key(user), JSON.stringify(state)).catch(() => {});
   emit();
+}
+
+/** Record every event reached so far as played (first view on this device). */
+export function primeLocal(ids: string[], level: number): void {
+  updateQuestLocal((s) => (s.primed ? s : { ...s, primed: true, shownLevel: level, played: [...new Set([...s.played, ...ids])].slice(-MAX_PLAYED) }));
 }
 
 export function markPlayed(id: string): void {

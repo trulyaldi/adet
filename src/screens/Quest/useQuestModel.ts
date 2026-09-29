@@ -17,7 +17,7 @@ export function useQuestModel() {
   const data = useData();
   const now = useStoreNow();
   const meta = useQuestMeta();
-  const game = gameStateOf(data, now);
+  const game = gameStateOf(data);
   const maps = biomeMaps();
   const look: AvatarLook = useMemo(() => ({ tier: game.rank.tier, gear: meta?.props.avatar.gear ?? {} }), [game.rank.tier, meta?.props.avatar.gear]);
   const at = useMemo(() => spotFor(maps, game.journey.position.global), [maps, game.journey.position.global]);

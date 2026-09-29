@@ -28,7 +28,6 @@ const TABS: { key: Screen; label: string; glyph: GlyphName }[] = [
 export function TabBar({ active, onChange }: { active: Screen; onChange(s: Screen): void }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const fresh = useFreshChest();
   return (
     <View
       accessibilityRole="tablist"
@@ -43,10 +42,23 @@ export function TabBar({ active, onChange }: { active: Screen; onChange(s: Scree
       }}
     >
       {TABS.map((tab) => (
-        <Tab key={tab.key} label={tab.key === 'quest' && fresh ? 'Quest, a chest is waiting' : tab.label} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} badge={tab.key === 'quest' ? <QuestBadge /> : null} />
+        tab.key === 'quest' ? (
+          <QuestTabItem key={tab.key} on={active === tab.key} onPress={() => onChange(tab.key)} />
+        ) : (
+          <Tab key={tab.key} label={tab.label} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} />
+        )
       ))}
     </View>
   );
+}
+
+/**
+ * The Quest tab reads the game (for its badge) on its own, so data changes
+ * re-render just this item, not the whole bar.
+ */
+function QuestTabItem({ on, onPress }: { on: boolean; onPress(): void }) {
+  const fresh = useFreshChest();
+  return <Tab label={fresh ? 'Quest, a chest is waiting' : 'Quest'} glyph="quest" on={on} onPress={onPress} badge={fresh ? <QuestBadge /> : null} />;
 }
 
 function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: GlyphName; on: boolean; onPress(): void; badge?: React.ReactNode }) {

@@ -10,7 +10,8 @@ import { gameStateOf } from '../../domain/game/fromData';
 import { useData, useStoreNow, useSyncStatus } from '../../store/StreakStore';
 import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
-import { useQuestLocalFor } from './local';
+import { primeIds } from '../ceremonies';
+import { primeLocal, useQuestLocal, useQuestLocalFor } from './local';
 
 export function QuestWatcher() {
   const { session } = useAuth();
@@ -20,12 +21,20 @@ export function QuestWatcher() {
   const { settled } = useSyncStatus();
   const tables = useQuestTables();
   const writes = useQuestWrites();
-  const game = gameStateOf(data, now);
+  const game = gameStateOf(data);
   const pending = game.newAchievements;
   const started = game.journey.started;
   useEffect(() => {
     if (!settled || tables !== 'available' || !started || !pending.length) return;
     writes.addAchievements(pending);
   }, [settled, tables, started, pending, writes]);
+
+  // A device seeing an already-started journey for the first time (a second
+  // device, a reinstall) records the history as played: no replayed cutscenes.
+  const local = useQuestLocal();
+  useEffect(() => {
+    if (!local.loaded || local.primed || !started || !settled) return;
+    primeLocal(primeIds(game), game.xp.level);
+  }, [local.loaded, local.primed, started, settled, game]);
   return null;
 }
