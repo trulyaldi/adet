@@ -29,7 +29,7 @@ import { QuestSettingsPanel } from './SettingsPanel';
 
 type Tab = 'chronicle' | 'chests' | 'credits' | 'settings';
 
-export function ScribeSheet({ model, onClose, reduced, initialTab = 'chronicle' }: { model: QuestModel; onClose(): void; reduced: boolean; initialTab?: Tab }) {
+export function ScribeSheet({ model, onClose, onReplayIntro, reduced, initialTab = 'chronicle' }: { model: QuestModel; onClose(): void; onReplayIntro(): void; reduced: boolean; initialTab?: Tab }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const settings = model.meta?.props.settings;
   return (
@@ -53,7 +53,7 @@ export function ScribeSheet({ model, onClose, reduced, initialTab = 'chronicle' 
         setTimeout(() => openLoot({ sessionId: id, fresh: false }), MODAL_GAP_MS);
       }} />}
       {tab === 'credits' && <Credits />}
-      {tab === 'settings' && <QuestSettingsPanel model={model} />}
+      {tab === 'settings' && <QuestSettingsPanel model={model} onCredits={() => setTab('credits')} onReplayIntro={onReplayIntro} />}
     </QuestSheet>
   );
 }
@@ -221,4 +221,3 @@ function Credits() {
     </View>
   );
 }
-

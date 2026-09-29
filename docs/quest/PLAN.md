@@ -19,7 +19,7 @@ is present; physical-device acceptance is part of Q13.
 | Q9 | partial | Map-only `CeremonyHost` exists; revised pure detection, root host and Ascension are absent. |
 | Q10 | done | Layered Avatar, gear eligibility, sheet and tests pass; 3×/4× previews were inspected without clipping. |
 | Q11 | done | Worker, authenticated opt-in client, local fallback, cache and validation tests pass typecheck. |
-| Q12 | partial | Audio is a silent placeholder and SettingsPanel is text; haptics lack timer gating. |
+| Q12 | done | Context gate mutes running/paused timers; local Scribe controls, replay, tests and licensed-file no-ops exist. |
 | Q13 | not started | No kill switch or Quest README; device QA and PR checklist remain. |
 | R | done | Branch/history/code audited; typecheck and 39 test files pass, web export bundles; no lint script exists. |
 | A1 | done | Welcome credits and journey-only chests/credits have tests. |
@@ -226,6 +226,13 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
     and TypeScript check; the Expo tsconfig excludes it. The worker is not
     deployed in this branch. Live AI calls require owner-provided Supabase JWT
     verification config, Anthropic secret and KV namespace.
+32. **Quest sound files.** The licensed primary pack is absent. The existing
+    tap file supplies `ui_tap`; all other SFX IDs and biome music are silent
+    no-ops until licensed files are added. Controls still persist locally.
+33. **Device preferences.** Quest SFX, music and haptics extend the existing
+    local `DevicePrefs`; motion uses its existing local system/on/off control.
+    Legacy synced Quest audio and motion fields remain parseable but no longer
+    drive feedback. Synced settings retain battle strip, AI and NPC names.
 
 ## Risks
 

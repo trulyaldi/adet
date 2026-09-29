@@ -12,7 +12,7 @@ import { bossRun } from '../../../game/ceremonies';
 import { npcName } from '../../../game/content/npcs';
 import { PALETTES } from '../../../game/content/palettes';
 import { bossId, ROSTER } from '../../../game/content/roster';
-import { questHaptic, questSound } from '../../../game/feedback';
+import { feedback } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
 import { Particles } from '../../../game/render/Particles';
 import { Camera } from '../../../game/render/PixelStage';
@@ -52,8 +52,8 @@ export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: 
 
   useEffect(() => {
     if (reduced) return;
-    questSound('boss');
-    questHaptic('success');
+    feedback.sfx('boss_defeat', 'ceremony');
+    feedback.haptic('success', 'ceremony');
     const ts: ReturnType<typeof setTimeout>[] = [];
     [0, 260].forEach((d) =>
       ts.push(
@@ -106,7 +106,7 @@ export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: 
       <View style={[PE.boxNone, { flex: 1, justifyContent: 'flex-end', padding: 16, paddingBottom: 48, gap: 12 }]}>
         {step === 'report' && (
           <DialogBox name={npcName('sage', settings)} portrait="npc.sage" lines={splitSentences(recap)} onDone={() => {
-            questSound('gate');
+            feedback.sfx('gate_open', 'ceremony');
             setStep('gate');
           }} reduced={reduced} />
         )}

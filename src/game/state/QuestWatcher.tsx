@@ -12,7 +12,7 @@ import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
 import { useQuestFonts } from '../assets/fonts';
 import { primeIds } from '../ceremonies';
-import { setQuestFeedbackState } from '../feedback';
+import { feedback } from '../feedback';
 import { primeLocal, useQuestLocal, useQuestLocalFor } from './local';
 
 export function QuestWatcher() {
@@ -41,11 +41,9 @@ export function QuestWatcher() {
     primeLocal(primeIds(game), game.xp.level);
   }, [local.loaded, local.primed, started, settled, game]);
   // Quest sounds stay off while a timer runs; toggles apply at once.
-  const settings = game.journey.started ? data.items.find((i) => i.type === 'quest_meta') : null;
-  const running = !!data.active?.startedAt;
+  const running = !!data.active;
   useEffect(() => {
-    const s = settings && settings.type === 'quest_meta' ? settings.props.settings : null;
-    setQuestFeedbackState({ haptics: s?.haptics ?? true, sfx: s?.sfx ?? true }, running);
-  }, [settings, running]);
+    feedback.setTimerActive(running);
+  }, [running]);
   return null;
 }

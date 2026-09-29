@@ -12,7 +12,7 @@ import { ScribeSheet } from './ScribeSheet';
 
 export type SheetId = 'sage' | 'board' | 'merchant' | 'scribe' | 'chests' | 'character';
 
-export function QuestSheets({ sheet, onClose, model }: { sheet: SheetId | null; onClose(): void; onOpen(id: SheetId): void; model: QuestModel }) {
+export function QuestSheets({ sheet, onClose, onReplayIntro, model }: { sheet: SheetId | null; onClose(): void; onOpen(id: SheetId): void; onReplayIntro(): void; model: QuestModel }) {
   const reduced = useQuestReduced();
   switch (sheet) {
     case 'sage':
@@ -22,11 +22,11 @@ export function QuestSheets({ sheet, onClose, model }: { sheet: SheetId | null; 
     case 'merchant':
       return <MerchantSheet model={model} onClose={onClose} reduced={reduced} />;
     case 'scribe':
-      return <ScribeSheet model={model} onClose={onClose} reduced={reduced} />;
+      return <ScribeSheet model={model} onClose={onClose} onReplayIntro={onReplayIntro} reduced={reduced} />;
     case 'character':
       return <CharacterSheet model={model} onClose={onClose} reduced={reduced} />;
     case 'chests':
-      return <ScribeSheet model={model} onClose={onClose} reduced={reduced} initialTab="chests" />;
+      return <ScribeSheet model={model} onClose={onClose} onReplayIntro={onReplayIntro} reduced={reduced} initialTab="chests" />;
     default:
       return null;
   }

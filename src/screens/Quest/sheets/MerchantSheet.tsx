@@ -13,6 +13,7 @@ import { gameStateOf } from '../../../domain/game/fromData';
 import { itemsOfType } from '../../../domain/items/types';
 import { greeting, npcName } from '../../../game/content/npcs';
 import { SHOP, SHOP_BY_SKU, ShopItem } from '../../../game/content/shop';
+import { feedback } from '../../../game/feedback';
 import { SpriteView } from '../../../game/render/SpriteView';
 import { PixelButton } from '../../../game/ui/PixelButton';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
@@ -67,6 +68,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
     busy.current = true;
     setTimeout(() => (busy.current = false), 700);
     writes.purchase(s.sku, s.cost, s.kind === 'freeze' ? month : undefined);
+    feedback.sfx('purchase', 'quest');
     if (s.kind !== 'freeze') use(s, true);
   };
 

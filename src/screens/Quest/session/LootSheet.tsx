@@ -18,7 +18,7 @@ import { LOG_BODY_MAX, openTasksFor } from '../../../domain/items/ops';
 import { itemsOfType } from '../../../domain/items/types';
 import { PIXEL_FONT } from '../../../game/assets/fonts';
 import { bossId, mobId, ROSTER } from '../../../game/content/roster';
-import { questHaptic, questSound } from '../../../game/feedback';
+import { feedback } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
 import { Particles } from '../../../game/render/Particles';
 import { AnimatedSprite } from '../../../game/render/Sprite';
@@ -68,7 +68,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
   const shake = useSharedValue(0);
   useEffect(() => {
     chestAt.value = clock.value;
-    questSound('chest');
+    feedback.sfx('chest_open', 'loot');
   }, [chestAt, clock]);
 
   // Already opened (another device, a double tap), or the session is gone.
@@ -85,8 +85,8 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
     const preview = previewClaim(data, Date.now(), claim);
     writes.claimChest(claim);
     const crits = Math.min(MAX_CRITS, ticked.length);
-    questHaptic('medium');
-    questSound('chest');
+    feedback.haptic('medium', 'loot');
+    feedback.sfx('chest_open', 'loot');
     if (reduced) {
       setPhase({ kind: 'rewards', preview });
       return;
@@ -99,8 +99,8 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
           hitAt.value = clock.value;
           flashUntil.value = clock.value + 70; // one white frame
           shake.value = withSequence(withTiming(2, { duration: 40 }), withTiming(-2, { duration: 40 }), withTiming(0, { duration: 60 }));
-          questHaptic('light');
-          questSound('hit');
+          feedback.haptic('light', 'loot');
+          feedback.sfx('crit', 'loot');
         }, 450 + i * 320)
       );
     }
@@ -193,7 +193,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
             <View style={{ flexDirection: 'row', gap: 6 * u, alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: u }}>
                 <SpriteView id="icon.xp" scale={2} />
-                <CountUp from={0} to={phase.preview.xpGained} prefix="+" color={QUI.blue} reduced={reduced} onTick={() => questHaptic('light')} accessibilityLabel={`${phase.preview.xpGained} XP`} />
+                <CountUp from={0} to={phase.preview.xpGained} prefix="+" color={QUI.blue} reduced={reduced} onTick={() => feedback.haptic('light', 'loot')} accessibilityLabel={`${phase.preview.xpGained} XP`} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: u }}>
                 <SpriteView id="icon.coin" scale={2} />
@@ -263,4 +263,3 @@ function LootStage(p: {
     </Canvas>
   );
 }
-

@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import type { GameState } from '../../../domain/game/derive';
-import { questHaptic, questSound } from '../../../game/feedback';
+import { feedback } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
 import { Particles } from '../../../game/render/Particles';
 import { PixelText } from '../../../game/ui/PixelText';
@@ -19,8 +19,8 @@ export function LevelUp({ level, game, onDone, reduced }: { level: number; game:
   const burst = useSharedValue(-1e9);
   const fill = useSharedValue(0);
   useEffect(() => {
-    questSound('levelup');
-    questHaptic('success');
+    feedback.sfx('level_up', 'ceremony');
+    feedback.haptic('success', 'ceremony');
     burst.value = clock.value;
     const f = game.xp.xpForNextLevel ? game.xp.xpIntoLevel / game.xp.xpForNextLevel : 0;
     fill.value = reduced ? f : withTiming(f, { duration: 900 });

@@ -9,7 +9,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import type { GameState } from '../../../domain/game/derive';
 import { avatarLayers, AvatarLook } from '../../../game/avatar';
 import { PALETTES } from '../../../game/content/palettes';
-import { questHaptic, questSound } from '../../../game/feedback';
+import { feedback } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
 import { Particles } from '../../../game/render/Particles';
 import { GRADES } from '../../../domain/game/daylight';
@@ -22,7 +22,7 @@ import { QUI } from '../../../game/ui/theme';
 import { CeremonyStage, useCeremonySize } from './Stage';
 import { PE } from '../../../game/ui/pointer';
 
-export function Onboarding({ game, look, sageName, onBegin, reduced }: { game: GameState; look: AvatarLook; sageName: string; onBegin(): void; reduced: boolean }) {
+export function Onboarding({ game, look, sageName, onBegin, reduced, replay = false }: { game: GameState; look: AvatarLook; sageName: string; onBegin(): void; reduced: boolean; replay?: boolean }) {
   const { worldW, worldH } = useCeremonySize();
   const clock = useGameClock(!reduced);
   const [panel, setPanel] = useState(0);
@@ -36,8 +36,8 @@ export function Onboarding({ game, look, sageName, onBegin, reduced }: { game: G
   useEffect(() => {
     if (panel === 2) {
       spark.value = clock.value;
-      questSound('levelup');
-      questHaptic('success');
+      feedback.sfx('level_up', 'ceremony');
+      feedback.haptic('success', 'ceremony');
     }
   }, [panel, spark, clock]);
 
@@ -105,7 +105,7 @@ export function Onboarding({ game, look, sageName, onBegin, reduced }: { game: G
             <PixelText size="md" color={QUI.white} style={{ textAlign: 'center' }}>
               {already ? `Your past focus already made you a ${game.rank.title}.` : 'Every journey starts with one step.'}
             </PixelText>
-            <PixelButton label="Begin" accessibilityLabel="Begin the journey" onPress={onBegin} style={{ alignSelf: 'stretch' }} />
+            <PixelButton label={replay ? 'Done' : 'Begin'} accessibilityLabel={replay ? 'Close Quest introduction' : 'Begin the journey'} onPress={onBegin} style={{ alignSelf: 'stretch' }} />
           </View>
         )}
       </View>

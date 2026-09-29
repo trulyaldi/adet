@@ -11,7 +11,7 @@ import { RANKS } from '../../../domain/game/balance';
 import { sprite } from '../../../game/assets/manifest';
 import { avatarLayers, AvatarLook } from '../../../game/avatar';
 import { SHOP } from '../../../game/content/shop';
-import { questHaptic, questSound } from '../../../game/feedback';
+import { feedback } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
 import { Particles } from '../../../game/render/Particles';
 import { SpriteBatch } from '../../../game/render/SpriteBatch';
@@ -37,7 +37,7 @@ export function RankUp({ tier, look, onDone, reduced }: { tier: number; look: Av
 
   useEffect(() => {
     if (reduced) return;
-    questSound('levelup');
+    feedback.sfx('rank_up', 'ceremony');
     iris.value = withTiming(1, { duration: 550 });
     const ts: ReturnType<typeof setTimeout>[] = [];
     ts.push(setTimeout(() => (banner.value = withTiming(1, { duration: 700 })), 500));
@@ -46,7 +46,7 @@ export function RankUp({ tier, look, onDone, reduced }: { tier: number; look: Av
         setTimeout(() => {
           setShown(i + 1);
           spark.value = clock.value;
-          questHaptic('light');
+          feedback.haptic('light', 'ceremony');
         }, 1300 + i * 330)
       )
     );
@@ -55,7 +55,7 @@ export function RankUp({ tier, look, onDone, reduced }: { tier: number; look: Av
     ts.push(
       setTimeout(() => {
         setTitle(true);
-        questHaptic('success');
+        feedback.haptic('success', 'ceremony');
       }, end + 350)
     );
     return () => ts.forEach(clearTimeout);

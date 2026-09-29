@@ -10,11 +10,9 @@ export function useQuestSettings(): QuestSettings {
   return useQuestMeta()?.props.settings ?? DEFAULT_QUEST_SETTINGS;
 }
 
-/** Reduced motion in the Quest world: its own setting, else the app's (which follows the system). */
+/** Quest motion follows the local device preference, which follows the system by default. */
 export function useQuestReduced(): boolean {
-  const app = useReducedMotion();
-  const { motion } = useQuestSettings();
-  return motion === 'system' ? app : motion === 'reduce';
+  return useReducedMotion();
 }
 
 /** The world animates only while its screen is focused and the app is in front. */

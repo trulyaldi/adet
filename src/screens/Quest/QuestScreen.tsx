@@ -22,6 +22,8 @@ import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { QUI } from '../../game/ui/theme';
 import { primeIds } from '../../game/ceremonies';
+import { preloadQuestSounds } from '../../game/audio';
+import { feedback } from '../../game/feedback';
 import { primeLocal } from '../../game/state/local';
 import { CeremonyHost } from './ceremonies';
 import { echoQuote } from './ceremonies/BossIntro';
@@ -33,6 +35,7 @@ import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
 import { PE } from '../../game/ui/pointer';
+import { MODAL_GAP_MS } from '../../theme/motion';
 
 const POPS = 12;
 
@@ -47,7 +50,13 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
+  const [replayIntro, setReplayIntro] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
+  useEffect(() => { preloadQuestSounds(); }, []);
+  useEffect(() => {
+    feedback.music.setBiome(m.game.journey.position.biome);
+    return () => feedback.music.setBiome(null);
+  }, [m.game.journey.position.biome, m.data.active]);
   useEffect(() => {
     AccessibilityInfo.isScreenReaderEnabled().then(setScreenReader).catch(() => {});
     const sub = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReader);
@@ -306,8 +315,16 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           />
         </Modal>
       )}
-      {m.meta && <CeremonyHost game={m.game} blocked={!!sheet || !!panel} reduced={reduced} />}
-      <QuestSheets sheet={sheet} onClose={() => setSheet(null)} onOpen={setSheet} model={m} />
+      {m.meta && replayIntro && (
+        <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => setReplayIntro(false)}>
+          <Onboarding game={m.game} look={m.look} sageName={npcName('sage', m.meta.props.settings)} reduced={reduced} replay onBegin={() => setReplayIntro(false)} />
+        </Modal>
+      )}
+      {m.meta && <CeremonyHost game={m.game} blocked={!!sheet || !!panel || replayIntro} reduced={reduced} />}
+      <QuestSheets sheet={sheet} onClose={() => setSheet(null)} onOpen={setSheet} onReplayIntro={() => {
+        setSheet(null);
+        setTimeout(() => setReplayIntro(true), MODAL_GAP_MS);
+      }} model={m} />
     </View>
   );
 }
