@@ -32,7 +32,7 @@ const rgb = (h: string): [number, number, number] => {
 
 type Step = 'fall' | 'report' | 'gate';
 
-export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: string; game: GameState; onDone(): void; reduced: boolean; settings?: { npcNames: Record<string, string> } }) {
+export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: string; game: GameState; onDone(): void; reduced: boolean; settings?: { npcNames: Record<string, string>; ai?: boolean } }) {
   const { worldW, worldH } = useCeremonySize();
   const r = parseBiomeRef(refId) ?? { biome: 'forest' as const, loop: 0 };
   const b = r.biome;
@@ -40,7 +40,7 @@ export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: 
   const nextLoop = BIOME_IDS.indexOf(b) === BIOME_IDS.length - 1 ? r.loop + 1 : r.loop;
   const boss = ROSTER[b].boss;
   const run = bossRun(game, refId);
-  const { recap } = useSageRecap(boss.name, run);
+  const { recap } = useSageRecap(boss.name, run, !!settings?.ai, ROSTER[b].name);
   const clock = useGameClock(!reduced);
   const flash = useSharedValue(0);
   const shake = useSharedValue(0);

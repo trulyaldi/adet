@@ -18,7 +18,7 @@ is present; physical-device acceptance is part of Q13.
 | Q8 | done | Weak points, battle strip and Loot sheet are wired into the session flow. |
 | Q9 | partial | Map-only `CeremonyHost` exists; revised pure detection, root host and Ascension are absent. |
 | Q10 | done | Layered Avatar, gear eligibility, sheet and tests pass; 3×/4× previews were inspected without clipping. |
-| Q11 | partial | Local Sage fallback exists; `worker/`, authenticated AI client and cache are absent. |
+| Q11 | done | Worker, authenticated opt-in client, local fallback, cache and validation tests pass typecheck. |
 | Q12 | partial | Audio is a silent placeholder and SettingsPanel is text; haptics lack timer gating. |
 | Q13 | not started | No kill switch or Quest README; device QA and PR checklist remain. |
 | R | done | Branch/history/code audited; typecheck and 39 test files pass, web export bundles; no lint script exists. |
@@ -219,6 +219,13 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
     (inside the map's canvas, driven by shared values) both resolve layers with `resolveAvatarLayers`. Cheer is a hop
     on the idle frame; wave adds a raised-arm layer (`avatar.wave`). Owned items above the current rank (a rebalance,
     another build) show a padlock and can't be worn.
+30. **Sage day cache uses UTC dates.** The worker's rate limit also resets on
+    UTC dates; this keeps cache and rate-limit boundaries aligned across travel.
+    The cache key hashes the request body so chronicle text is not in keys.
+31. **Worker configuration stays isolated.** `worker/` has its own dependencies
+    and TypeScript check; the Expo tsconfig excludes it. The worker is not
+    deployed in this branch. Live AI calls require owner-provided Supabase JWT
+    verification config, Anthropic secret and KV namespace.
 
 ## Risks
 
