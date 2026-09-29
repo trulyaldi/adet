@@ -52,7 +52,10 @@
     "game:preview": "tsx scripts/preview-world.ts world-preview.png && tsx scripts/preview-avatar.ts avatar-preview.png",
     "lint": "eslint .",
     "game:fetch": "tsx scripts/fetch-packs.ts",
-    "game:audio": "tsx scripts/build-audio.ts"
+    "game:audio": "tsx scripts/build-audio.ts",
+    "game:report": "tsx scripts/asset-report.ts",
+    "game:contact": "tsx scripts/contact-sheet.ts",
+    "game:needs-art": "tsx scripts/needs-art.ts"
   },
   "private": true
 }

@@ -3,5 +3,5 @@
   "compilerOptions": {
     "strict": true
   },
-  "exclude": ["**/*.test.ts", "node_modules", "supabase/functions/sage"]
+  "exclude": ["**/*.test.ts", "node_modules", "supabase/functions/sage", "assets/game/raw"]
 }

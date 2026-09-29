@@ -22,7 +22,7 @@ const warn = (rules) =>
   );
 
 module.exports = defineConfig([
-  { ignores: ['dist/**', 'node_modules/**', '.expo/**', 'src/game/assets/frames.generated.ts'] },
+  { ignores: ['dist/**', 'node_modules/**', 'assets/game/raw/**', '.expo/**', 'src/game/assets/frames.generated.ts'] },
   expoConfig,
   // The Sage Edge Function runs on Deno: `npm:` specifiers and the Deno global.
   {

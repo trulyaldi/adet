@@ -1,0 +1,700 @@
+{
+  "name": "kenney-tiny-town",
+  "title": "Tiny Town (1.1)",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+  "url": "https://kenney.nl/assets/tiny-town",
+  "download": "https://kenney.nl/media/pages/assets/tiny-town/a415fbeb49-1735736916/kenney_tiny-town.zip",
+  "sha256": "9768692dccff1d706408a5aedd6ca4f6cd1409506cbc84cb2f862919764be977",
+  "downloaded": "2026-09-29",
+  "tileSize": 16,
+  "sprites": {
+    "tile.astral.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "astral",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "astral",
+      "why": "grass read as star dust"
+    },
+    "tile.astral.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "astral",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "astral",
+      "why": "grass read as star dust"
+    },
+    "tile.astral.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "astral",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "astral",
+      "why": "grass read as star dust"
+    },
+    "tile.astral.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "astral",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "astral",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.astral.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "astral",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "astral",
+      "why": "dirt, cut into the inner path blob"
+    },
+    "tile.desert.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "desert",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "desert",
+      "why": "grass read as sand, its tufts as ripples"
+    },
+    "tile.desert.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "desert",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "desert",
+      "why": "grass read as sand, its tufts as ripples"
+    },
+    "tile.desert.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "desert",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "desert",
+      "why": "grass read as sand, its tufts as ripples"
+    },
+    "tile.desert.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "desert",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "desert",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.desert.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "desert",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "desert",
+      "why": "dirt, cut into the inner path blob"
+    },
+    "tile.forest.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "forest",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "forest",
+      "why": "grass, grass with tufts"
+    },
+    "tile.forest.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "forest",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "forest",
+      "why": "grass, grass with tufts"
+    },
+    "tile.forest.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "forest",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "forest",
+      "why": "grass, grass with tufts"
+    },
+    "tile.forest.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "forest",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "forest",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.forest.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "forest",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "forest",
+      "why": "dirt, cut into the inner path blob"
+    },
+    "tile.frost.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "frost",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "frost",
+      "why": "grass read as snow, its tufts as drifts"
+    },
+    "tile.frost.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "frost",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "frost",
+      "why": "grass read as snow, its tufts as drifts"
+    },
+    "tile.frost.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "frost",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "frost",
+      "why": "grass read as snow, its tufts as drifts"
+    },
+    "tile.frost.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "frost",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "frost",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.frost.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "frost",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "frost",
+      "why": "dirt, cut into the inner path blob"
+    },
+    "tile.iron.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "iron",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "iron",
+      "why": "grass (the kingdom's fields)"
+    },
+    "tile.iron.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "iron",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "iron",
+      "why": "grass (the kingdom's fields)"
+    },
+    "tile.iron.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "iron",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "iron",
+      "why": "grass (the kingdom's fields)"
+    },
+    "tile.iron.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "iron",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "iron",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.iron.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "iron",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "iron",
+      "why": "dirt, cut into the inner path blob"
+    },
+    "tile.swamp.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "swamp",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "swamp",
+      "why": "grass read as marsh in the swamp ramp"
+    },
+    "tile.swamp.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "swamp",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "swamp",
+      "why": "grass read as marsh in the swamp ramp"
+    },
+    "tile.swamp.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "swamp",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "swamp",
+      "why": "grass read as marsh in the swamp ramp"
+    },
+    "tile.swamp.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "swamp",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "swamp",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.swamp.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "swamp",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "swamp",
+      "why": "dirt, cut into the inner path blob"
+    },
+    "tile.volcano.ground.a": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        0
+      ],
+      "palette": "volcano",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "volcano",
+      "why": "grass read as ash, its tufts as cinders"
+    },
+    "tile.volcano.ground.b": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "volcano",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "volcano",
+      "why": "grass read as ash, its tufts as cinders"
+    },
+    "tile.volcano.ground.c": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        1
+      ],
+      "palette": "volcano",
+      "ramp": {
+        "name": "ground",
+        "from": 1,
+        "to": 2
+      },
+      "anchor": [
+        0,
+        0
+      ],
+      "atlas": "volcano",
+      "why": "grass read as ash, its tufts as cinders"
+    },
+    "tile.volcano.path.edge": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        37
+      ],
+      "palette": "volcano",
+      "ramp": {
+        "name": "path",
+        "from": 0,
+        "to": 1
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          6,
+          5
+        ]
+      },
+      "atlas": "volcano",
+      "why": "the dirt edge, cut into the path blob the spline stamps"
+    },
+    "tile.volcano.path.fill": {
+      "sheet": "Tilemap/tilemap_packed.png",
+      "tiles": [
+        25
+      ],
+      "palette": "volcano",
+      "ramp": {
+        "name": "path",
+        "from": 1,
+        "to": 2
+      },
+      "mask": {
+        "ellipse": [
+          6,
+          5,
+          4.6,
+          3.8
+        ]
+      },
+      "atlas": "volcano",
+      "why": "dirt, cut into the inner path blob"
+    }
+  }
+}

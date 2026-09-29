@@ -3,15 +3,14 @@
 //
 //   npm run game:assets
 //
-// Sources, in order of preference:
-//   1. Licensed packs in assets/game/raw/<pack>/, described by pack.json
-//      (see assets/game/raw/README.md). A pack whose tile size isn't 16 px is
-//      skipped (pixel densities are never mixed) and flagged in CREDITS.md.
-//   2. Original placeholder art from gen-placeholders.ts, for every id no
-//      pack provides.
+// Sources (scripts/art-sources.ts): licensed pack art mapped in the registry
+// (assets/game/packs/*.json, files in assets/game/raw/ via `npm run
+// game:fetch`), else Adet's original stand-in art. A stand-in is allowed only
+// for ids listed, with a reason, in assets/game/needs-art.json; any other
+// stand-in fails the build (unless --allow-stand-ins, for local art work).
 //
-// Outputs: src/game/assets/atlases/<atlas>.png, src/game/assets/frames.generated.ts,
-// src/game/assets/atlasSources.ts and assets/game/CREDITS.md.
+// Outputs: src/game/assets/atlases/<atlas>.png, frames.generated.ts,
+// sources.generated.ts, atlasSources.ts and the credits.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,82 +18,14 @@ import sharp from 'sharp';
 
 import { hex, Px } from './pixel/px';
 import { SpriteDef } from './art/registry';
+import { resolveSprites, unlistedStandIns } from './art-sources';
 import { writeCredits } from './credits';
-import { generatePlaceholders } from './gen-placeholders';
 
 const ROOT = path.resolve(__dirname, '..');
-const RAW = path.join(ROOT, 'assets/game/raw');
 const OUT = path.join(ROOT, 'src/game/assets');
 const ATLAS_DIR = path.join(OUT, 'atlases');
-const TILE = 16;
 const MAX_W = 1024;
 const PAD = 1;
-
-interface PackSprite {
-  file: string;
-  /** Frames as [x, y, w, h] in the file. */
-  rects: [number, number, number, number][];
-  fps?: number;
-  loop?: boolean;
-  anchor?: [number, number];
-  atlas?: string;
-}
-interface PackJson {
-  name: string;
-  author: string;
-  license: string;
-  url: string;
-  /** The pack's pixel density; only 16 is accepted. */
-  tileSize: number;
-  sprites: Record<string, PackSprite>;
-}
-interface PackReport {
-  dir: string;
-  pack: PackJson;
-  used: number;
-  skipped?: string;
-}
-
-async function loadPacks(defs: Map<string, SpriteDef>): Promise<PackReport[]> {
-  if (!fs.existsSync(RAW)) return [];
-  const reports: PackReport[] = [];
-  for (const dir of fs.readdirSync(RAW).sort()) {
-    const file = path.join(RAW, dir, 'pack.json');
-    if (!fs.existsSync(file)) continue;
-    const pack = JSON.parse(fs.readFileSync(file, 'utf8')) as PackJson;
-    if (pack.tileSize !== TILE) {
-      reports.push({ dir, pack, used: 0, skipped: `pixel density ${pack.tileSize} px ≠ ${TILE} px` });
-      continue;
-    }
-    let used = 0;
-    for (const [id, sp] of Object.entries(pack.sprites ?? {})) {
-      const src = path.join(RAW, dir, sp.file);
-      if (!fs.existsSync(src)) continue;
-      const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-      const img = Px.fromRGBA(info.width, info.height, data);
-      const frames = sp.rects.map(([x, y, w, h]) => {
-        const f = new Px(w, h);
-        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) f.set(i, j, img.get(x + i, y + j));
-        return f;
-      });
-      const prev = defs.get(id);
-      defs.set(id, {
-        id,
-        atlas: sp.atlas ?? prev?.atlas ?? 'shared',
-        frames,
-        fps: sp.fps ?? prev?.fps,
-        loop: sp.loop ?? prev?.loop,
-        anchor: sp.anchor ?? prev?.anchor,
-        flip: prev?.flip,
-        flash: prev?.flash,
-        additive: prev?.additive,
-      });
-      used++;
-    }
-    reports.push({ dir, pack, used });
-  }
-  return reports;
-}
 
 interface Placed {
   key: string;
@@ -128,9 +59,12 @@ function pack(frames: { key: string; px: Px }[]): { placed: Placed[]; w: number;
 const pow2 = (n: number) => 2 ** Math.ceil(Math.log2(Math.max(1, n)));
 
 async function main() {
-  const reg = generatePlaceholders();
-  const defs = new Map(reg.sprites);
-  const packs = await loadPacks(defs);
+  const { defs, provenance } = await resolveSprites();
+  const needsArt = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/game/needs-art.json'), 'utf8')) as Record<string, string>;
+  const unlisted = unlistedStandIns(provenance, needsArt);
+  if (unlisted.length && !process.argv.includes('--allow-stand-ins')) {
+    throw new Error(`${unlisted.length} ids would ship stand-in art without a needs-art.json entry:\n  ${unlisted.join('\n  ')}`);
+  }
 
   // Expand variants (mirror, hit flash).
   const all = new Map<string, SpriteDef>();
@@ -197,7 +131,15 @@ async function main() {
       `import type { AtlasName } from './frames.generated';\n\n` +
       `export const ATLAS_SOURCES: Record<AtlasName, number> = {\n${atlases.map((a) => `  ${JSON.stringify(a)}: require('./atlases/${a}.png'),`).join('\n')}\n};\n`
   );
-  void packs;
+  const sources = [...provenance].sort(([a], [b]) => (a < b ? -1 : 1));
+  fs.writeFileSync(
+    path.join(OUT, 'sources.generated.ts'),
+    `// Generated by scripts/build-atlases.ts. Do not edit. Where each sprite comes from:\n` +
+      `// pack:<pack>, recolor:<pack>, composed:<pack>, or needs-art (Adet's stand-in, see needs-art.json).\n\n` +
+      `export const SPRITE_SOURCES: Record<string, string> = {\n` +
+      sources.map(([id, p]) => `  ${JSON.stringify(id)}: ${JSON.stringify(p.source === 'stand-in' ? 'needs-art' : `${p.source}:${p.pack}`)},`).join('\n') +
+      `\n};\n`
+  );
   writeCredits();
   console.log(`wrote ${ids.length} sprites in ${atlases.length} atlases`);
 }

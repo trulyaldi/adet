@@ -9,7 +9,7 @@ import { PACK_CREDITS } from './credits.generated';
 
 const root = join(__dirname, '..', '..', '..');
 const registry = readdirSync(join(root, 'assets/game/packs'))
-  .filter((f) => f.endsWith('.json') && f !== 'evaluated.json')
+  .filter((f) => f.endsWith('.json'))
   .map((f) => JSON.parse(readFileSync(join(root, 'assets/game/packs', f), 'utf8')));
 const used = registry.filter((p) => Object.keys(p.sprites ?? {}).length || Object.keys(p.sounds ?? {}).length);
 const ALLOWED = /^(cc0|cc-by(-\d(\.\d)?)?|public domain|mit|ofl|apache-2\.0)$/i;

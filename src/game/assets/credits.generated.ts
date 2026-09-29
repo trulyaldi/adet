@@ -30,8 +30,22 @@ export const PACK_CREDITS: PackCredit[] = [
     "license": "CC0",
     "url": "https://kenney.nl/assets/rpg-audio",
     "uses": "1 sound"
+  },
+  {
+    "title": "Tiny Dungeon (1.0)",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0",
+    "url": "https://kenney.nl/assets/tiny-dungeon",
+    "uses": "3 sprites"
+  },
+  {
+    "title": "Tiny Town (1.1)",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0",
+    "url": "https://kenney.nl/assets/tiny-town",
+    "uses": "35 sprites"
   }
 ];
 
 /** Sprites still drawn from Adet's original stand-in art. */
-export const STAND_IN_SPRITES = 0;
+export const STAND_IN_SPRITES = 327;

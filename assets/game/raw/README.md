@@ -1,29 +1,21 @@
-# Licensed art packs
+# Licensed art and audio packs (not committed)
 
-Drop a pack in a folder here (`assets/game/raw/<pack-name>/`) with a
-`pack.json` that maps the game's logical sprite ids to frames in its files,
-then run `npm run game:assets`. Ids a pack doesn't map keep the original
-placeholder art. The list of ids is `REQUIRED_IDS` in
-`src/game/assets/manifest.ts`.
+Each pack's files live here, in `assets/game/raw/<name>/`. This folder is
+gitignored except this README. What the game takes from each pack is **not**
+here: it is in the committed registry, `assets/game/packs/<name>.json`
+(official page, pinned download, sha256, license, and the sprite and sound
+mappings).
 
-```json
-{
-  "name": "Ninja Adventure",
-  "author": "Pixel-boy & AAA",
-  "license": "CC0",
-  "url": "https://pixel-boy.itch.io/ninja-adventure-asset-pack",
-  "tileSize": 16,
-  "sprites": {
-    "mob.forest.slime.idle": { "file": "Actor/Monster/Slime/Slime.png", "rects": [[0, 0, 16, 16], [16, 0, 16, 16]], "fps": 4, "loop": true, "atlas": "forest" }
-  }
-}
+```sh
+npm run game:fetch    # download direct-download packs, check sha256, keep their licenses
+npm run game:assets   # atlases (fails if a mapped pack is missing)
+npm run game:audio    # sound effects (same)
+npm run game:report   # docs/quest/art/INVENTORY.md and MAPPING.md
 ```
 
-Rules:
-- **One pixel density.** `tileSize` must be 16. Other packs are skipped and
-  flagged in `assets/game/CREDITS.md`, never mixed in.
-- Frames of one sprite must share a size. Use `anchor: [x, y]` for anything
-  not standing on its bottom centre.
-- Licenses other than CC0 / CC-BY / explicitly permissive are flagged in
-  CREDITS.md for review.
-- Packs themselves are not committed unless their license allows it.
+Packs that need a browser (itch.io) are downloaded by hand into their folder.
+See `docs/quest/OWNER_ACTIONS.md`.
+
+Rules (`docs/quest/art/ART_BIBLE.md`): one 16 px pixel density, no upscaling,
+recolour to the biome palette, and only CC0, CC-BY or explicitly permissive
+licenses.

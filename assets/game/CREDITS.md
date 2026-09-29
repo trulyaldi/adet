@@ -17,20 +17,29 @@ or unlicensed assets.
 | Interface Sounds (1.0) | Kenney (www.kenney.nl) | [CC0](http://creativecommons.org/publicdomain/zero/1.0/) | https://kenney.nl/assets/interface-sounds | 2026-09-29 | `f2193d072726d675…` | 1 sound | license copy `f7966c773bbe` |
 | Music Jingles (1.0) | Kenney (www.kenney.nl) | [CC0](http://creativecommons.org/publicdomain/zero/1.0/) | https://kenney.nl/assets/music-jingles | 2026-09-29 | `b729ba57959bd587…` | 4 sounds | license copy `373b1c880ee6` |
 | RPG Audio (1.0) | Kenney (www.kenney.nl) | [CC0](http://creativecommons.org/publicdomain/zero/1.0/) | https://kenney.nl/assets/rpg-audio | 2026-09-29 | `6dbeaf8544da958d…` | 1 sound | license copy `5735dfd72cb6` |
+| Tiny Dungeon (1.0) | Kenney (www.kenney.nl) | [CC0](http://creativecommons.org/publicdomain/zero/1.0/) | https://kenney.nl/assets/tiny-dungeon | 2026-09-29 | `c109438ab06f65fd…` | 3 sprites | license copy `9f574a2f1f63` |
+| Tiny Town (1.1) | Kenney (www.kenney.nl) | [CC0](http://creativecommons.org/publicdomain/zero/1.0/) | https://kenney.nl/assets/tiny-town | 2026-09-29 | `9768692dccff1d70…` | 35 sprites | license copy `c483c167cc3b` |
 
 
 ## Evaluated, not used
 
 | Pack | License | Source | Why not |
 |---|---|---|---|
-| _none_ | | | |
+| Kenney Roguelike Characters (2.0) | CC0 | https://kenney.nl/assets/roguelike-characters | 16 px and layered, but outline-free: clashes with the dark-outlined world; its 16 px people are shorter than the game's 20×26 characters. |
+| Kenney Roguelike RPG Pack | CC0 | https://kenney.nl/assets/roguelike-rpg-pack | 16 px, but outline-free top-down tiles in a different style from the Tiny family used for the ground. |
+| Kenney Tiny Battle (1.0) | CC0 | https://kenney.nl/assets/tiny-battle | Modern military (tanks, planes, team flags): not relevant to the biomes. |
+| Kenney Tiny Farm (1.0) | CC0 | https://kenney.nl/assets/tiny-farm | Crops and farm animals; no biome critters or NPC animals. Its trees share Tiny Town's 16 px proportion problem. |
+| Kenney 1-Bit Pack | CC0 | https://kenney.nl/assets/1-bit-pack | Monochrome 1-bit style: can't sit beside full-colour art. |
+| Kenney Micro Roguelike | CC0 | https://kenney.nl/assets/micro-roguelike | 8 px tiles: a different pixel density (never mixed). |
+| Kenney UI Audio | CC0 | https://kenney.nl/assets/ui-audio | Downloaded and measured; Interface Sounds had a softer, shorter tap. |
+| Pixel-boy & AAA: Ninja Adventure | CC0 | https://pixel-boy.itch.io/ninja-adventure-asset-pack | The spec's primary pack (16 px characters, monsters, bosses, animals, music). itch.io needs a browser click-through, so it can't be fetched here: see docs/quest/OWNER_ACTIONS.md. |
 
 ## Original art (stand-ins)
 
 Sprites no licensed pack provides yet keep Adet's original pixel art, drawn in
 code by `scripts/gen-placeholders.ts` (palette-indexed grids), released with the
 app under the same terms as its source. Each one is listed, with the kind of
-art it needs, in `assets/game/needs-art.json` (0 ids) and
+art it needs, in `assets/game/needs-art.json` (327 ids) and
 `docs/quest/art/INVENTORY.md`.
 
 ## Audio still missing

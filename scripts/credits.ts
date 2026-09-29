@@ -27,7 +27,7 @@ const uses = (p: Pack) => {
 export function writeCredits() {
   const packs = loadRegistry();
   const used = packs.filter((p) => uses(p));
-  const evaluated = readJson<Evaluated[]>(path.join(ROOT, 'assets/game/packs/evaluated.json'), []);
+  const evaluated = readJson<Evaluated[]>(path.join(ROOT, 'assets/game/evaluated-packs.json'), []);
   const needsArt = readJson<Record<string, string>>(path.join(ROOT, 'assets/game/needs-art.json'), {});
   const needsAudio = readJson<Record<string, string>>(path.join(ROOT, 'assets/game/needs-audio.json'), {});
   const licenseSum = (p: Pack) => {
