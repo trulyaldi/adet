@@ -19,10 +19,13 @@ export function DialogBox({
   onDone,
   reduced,
   onBlip,
+  portraitStatic,
 }: {
   name: string;
-  /** Sprite id base, e.g. 'npc.sage' (its .talk / .idle animations). */
+  /** Sprite id base, e.g. 'npc.sage' (its .talk / .idle animations), or one sprite id with `portraitStatic`. */
   portrait: string;
+  /** Use `portrait` as-is (no .talk/.idle), at this scale. */
+  portraitStatic?: number;
   lines: string[];
   onDone(): void;
   reduced?: boolean;
@@ -64,7 +67,7 @@ export function DialogBox({
     <Pressable onPress={next} accessibilityRole="button" accessibilityLabel={`${name}: ${line}`} accessibilityHint={index + 1 < lines.length ? 'Next' : 'Close'}>
       <PixelPanel tone="parchment" style={{ flexDirection: 'row', gap: 3 * u, alignItems: 'center', minHeight: 96 }}>
         <View style={{ backgroundColor: QUI.parchmentDark, padding: u, borderRadius: 0 }}>
-          <SpriteView id={`${portrait}.${typing ? 'talk' : 'idle'}`} scale={4} animate={!reduced} />
+          <SpriteView id={portraitStatic ? portrait : `${portrait}.${typing ? 'talk' : 'idle'}`} scale={portraitStatic ?? 4} animate={!reduced} />
         </View>
         <View style={{ flex: 1, gap: u }}>
           <PixelText size="sm" bold color={QUI.wood}>

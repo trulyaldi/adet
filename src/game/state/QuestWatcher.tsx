@@ -10,11 +10,14 @@ import { gameStateOf } from '../../domain/game/fromData';
 import { useData, useStoreNow, useSyncStatus } from '../../store/StreakStore';
 import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
+import { useQuestFonts } from '../assets/fonts';
 import { primeIds } from '../ceremonies';
 import { setQuestFeedbackState } from '../feedback';
 import { primeLocal, useQuestLocal, useQuestLocalFor } from './local';
 
 export function QuestWatcher() {
+  // The pixel fonts, app-wide (a Loot sheet can open before the Quest tab ever has).
+  useQuestFonts();
   const { session } = useAuth();
   useQuestLocalFor(session?.user.id ?? 'anon');
   const data = useData();

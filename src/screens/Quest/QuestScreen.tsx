@@ -4,7 +4,7 @@
 // in under four seconds, skippable with a tap.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, LayoutChangeEvent, Platform, View } from 'react-native';
+import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
 import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { NODE_MOBS } from '../../domain/game/balance';
@@ -21,27 +21,20 @@ import { PixelButton } from '../../game/ui/PixelButton';
 import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { QUI } from '../../game/ui/theme';
+import { primeIds } from '../../game/ceremonies';
+import { primeLocal } from '../../game/state/local';
+import { CeremonyHost } from './ceremonies';
+import { echoQuote } from './ceremonies/BossIntro';
+import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
 import { cameraFor, JourneyMap, MapFx } from './map/JourneyMap';
 import { campLayout, hitTest, planReveal, spotFor, Target, targetAt } from './model';
 import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
+import { PE } from '../../game/ui/pointer';
 
 const POPS = 12;
-
-/** Until the onboarding (Q9) runs: start the journey. */
-function Begin() {
-  const writes = useQuestWrites();
-  return (
-    <View style={{ position: 'absolute', left: 16, right: 16, bottom: 24 }}>
-      <PixelPanel tone="parchment" style={{ gap: 8 }}>
-        <PixelText>Aqyl: Focus is your blade. Shall we begin?</PixelText>
-        <PixelButton label="Begin" accessibilityLabel="Begin the journey" onPress={writes.startQuest} />
-      </PixelPanel>
-    </View>
-  );
-}
 
 export default function QuestScreen({ onPlayground }: { onPlayground?(): void }) {
   useQuestFonts();
@@ -50,6 +43,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const running = useWorldRunning();
   const clock = useGameClock(running);
   const local = useQuestLocal();
+  const writes = useQuestWrites();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
@@ -207,6 +201,14 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const map = m.maps[biome];
           const active = biome === g.position.biomeIndex && g.position.node === 7;
           const beaten = biome < g.position.biomeIndex;
+          // The Hollow Echo answers doubt with the player's own words.
+          if (active && map.id === 'astral') {
+            const quote = echoQuote(m.game, Date.now() >> 12);
+            if (quote) {
+              setPanel({ kind: 'say', text: quote, x: sx, y: sy });
+              break;
+            }
+          }
           setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : biome === g.position.biomeIndex ? g.bossMaxHp : g.bossMaxHp, max: g.bossMaxHp, active, x: sx, y: sy });
           break;
         }
@@ -270,7 +272,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         <Hud game={m.game} look={m.look} width={size?.w ?? 360} onAvatar={() => setSheet('character')} onLongPress={__DEV__ ? onPlayground : undefined} />
       </View>
       {newcomer && !panel && (
-        <View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, pointerEvents: 'none' }}>
+        <View style={[PE.none, { position: 'absolute', left: 16, right: 16, bottom: 16 }]}>
           <PixelPanel tone="parchment" padding={2}>
             <PixelText size="sm">{npcName('sage', m.meta?.props.settings)}: Start a session to strike your first foe.</PixelText>
           </PixelPanel>
@@ -289,7 +291,22 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           }} />
         </View>
       )}
-      {!m.meta && <Begin />}
+      {!m.meta && local.loaded && (
+        <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
+          <Onboarding
+            game={m.game}
+            look={m.look}
+            sageName={npcName('sage')}
+            reduced={reduced}
+            onBegin={() => {
+              // Everything reached before the journey is recorded quietly (no replays).
+              primeLocal(primeIds(m.game), m.game.xp.level);
+              writes.startQuest();
+            }}
+          />
+        </Modal>
+      )}
+      {m.meta && <CeremonyHost game={m.game} blocked={!!sheet || !!panel} reduced={reduced} />}
       <QuestSheets sheet={sheet} onClose={() => setSheet(null)} onOpen={setSheet} model={m} />
     </View>
   );

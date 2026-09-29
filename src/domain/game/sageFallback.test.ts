@@ -38,3 +38,7 @@ test('recap template', () => {
   assert.equal(fallbackRecap('The Doomscroll Hydra', 6, 9, 0), 'You faced the Doomscroll Hydra across 6 sessions and 9 tasks. Well fought.');
   assert.equal(fallbackRecap('King Tomorrow', 1, 0, 1), 'You faced King Tomorrow across 1 session. You wrote 1 line along the way. Well fought.');
 });
+
+test('recap with no sessions on record still reads well', () => {
+  assert.equal(fallbackRecap('The Fog Wisp', 0, 0, 0), 'The Fog Wisp is beaten. Well fought.');
+});

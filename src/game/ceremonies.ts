@@ -7,7 +7,7 @@ import { RANKS } from '../domain/game/balance';
 import { biomeRef } from '../domain/game/biomes';
 import type { GameState } from '../domain/game/derive';
 
-export type CeremonyKind = 'level' | 'rank' | 'boss';
+export type CeremonyKind = 'level' | 'rank' | 'boss' | 'intro';
 
 export interface CeremonyEvent {
   id: string;
@@ -21,7 +21,27 @@ export function ceremonyEvents(game: GameState): CeremonyEvent[] {
   for (let l = 2; l <= game.xp.level; l++) out.push({ id: `level:${l}`, kind: 'level', ref: String(l) });
   for (let t = 1; t <= game.rank.tier; t++) out.push({ id: `rank:${RANKS[t].title}`, kind: 'rank', ref: String(t) });
   for (const d of game.journey.defeated) out.push({ id: `boss:${biomeRef(d.biome, d.loop)}`, kind: 'boss', ref: biomeRef(d.biome, d.loop) });
+  // Reaching a boss: its three lines before the fight.
+  const pos = game.journey.position;
+  if (game.journey.started && pos.kind === 'boss') out.push({ id: `intro:${biomeRef(pos.biome, pos.loop)}`, kind: 'intro', ref: biomeRef(pos.biome, pos.loop) });
   return out;
+}
+
+export interface BossRun {
+  sessions: number;
+  tasks: number;
+  entries: string[];
+}
+
+/** What happened during one biome run (the battle report). */
+export function bossRun(game: GameState, ref: string): BossRun {
+  const [biome, loop] = ref.split(':');
+  const runs = game.sessions.filter((r) => r.biome === biome && String(r.loop) === loop);
+  return {
+    sessions: runs.length,
+    tasks: runs.reduce((a, r) => a + r.completedTasks, 0),
+    entries: runs.map((r) => (r.chronicle ?? '').trim()).filter(Boolean),
+  };
 }
 
 /**
@@ -35,8 +55,9 @@ export function pendingCeremonies(game: GameState, played: readonly string[], sh
   const bosses = fresh.filter((e) => e.kind === 'boss');
   const ranks = fresh.filter((e) => e.kind === 'rank');
   const levels = fresh.filter((e) => e.kind === 'level');
-  // Several levels at once celebrate as one (the highest).
-  return [...bosses, ...ranks.slice(-1), ...levels.slice(-1)];
+  const intros = fresh.filter((e) => e.kind === 'intro');
+  // Several levels at once celebrate as one (the highest); a new boss's lines come last.
+  return [...bosses, ...ranks.slice(-1), ...levels.slice(-1), ...intros];
 }
 
 /** Every current event id (priming). */

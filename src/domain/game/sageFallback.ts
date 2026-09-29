@@ -83,6 +83,7 @@ export function fallbackInsight(sessions: readonly Session[], tz: GameTz = DEVIC
 
 /** The battle report when no AI is used: counts, warmly. */
 export function fallbackRecap(bossName: string, sessions: number, tasks: number, entries: number): string {
+  if (sessions === 0) return `${bossName} is beaten. Well fought.`;
   const s = `${sessions} session${sessions === 1 ? '' : 's'}`;
   const t = tasks ? ` and ${tasks} task${tasks === 1 ? '' : 's'}` : '';
   const e = entries ? ` You wrote ${entries} line${entries === 1 ? '' : 's'} along the way.` : '';
