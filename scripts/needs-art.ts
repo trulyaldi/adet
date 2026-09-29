@@ -31,7 +31,7 @@ const RULES: [RegExp, string][] = [
   [/^(prop\.shadow|fx\.)/, 'Simple generated effects (glows, dust, sparkles, fog, a pixel); the Tiny packs have no FX sprites.'],
   [/^icon\./, 'UI icons are one set: Kenney has a sword, coin, heart and lock but no XP, quill, freeze, rested, star or gear icons, and half a set would mix styles in one row.'],
 ];
-(async () => {
+async function main() {
   const { provenance } = await resolveSprites();
   const out: Record<string, string> = {};
   const unmatched: string[] = [];
@@ -46,4 +46,10 @@ const RULES: [RegExp, string][] = [
   fs.writeFileSync(path.join(__dirname, '../assets/game/needs-art.json'), JSON.stringify(out, null, 2) + '\n');
   const req = new Set(REQUIRED_IDS);
   console.log('needs-art', Object.keys(out).length, 'of which required ids', Object.keys(out).filter((k) => req.has(k)).length);
-})();
+}
+
+main().catch((e) => {
+  // A missing pack or a refused stand-in is a message, not a crash.
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

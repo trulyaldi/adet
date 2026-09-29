@@ -70,4 +70,8 @@ scenes.forEach((s, i) => sheet.blit(s, (i % 4) * (W + 4), Math.floor(i / 4) * (H
 const big = sheet.scale(3);
 await sharp(big.toRGBA(), { raw: { width: big.w, height: big.h, channels: 4 } }).png().toFile(process.argv[2] ?? 'world-preview.png');
 }
-main();
+Promise.resolve().then(main).catch((e) => {
+  // A missing pack or a refused stand-in is a message, not a crash.
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

@@ -145,6 +145,7 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(e);
+  // A missing pack or a refused stand-in is a message, not a crash.
+  console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 });

@@ -139,4 +139,8 @@ function writeMapping() {
   console.log(`docs/quest/art/MAPPING.md: ${rows.length} mappings`);
 }
 
-main();
+Promise.resolve().then(main).catch((e) => {
+  // A missing pack or a refused stand-in is a message, not a crash.
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

@@ -89,4 +89,8 @@ async function main() {
   console.log(`${out}: ${cells.length} sprites (${[...counts].map(([k, v]) => `${k} ${v}`).join(', ')})`);
 }
 
-main();
+Promise.resolve().then(main).catch((e) => {
+  // A missing pack or a refused stand-in is a message, not a crash.
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});
