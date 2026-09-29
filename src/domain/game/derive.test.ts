@@ -167,11 +167,8 @@ test('beating the forest boss unlocks the swamp and is reported once as new', ()
   assert.equal(g.journey.hp, B.MOB_HP - 10);
   assert.equal(g.journey.defeated.length, 1);
   assert.deepEqual(
-    g.newAchievements.filter((a) => a.kind !== 'rank_reached').map((a) => [a.kind, a.ref]),
-    [
-      ['boss_defeated', 'forest:0'],
-      ['biome_cleared', 'forest:0'],
-    ]
+    g.newAchievements.map((a) => [a.kind, a.ref]),
+    [['boss_defeated', 'forest:0']]
   );
   assert.equal(g.newAchievements[0].at, new Date(sess[1].end).toISOString());
   // Stored: nothing new next time.
@@ -330,12 +327,12 @@ test('rank titles by level, with the gear tier', () => {
   assert.equal(rankForLevel(1).nextAt, 3);
 });
 
-test('rank_reached achievements are reported for every rank passed', () => {
+test('ranks are derived, never written as achievements', () => {
   // 25 days × 240 min = 6000 XP → level 8 (Knight).
   const sess = Array.from({ length: 25 }, (_, d) => s(at(d, 6), 240));
   const g = run(sess, { items: [] });
   assert.equal(g.rank.title, 'Knight');
-  assert.deepEqual(g.newAchievements.filter((a) => a.kind === 'rank_reached').map((a) => a.ref), ['Squire', 'Knight']);
+  assert.deepEqual(g.newAchievements, []);
 });
 
 test('skills: effective minutes per habit, with deleted habits retired', () => {

@@ -188,8 +188,6 @@ export function nodeMaxHp(n: NodeRef, weeklyTargetMin: number): number {
 // ---------------------------------------------------------------------------
 
 const iso = (ms: number) => new Date(ms).toISOString();
-/** XP at which rank `tier` begins (Infinity past the last). */
-const lastTierXp = (tier: number) => (tier < B.RANKS.length ? B.LEVEL_XP_BASE * (B.RANKS[tier].fromLevel - 1) ** 2 : Infinity);
 const parseIso = (s: string | undefined): number | null => {
   if (!s) return null;
   const t = Date.parse(s);
@@ -295,16 +293,6 @@ export function deriveGameState(input: DeriveInput): GameState {
   const results: SessionResult[] = [];
   let xpTotal = 0;
   let earned = 0;
-  const rankTimes: { tier: number; at: number }[] = [];
-  let lastTier = 0;
-  let nextRankXp = lastTierXp(1);
-  const noteXp = (at: number) => {
-    if (xpTotal < nextRankXp) return;
-    const tier = rankForLevel(levelFromXp(xpTotal).level).tier;
-    nextRankXp = lastTierXp(tier + 1);
-    for (let t = lastTier + 1; t <= tier; t++) rankTimes.push({ tier: t, at });
-    if (tier > lastTier) lastTier = tier;
-  };
 
   for (const s of byEnd) {
     const eff = effOf.get(s.id)!;
@@ -397,7 +385,6 @@ export function deriveGameState(input: DeriveInput): GameState {
       xp,
       credits,
     });
-    noteXp(s.end);
   }
   snapTo(Infinity);
 
@@ -406,7 +393,6 @@ export function deriveGameState(input: DeriveInput): GameState {
   for (const d of defeated) {
     xpTotal += BOSS_XP;
     if (startedAt !== null) earned += BOSS_CREDITS;
-    noteXp(d.at);
   }
 
   // ---- levels, rank, skills ----
@@ -440,11 +426,6 @@ export function deriveGameState(input: DeriveInput): GameState {
     if (d.sessionId === null) continue;
     const ref = biomeRef(d.biome, d.loop);
     if (!storedIds.has(achievementId('boss_defeated', ref))) newAchievements.push({ kind: 'boss_defeated', ref, at: iso(d.at) });
-    if (!storedIds.has(achievementId('biome_cleared', ref))) newAchievements.push({ kind: 'biome_cleared', ref, at: iso(d.at) });
-  }
-  for (const rt of rankTimes) {
-    const ref = B.RANKS[rt.tier].title;
-    if (!storedIds.has(achievementId('rank_reached', ref))) newAchievements.push({ kind: 'rank_reached', ref, at: iso(rt.at) });
   }
 
   const welcome = startedAt !== null ? B.WELCOME_CREDITS : 0;

@@ -39,7 +39,16 @@ export interface PurchaseProps {
   month?: string;
 }
 
-export type AchievementKind = 'boss_defeated' | 'biome_cleared' | 'rank_reached';
+/**
+ * Only `boss_defeated` is written (ranks and levels are derived; ceremonies use
+ * device-local marks). The others are still parsed: older builds wrote them.
+ */
+export type AchievementKind =
+  | 'boss_defeated'
+  /** @deprecated not written; implied by `boss_defeated`. */
+  | 'biome_cleared'
+  /** @deprecated not written; ranks are derived. */
+  | 'rank_reached';
 
 export interface AchievementProps {
   kind: AchievementKind;
