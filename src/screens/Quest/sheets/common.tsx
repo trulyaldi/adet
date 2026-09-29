@@ -81,7 +81,9 @@ export interface GridCell {
   icon: string;
   label: string;
   dim?: boolean;
-  badge?: 'lock' | 'check' | null;
+  badge?: 'lock' | 'check' | 'star' | null;
+  /** A small number beside the badge (times a boss was beaten). */
+  count?: number;
 }
 
 /** Icons in a grid: one canvas draws them all; buttons sit on top. */
@@ -100,7 +102,8 @@ export function IconGrid({ cells, columns, cell, scale, onPress, selected }: { c
     const map = c.dim ? dimmed : byAtlas;
     if (!map.has(m.atlas)) map.set(m.atlas, []);
     map.get(m.atlas)!.push(item);
-    if (c.badge) badges.push({ id: c.badge === 'lock' ? 'icon.lock' : 'icon.check', x: cx + cell / scale / 2 - 8, y: cy - cell / scale / 2 + 8, frame: 0 });
+    if (c.badge === 'star') badges.push({ id: 'avatar.pip', x: cx + cell / scale / 2 - 7, y: cy - cell / scale / 2 + 2, frame: 0 });
+    else if (c.badge) badges.push({ id: c.badge === 'lock' ? 'icon.lock' : 'icon.check', x: cx + cell / scale / 2 - 8, y: cy - cell / scale / 2 + 8, frame: 0 });
   });
   return (
     <View style={{ width: w, height: h, alignSelf: 'center' }}>
@@ -126,7 +129,13 @@ export function IconGrid({ cells, columns, cell, scale, onPress, selected }: { c
             accessibilityLabel={c.label}
             accessibilityState={{ selected: selected === c.key, disabled: !!c.dim }}
             style={{ width: cell, height: cell, borderWidth: selected === c.key ? 2 : 0, borderColor: QUI.gold }}
-          />
+          >
+            {!!c.count && (
+              <PixelText size="tiny" bold color={QUI.goldDark} style={{ position: 'absolute', right: 2, bottom: 2 }}>
+                {c.count}
+              </PixelText>
+            )}
+          </Pressable>
         ))}
       </View>
     </View>

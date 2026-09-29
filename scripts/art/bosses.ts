@@ -540,6 +540,8 @@ export function addBosses(reg: Registry): void {
     reg.add({ id: `${id}.hurt`, atlas: biome, frames: [frame(biome, 0, 'hurt')], flash: true });
     reg.add({ id: `${id}.low`, atlas: biome, frames: [frame(biome, 0, 'low'), frame(biome, 2, 'low')], fps: 3, loop: true, flash: true });
     reg.add({ id: `trophy.${biome}`, atlas: 'shared', frames: [trophy(biome)] });
+    // Not beaten yet: its shape only, on the trophy shelf.
+    reg.add({ id: `trophy.${biome}.shadow`, atlas: 'shared', frames: [trophy(biome).silhouette(hex('#3a3242'))] });
   }
 }
 

@@ -155,6 +155,14 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
 27. **Welcome credits (A1).** `WELCOME_CREDITS = 50` is part of the balance once `startedAt` is set (`credits.welcome`),
     not a stored grant. Chest claims on sessions before `startedAt` are ignored entirely (no task or reflection XP,
     no crits), so only journey sessions have chests at all.
+28. **Gear slots keep their stored names (Q10).** The spec's `head / back / hand / companion / camp` map to the shipped
+    keys: `helmet` = head, `cloak` and `banner` = back (both may be worn; banner behind cloak), `weapon` = hand;
+    companion and campfire stay top-level on `quest_meta`. Renaming synced keys would silently unequip everyone
+    (`parseProps` drops unknown slots). The sheet shows six tiles. `minTier` became `rankRequired` (code only).
+29. **One avatar, two forms.** `<Avatar>` (its own canvas: HUD, character sheet, ceremonies) and `<AvatarSprite>`
+    (inside the map's canvas, driven by shared values) both resolve layers with `resolveAvatarLayers`. Cheer is a hop
+    on the idle frame; wave adds a raised-arm layer (`avatar.wave`). Owned items above the current rank (a rebalance,
+    another build) show a padlock and can't be worn.
 
 ## Risks
 

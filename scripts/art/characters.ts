@@ -362,6 +362,11 @@ export function addAvatar(reg: Registry): void {
   }
   const staffMap = { d: hex(SHARED.wood[1]), e: hex(SHARED.wood[2]) };
   reg.add({ id: 'avatar.weapon.staff', atlas: 'shared', frames: byPose((p) => posed(STAFF, p, staffMap)), anchor: [10, 24] });
+  // A wave: the free (left) arm raised over the idle0 pose, two frames.
+  const waveMap = { s: bmap.s, c: bmap.c };
+  const up = pad20([...Array(7).fill(''), '...ss', '...ss', '...cc', '...cc', '....cc', '....cc', '.....c']);
+  const out = pad20([...Array(8).fill(''), '.ss', '.ss', '..cc', '...cc', '....cc', '.....c']);
+  reg.add({ id: 'avatar.wave', atlas: 'shared', frames: [posed(up, 'idle0', waveMap), posed(out, 'idle0', waveMap)], anchor: [10, 24], fps: 4, loop: true });
   // The ascension star pip.
   reg.add({ id: 'avatar.pip', atlas: 'shared', frames: [new Px(5, 5).stamp(['..a..', '.aba.', 'abbba', '.aba.', '..a..'], { a: hex(SHARED.gold[1]), b: hex('#fff6c0') })] });
 }

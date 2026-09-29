@@ -1,28 +1,23 @@
-// Which sprite layers make up the avatar, bottom to top: back gear, the rank
-// tier's back piece, body, outfit, helmet, weapon. Owned cosmetics override
-// the tier's defaults; everything shares one frame, so layers never clip.
+// The avatar's look against this build's catalog: the layer ids to draw
+// (see resolveAvatarLayers) and the pose frames every layer shares.
 
+import { AvatarLayer, resolveAvatarLayers } from '../domain/game/avatar';
 import type { GearSlot } from '../domain/items/types';
+import { SHOP_BY_SKU } from './content/shop';
 
 export interface AvatarLook {
   tier: number;
   gear: Partial<Record<GearSlot, string>>;
 }
 
-/** Tiers whose outfit has a back layer (cloak, cape, mantle, aura). */
-const TIER_BACKS = new Set([0, 3, 4, 5, 6]);
-
-export function avatarLayers({ tier, gear }: AvatarLook): string[] {
-  const t = Math.max(0, Math.min(6, Math.floor(tier)));
-  const layers: string[] = [];
-  if (gear.banner) layers.push(`avatar.${gear.banner}`);
-  if (gear.cloak) layers.push(`avatar.${gear.cloak}`);
-  else if (TIER_BACKS.has(t)) layers.push(`avatar.back.${t}`);
-  layers.push('avatar.body', `avatar.outfit.${t}`);
-  if (gear.helmet) layers.push(`avatar.${gear.helmet}`);
-  layers.push(gear.weapon ? `avatar.${gear.weapon}` : t === 0 ? 'avatar.weapon.staff' : 'avatar.weapon.basic');
-  return layers;
+/** Sprite layer ids bottom → top, without the pips (drawn apart, above a shoulder). */
+export function avatarLayers({ tier, gear }: AvatarLook, visible?: readonly AvatarLayer[]): string[] {
+  return resolveAvatarLayers(tier, gear, 0, SHOP_BY_SKU)
+    .filter((l) => !visible || visible.includes(l.layer))
+    .map((l) => l.id);
 }
 
-/** Pose frames in the avatar sprites. */
-export const POSE = { idle: [0, 1], walk: [2, 3], kneel: [4] } as const;
+export type AvatarAnimation = 'idle' | 'walk' | 'kneel' | 'cheer' | 'wave';
+
+/** Pose frames in the avatar sprites (cheer hops on the idle frame; wave adds the arm layer). */
+export const POSE = { idle: [0, 1], walk: [2, 3], kneel: [4], cheer: [0], wave: [0] } as const;

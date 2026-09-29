@@ -6,7 +6,7 @@ import { Pressable, View } from 'react-native';
 
 import type { GameState } from '../../domain/game/derive';
 import type { AvatarLook } from '../../game/avatar';
-import { avatarLayers } from '../../game/avatar';
+import { Avatar } from '../../game/render/Avatar';
 import { SpriteView } from '../../game/render/SpriteView';
 import { XPBar } from '../../game/ui/HPBar';
 import { PixelPanel } from '../../game/ui/PixelPanel';
@@ -28,7 +28,9 @@ export function Hud({ game, look, width, onAvatar, onLongPress }: { game: GameSt
         style={{ width: 44, height: 44, overflow: 'hidden', backgroundColor: QUI.nightLight, alignItems: 'center' }}
       >
         {/* Just the head and shoulders. */}
-        <SpriteView id={avatarLayers(look)} scale={3} style={{ marginTop: -4 }} />
+        <View style={{ marginTop: -4 }}>
+          <Avatar tier={look.tier} gear={look.gear} stars={game.journey.position.loop} scale={3} animate={false} />
+        </View>
       </Pressable>
       <View style={{ flex: 1, gap: u }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 * u }}>

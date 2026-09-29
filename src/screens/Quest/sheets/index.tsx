@@ -1,10 +1,11 @@
-// The sheets behind the camp's NPCs and objects, and the character (Q10).
+// The sheets behind the camp's NPCs and objects, and the character.
 
 import React from 'react';
 
 import { useQuestReduced } from '../../../game/state/settings';
 import type { QuestModel } from '../useQuestModel';
 import { BoardSheet } from './BoardSheet';
+import { CharacterSheet } from './CharacterSheet';
 import { MerchantSheet } from './MerchantSheet';
 import { SageSheet } from './SageSheet';
 import { ScribeSheet } from './ScribeSheet';
@@ -22,6 +23,8 @@ export function QuestSheets({ sheet, onClose, model }: { sheet: SheetId | null; 
       return <MerchantSheet model={model} onClose={onClose} reduced={reduced} />;
     case 'scribe':
       return <ScribeSheet model={model} onClose={onClose} reduced={reduced} />;
+    case 'character':
+      return <CharacterSheet model={model} onClose={onClose} reduced={reduced} />;
     case 'chests':
       return <ScribeSheet model={model} onClose={onClose} reduced={reduced} initialTab="chests" />;
     default:

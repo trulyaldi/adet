@@ -39,7 +39,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
   const purchases = itemsOfType(data.items, 'purchase');
   const owned = new Set(purchases.map((p) => p.props.sku));
   const freezesThisMonth = purchases.filter((p) => p.props.sku === FREEZE_SKU && p.props.month === month).length;
-  const locked = (s: ShopItem) => (s.minTier ?? 0) > game.rank.tier;
+  const locked = (s: ShopItem) => (s.rankRequired ?? 0) > game.rank.tier;
   const canBuy = (s: ShopItem) => {
     if (locked(s)) return false;
     if (s.kind === 'freeze') return freezesThisMonth < FREEZES_BUYABLE_PER_MONTH && game.credits.balance >= s.cost;
@@ -75,7 +75,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
   const cells = SHOP.map((s) => ({
     key: s.sku,
     icon: s.icon,
-    label: `${s.name}, ${s.cost} credits${locked(s) ? `, unlocks at ${RANKS[s.minTier!].title}` : owned.has(s.sku) && s.kind !== 'freeze' ? ', owned' : ''}`,
+    label: `${s.name}, ${s.cost} credits${locked(s) ? `, unlocks at ${RANKS[s.rankRequired!].title}` : owned.has(s.sku) && s.kind !== 'freeze' ? ', owned' : ''}`,
     dim: locked(s) || (!owned.has(s.sku) && !canBuy(s) && s.kind !== 'freeze') || (s.kind === 'freeze' && !canBuy(s)),
     badge: locked(s) ? ('lock' as const) : owned.has(s.sku) && s.kind !== 'freeze' ? ('check' as const) : null,
   }));
@@ -108,7 +108,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
           )}
           {locked(item) ? (
             <PixelText size="sm" color={QUI.parchment}>
-              Unlocks at {RANKS[item.minTier!].title}.
+              Unlocks at {RANKS[item.rankRequired!].title}.
             </PixelText>
           ) : owned.has(item.sku) && item.kind !== 'freeze' ? (
             <PixelButton

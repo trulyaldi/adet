@@ -33,7 +33,7 @@ export function RankUp({ tier, look, onDone, reduced }: { tier: number; look: Av
   const [shown, setShown] = useState(reduced ? layers.length : 0);
   const [stand, setStand] = useState(reduced);
   const [title, setTitle] = useState(reduced);
-  const unlocked = SHOP.filter((s) => s.minTier === tier);
+  const unlocked = SHOP.filter((s) => s.rankRequired === tier);
 
   useEffect(() => {
     if (reduced) return;
