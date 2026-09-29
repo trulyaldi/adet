@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Modal } from 'react-native';
 
-import { ceremonyMayPlay, CeremonyEvent, CeremonyMarks, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from '../../domain/game/ceremonies';
+import { ceremonyMayPlay, ceremonyVisible, CeremonyEvent, CeremonyMarks, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from '../../domain/game/ceremonies';
 import type { GameState } from '../../domain/game/derive';
 import { gameStateOf } from '../../domain/game/fromData';
 import { useLootRequest } from '../state/loot';
@@ -122,8 +122,9 @@ export function RootCeremonyHost() {
     setPlaying({ event: next });
   }, [loaded, userId, tables, settled, game, playing, cooldown, data.active, loot, modalOpen, revealPending, active, request, seed]);
 
-  // A session starting mid-scene hides it; it comes back once the session ends.
-  const current = data.active ? null : playing;
+  // A session starting mid-scene hides it; it comes back when the session has
+  // ended and the Loot sheet (and anything else) is closed: one modal at a time.
+  const current = ceremonyVisible({ timerActive: !!data.active, lootOpen: !!loot, modalOpen }) ? playing : null;
   useEffect(() => current ? coverWorld() : undefined, [current]);
   // Full-screen ceremonies hold celebrations back; the level-up is a small toast.
   useEffect(() => {

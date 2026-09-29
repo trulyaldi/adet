@@ -58,6 +58,16 @@ export interface CeremonyContext {
   appActive: boolean;
 }
 
+/**
+ * Whether a scene that already started may be on screen. A session starting
+ * hides it; it comes back only when nothing else is up (the Loot sheet opens
+ * as the session ends, so it waits for that too). Foreground and the map
+ * reveal don't hide a scene that's playing, so it never restarts.
+ */
+export function ceremonyVisible(c: Pick<CeremonyContext, 'timerActive' | 'lootOpen' | 'modalOpen'>): boolean {
+  return !c.timerActive && !c.lootOpen && !c.modalOpen;
+}
+
 /** Ceremonies wait for a quiet moment: never during a session, never over another sheet. */
 export function ceremonyMayPlay(c: CeremonyContext): boolean {
   return !c.timerActive && !c.lootOpen && !c.modalOpen && !c.revealPending && c.appActive;
