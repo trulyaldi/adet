@@ -54,20 +54,21 @@ export function Camera({
   shake,
   children,
 }: {
-  x?: SharedValue<number>;
+  x?: SharedValue<number> | number;
   y: SharedValue<number>;
   shake?: SharedValue<number>;
   children: React.ReactNode;
 }) {
   const transform = useDerivedValue(() => {
     const s = shake ? shake.value : 0;
-    return [{ translateX: -Math.round(x ? x.value : 0) + Math.round(s) }, { translateY: -Math.round(y.value) + Math.round(s * 0.5) }];
+    const cx = x === undefined ? 0 : typeof x === 'number' ? x : x.value;
+    return [{ translateX: -Math.round(cx) + Math.round(s) }, { translateY: -Math.round(y.value) + Math.round(s * 0.5) }];
   });
   return <Group transform={transform}>{children}</Group>;
 }
 
-/** Parallax: a layer that moves at `factor` of the camera. */
-export function Parallax({ y, factor, children }: { y: SharedValue<number>; factor: number; children: React.ReactNode }) {
-  const transform = useDerivedValue(() => [{ translateY: -Math.round(y.value * factor) }]);
+/** Parallax: a layer (outside the Camera) that moves at `factor` of the camera's y. */
+export function Parallax({ x = 0, y, factor, children }: { x?: number; y: SharedValue<number>; factor: number; children: React.ReactNode }) {
+  const transform = useDerivedValue(() => [{ translateX: -Math.round(x) }, { translateY: -Math.round(y.value * factor) }]);
   return <Group transform={transform}>{children}</Group>;
 }

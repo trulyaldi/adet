@@ -3,7 +3,7 @@
 // pixel icons for the HUD, sheets and shop.
 
 import { SHARED } from '../../src/game/content/palettes';
-import { Color, hex, Px, withAlpha } from '../pixel/px';
+import { bayer, Color, hex, Px, withAlpha } from '../pixel/px';
 import { ramp } from '../pixel/shade';
 import { Registry } from './registry';
 
@@ -150,11 +150,21 @@ function glow(size: number, color: string): Px {
 }
 
 function fog(w: number, h: number): Px {
+  // A soft bank of mist: stepped alpha rings, dithered at the edge (pixel fog, not a blur).
   const px = new Px(w, h);
-  const c = hex('#e8f2ec');
-  for (let i = 0; i < 7; i++) {
-    const x = (i / 6) * w;
-    px.ellipse(x, h * 0.55 + Math.sin(i * 1.7) * h * 0.12, w * 0.16, h * 0.34, withAlpha(c, 110));
+  const c = hex('#eef5f0');
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const nx = (x + 0.5 - w / 2) / (w / 2);
+      const ny = (y + 0.5 - h / 2) / (h / 2);
+      const wob = Math.sin(x * 0.35) * 0.12 + Math.sin(x * 0.13 + 1) * 0.1;
+      const d = Math.hypot(nx, ny * (1 + wob));
+      if (d >= 1) continue;
+      const v = 1 - d;
+      if (v < 0.25 && bayer(x, y) > v * 4) continue;
+      const step = v > 0.6 ? 80 : v > 0.35 ? 58 : 36;
+      px.set(x, y, withAlpha(c, step));
+    }
   }
   return px;
 }
@@ -195,7 +205,7 @@ export function addProps(reg: Registry): void {
   reg.add({ id: 'fx.glow.warm', atlas: 'shared', frames: [glow(32, '#ffd27a')], anchor: [16, 16], additive: true });
   reg.add({ id: 'fx.glow.cool', atlas: 'shared', frames: [glow(32, '#9fe8ff')], anchor: [16, 16], additive: true });
   reg.add({ id: 'fx.glow.small', atlas: 'shared', frames: [glow(12, '#fff0b0')], anchor: [6, 6], additive: true });
-  reg.add({ id: 'fx.fog', atlas: 'shared', frames: [fog(64, 24)], anchor: [32, 12] });
+  reg.add({ id: 'fx.fog', atlas: 'shared', frames: [fog(56, 22)], anchor: [28, 11] });
   reg.add({ id: 'fx.pixel', atlas: 'shared', frames: [new Px(1, 1).set(0, 0, hex('#ffffff'))], anchor: [0, 0] });
 
   for (const [name, i] of Object.entries(ICONS)) {

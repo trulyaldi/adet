@@ -141,7 +141,7 @@ export function buildBiome(def: BiomeDef): BiomeMap {
   const path = spline(pts);
   const gate = { x: WORLD_W / 2, y: top + 80 };
   // Nodes 0–6 spaced along the path; the boss (7) waits at the gate.
-  const spots = alongPath(path, NODES_PER_BIOME - 1, 0.08, 0.86);
+  const spots = alongPath(path, NODES_PER_BIOME - 1, 0.12, 0.88);
   const nodes: MapNode[] = NODE_KINDS.map((kind, i) => ({
     index: i,
     kind,

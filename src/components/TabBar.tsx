@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
 import { Glyph, GlyphName } from './Glyph';
 import { usePressMotion } from './motion/Press';
+import { QuestBadge, useFreshChest } from './QuestBadge';
 
 const TAB_FADE = { duration: 180, easing: Easing.out(Easing.quad) };
 
@@ -17,15 +18,17 @@ const TABS: { key: Screen; label: string; glyph: GlyphName }[] = [
   { key: 'today', label: 'Today', glyph: 'today' },
   { key: 'projects', label: 'Projects', glyph: 'target' },
   { key: 'stats', label: 'Stats', glyph: 'stats' },
+  { key: 'quest', label: 'Quest', glyph: 'quest' },
 ];
 
 /**
- * Three icon tabs. Inactive icons use the secondary ink (readable in bright
+ * Four icon tabs. Inactive icons use the secondary ink (readable in bright
  * light); the active one sits on a colored pill that fades in, no bounce.
  */
 export function TabBar({ active, onChange }: { active: Screen; onChange(s: Screen): void }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const fresh = useFreshChest();
   return (
     <View
       accessibilityRole="tablist"
@@ -35,18 +38,18 @@ export function TabBar({ active, onChange }: { active: Screen; onChange(s: Scree
         borderTopColor: colors.line,
         flexDirection: 'row',
         paddingTop: 8,
-        paddingHorizontal: 20,
+        paddingHorizontal: 12,
         paddingBottom: Math.max(insets.bottom, 10),
       }}
     >
       {TABS.map((tab) => (
-        <Tab key={tab.key} label={tab.label} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} />
+        <Tab key={tab.key} label={tab.key === 'quest' && fresh ? 'Quest, a chest is waiting' : tab.label} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} badge={tab.key === 'quest' ? <QuestBadge /> : null} />
       ))}
     </View>
   );
 }
 
-function Tab({ label, glyph, on, onPress }: { label: string; glyph: GlyphName; on: boolean; onPress(): void }) {
+function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: GlyphName; on: boolean; onPress(): void; badge?: React.ReactNode }) {
   const { colors, radius } = useTheme();
   const reduced = useReducedMotion();
   const pressMotion = usePressMotion('icon');
@@ -79,6 +82,7 @@ function Tab({ label, glyph, on, onPress }: { label: string; glyph: GlyphName; o
           <Animated.View style={iconStyle}>
             <Glyph name={glyph} size={25} color={on ? colors.brand : colors.sub} bg={on ? colors.brandLight : colors.card} />
           </Animated.View>
+          {badge}
         </Animated.View>
       </Pressable>
     </View>

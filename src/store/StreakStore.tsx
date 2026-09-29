@@ -54,7 +54,7 @@ import { MODAL_GAP_MS } from '../theme/motion';
 import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 import { clearState, EMPTY_SYNC_META, loadState, loadSyncMeta, saveState, SyncMeta } from './storage';
 
-export type Screen = 'today' | 'projects' | 'stats';
+export type Screen = 'today' | 'projects' | 'stats' | 'quest';
 export type StatsView = 'overview' | 'history';
 
 

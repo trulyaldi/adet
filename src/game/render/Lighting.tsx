@@ -28,7 +28,7 @@ export function Graded({ matrix, children }: { matrix: Matrix; children: React.R
 export function worldMatrix(phase: DayPhase, opts: { ascension?: boolean; locked?: boolean } = {}): Matrix {
   let m = GRADES[phase];
   if (opts.ascension) m = mulMatrix(ASCENSION_NIGHT, m);
-  if (opts.locked) m = mulMatrix(desaturate(0.75, 0.7), m);
+  if (opts.locked) m = mulMatrix(desaturate(0.6, 0.82), m);
   return m;
 }
 
