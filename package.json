@@ -55,7 +55,8 @@
     "game:audio": "tsx scripts/build-audio.ts",
     "game:report": "tsx scripts/asset-report.ts",
     "game:contact": "tsx scripts/contact-sheet.ts",
-    "game:needs-art": "tsx scripts/needs-art.ts"
+    "game:needs-art": "tsx scripts/needs-art.ts",
+    "check:size": "tsx scripts/check-size.ts"
   },
   "private": true
 }

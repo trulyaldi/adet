@@ -80,6 +80,31 @@ Measured on a clean worktree of `79a9dfc` before any polish-pass change.
 | Entry point | `package.json` `main` = `index.ts`, which exists |
 | `assets/game/raw/` | empty (no licensed packs installed) |
 
+## Polish pass: size budgets and render-loop audit (P7)
+
+`npm run check:size` exports iOS and checks `scripts/size-budgets.json`:
+
+| Budget | Limit | Measured (after P9/P10) |
+|---|---|---|
+| JS bundle (Hermes) | baseline 5,115,347 B + 1.2 MB | 5,125,120 B (+10 KB) |
+| Game images, total | 2.5 MB | 66 KB (8 atlases) |
+| Any one atlas | 500 KB | 10.7 KB (shared) |
+| Game audio | 4 MB | 53 KB (9 SFX; no music) |
+
+No budget was raised.
+
+Render-loop audit:
+
+| Checked | Finding |
+|---|---|
+| Per-frame React state | None. The world clock is a Reanimated frame callback on the UI thread; the map sets React state only when the visible biome band changes (not per frame); the reveal, camera and avatar are shared values. |
+| Battle strip | Re-renders every 5 s for its minute preview (60 s with reduce motion); its clock is paused while the timer is paused. Fine. |
+| `deriveGameState` recompute | Memoised on the data slices it reads, never the clock (`fromData.test.ts`). The QA panel's what-if game re-derived on every store tick: now once a minute or on a data/overlay change. |
+| Pause on blur / background | The Quest screen is unmounted when its tab isn't showing, so its clock, particles and ambient layers stop; the clock also stops when the app is in the background and with reduce motion. |
+| Atlases on blur | Ref-counted (`render/atlas.ts`): unmounting the Quest screen frees every biome atlas (only `shared`, used by HUD-size sprites elsewhere, stays). |
+| Audio | SFX players are released when the app leaves the foreground; no music ships yet. |
+| Benchmark | 5,000 sessions: 12.8 ms best of 12 (limit 50 ms); with a what-if overlay: 9.3 ms. |
+
 ## Codex handoff notes
 
 ### Inconsistencies found

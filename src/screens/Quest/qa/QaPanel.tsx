@@ -50,7 +50,9 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
   const [intro, setIntro] = useState(false);
 
   // A separate game for this view only; the real one (and its watcher) never sees the overlay.
-  const game = useMemo(() => whatIfGame(gameInput(data, now), overlay), [data, now, overlay]);
+  // Re-derived when the data or the overlay changes, or once a minute (not on every store tick).
+  const minute = Math.floor(now / 60_000);
+  const game = useMemo(() => whatIfGame(gameInput(data, minute * 60_000), overlay), [data, minute, overlay]);
   const maps = biomeMaps();
   const at = spotFor(maps, game.journey.position.global);
   const camY = useSharedValue(cameraFor(at.y, MAP_H, width));

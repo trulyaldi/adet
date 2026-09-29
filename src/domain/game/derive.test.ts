@@ -10,6 +10,7 @@ import { bossGlobal, bossHp, DeriveInput, deriveGameState, nodeAt } from './deri
 import { boughtFreezes } from './freezes';
 import { levelFromXp, rankForLevel, skillLevel, xpForLevel } from './level';
 import { fixedTz, prevDayKey } from './tz';
+import { whatIfGame } from './whatIf';
 
 const UTC = fixedTz(0);
 /** 2026-09-01 00:00 UTC; days are counted from here. */
@@ -504,4 +505,16 @@ test('benchmark: 5,000 sessions derive in under 50 ms', () => {
     ms = Math.min(ms, performance.now() - t0);
   }
   assert.ok(ms < 50, `took ${ms.toFixed(1)} ms`);
+  console.log(`  deriveGameState, 5,000 sessions: ${ms.toFixed(1)} ms (best of 12)`);
+
+  // The dev QA panel derives the same history with a what-if overlay on top.
+  let qa = Infinity;
+  const overlay = { sessions: [{ habitId: 'h1', minutes: 60, weakPoint: true }, { habitId: 'h2', minutes: 240 }], bossHp: 0.5 };
+  for (let i = 0; i < 12; i++) {
+    const t0 = performance.now();
+    whatIfGame(input, overlay);
+    qa = Math.min(qa, performance.now() - t0);
+  }
+  assert.ok(qa < 50, `what-if took ${qa.toFixed(1)} ms`);
+  console.log(`  with a what-if overlay: ${qa.toFixed(1)} ms`);
 });
