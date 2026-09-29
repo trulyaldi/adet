@@ -1,31 +1,69 @@
 # Quest Mode — implementation plan
 
-## Handoff audit — 2026-09-29
+## Audit after Codex handoff — 2026-09-29
 
-Status is based on code and checks, not commit titles. The Q0–Q8 implementation
-is present; physical-device acceptance is part of Q13.
+Claude resumed after Codex. Codex's commits are `d7aeff8` (R), `59f7576` (Q10
+previews), `9aeb50b` (Q11) and `daee7e7` (Q12); it ran out of credits in the
+middle of the Q9 rewrite, which was left uncommitted (`be5ae32` commits it as
+it stood). `226e664` (Q10) predates Codex. The spec files were never in the
+repo; their text was recovered from Codex's session log into
+`docs/quest/spec/`.
+
+### Status (after the fixes below)
 
 | Ticket | Status | Evidence |
 |---|---|---|
-| Q0 | done | This plan records architecture, files, assumptions and risks. |
-| Q1 | done | `006_quest.sql`, typed item/link ops, sync adapters and tests exist. |
-| Q2 | done | `deriveGameState` is real; `derive.test.ts` includes a 5,000-session benchmark. |
-| Q3 | done | Atlas generator, logical manifest, committed atlases and credits exist; manifest test passes. |
-| Q4 | done | Skia render kit and dev playground exist; web export bundles. |
-| Q5 | done | Seven biome definitions and node/asset tests exist. |
-| Q6 | done | Quest tab, map reveal, HUD, badge and map model tests exist. |
-| Q7 | done | Board, Merchant, Scribe and rule-based Sage sheets exist. |
-| Q8 | done | Weak points, battle strip and Loot sheet are wired into the session flow. |
-| Q9 | done | Pure high-water detection, per-user marks, root host, Ascension and tests replace map-only playback. |
-| Q10 | done | Layered Avatar, gear eligibility, sheet and tests pass; 3×/4× previews were inspected without clipping. |
-| Q11 | done | Worker, authenticated opt-in client, local fallback, cache and validation tests pass typecheck. |
-| Q12 | done | Context gate mutes running/paused timers; local Scribe controls, replay, tests and licensed-file no-ops exist. |
-| Q13 | not started | No kill switch or Quest README; device QA and PR checklist remain. |
-| R | done | Branch/history/code audited; typecheck and 39 test files pass, web export bundles; no lint script exists. |
-| A1 | done | Welcome credits and journey-only chests/credits have tests. |
-| A2 | done | Only boss defeats are written; legacy achievement kinds are deprecated. |
-| A3 | done | `useQuestStarted()` gates Loot, strip and weak points; badge invites onboarding. |
-| A4 | done | The root host registers the evaluator called after Loot closes. |
+| Q0 | done | This plan: recon, files per ticket, data flow, assumptions, risks. |
+| Q1 | done | `006_quest.sql` idempotent, `(user_id, id)`, `deleted_at`, trigger, RLS with `with check`; `questRows`/`rows` tests. |
+| Q2 | done | `derive.test.ts` covers the rule list and a 5,000-session benchmark. |
+| Q3 | done | `manifest.test.ts` (zero missing ids, one density); `CREDITS.md`; `npm run game:assets`. |
+| Q4 | done | Skia kit samples with `FilterMode.Nearest` everywhere; `Playground` only when `__DEV__`. |
+| Q5 | done | `biomes.test.ts` (nodes, spline, ids, ≤12-word lines). Boss pre-fight lines had lost their caller; restored in `b4d1700`. |
+| Q6 | done | Quest tab, map, reveal, HUD, badge; `model.test.ts`. |
+| Q7 | done | Board, Merchant, Scribe, Sage sheets; bought freezes extend `streakV5` only through a new optional argument. |
+| Q8 | done | Weak points row, battle strip, Loot sheet via `useQuestAfterStop`; `stopTimer` returns the session. |
+| Q9 | done | Pure `ceremonies.ts` + tests; one `RootCeremonyHost`; marks per user; Ascension. The host was missing the "other sheet open" gate (fixed). |
+| Q10 | done (device QA open) | `resolveAvatarLayers`/`isEquippable` tests; previews at 3×/4×. Restart/sync persistence needs Expo Go. |
+| Q11 | done | Worker verifies JWT (JWKS or HS256), KV 30/day, 32 KB, zod output, drops unknown habits, CORS from `ALLOWED_ORIGINS`; client tests. |
+| Q12 | done | `feedback` gate (`timer` always muted, any active session mutes all); local SFX/music/haptics/motion; gate tests. |
+| Q13 | see Q13 commit | Safety switches, docs, QA script and PR. |
+| R | done | This audit. |
+| A1 | done | Veteran test: zero unopened chests, balance = `WELCOME_CREDITS` (50). |
+| A2 | done | Only `boss_defeated` is written; the other kinds are `@deprecated`. |
+| A3 | done | `useQuestStarted()` gates the Loot sheet, battle strip and weak points; the tab dot invites until onboarding. |
+| A4 | done | `LootHost` calls `ceremonyHost.evaluate()` on close; `LootSheet` imports no ceremony. |
+
+### Issues found
+
+| Tag | Issue | Where | Fix |
+|---|---|---|---|
+| blocker | A temporary QA harness replaced the app entry in the working tree (`index.ts` deleted, `main: index.tsx`, `src/qa-ceremony.tsx`, headed "do not commit"). Predates Codex. | working tree only | Never committed; every check below ran in a clean worktree. Left for the owner to delete. |
+| blocker | Q9 rewrite uncommitted and unfinished. | `src/game/ceremonies/`, `src/domain/game/ceremonies.ts` | `be5ae32`, `b4d1700` |
+| bug | The root ceremony host ignored open sheets, the intro replay and queued celebrations, so a scene could present over the Merchant or a habit sheet. | `host.tsx` | `b4d1700` (`holdCeremonies`, `anyModalOpen`, celebrations wait for ceremonies) |
+| bug | Onboarding wrote marks straight to storage while the host's copy stayed empty until sync settled (two writers). | `QuestScreen.tsx` | `b4d1700` (`ceremonyHost.seed`) |
+| bug | Boss pre-fight lines and defeat lines were never shown (Q5 content orphaned when the intro event was dropped). | `BossIntro.tsx` | `b4d1700` |
+| bug | The worker returned 502 for fenced JSON, and counted oversized requests against the rate limit. | `worker/src/index.ts` | `quest(fix): worker…` |
+| bug | `enableSage()` never resolved on web (`Alert` is a no-op there). | `src/services/sage.ts` | `quest(fix): the Sage privacy note…` |
+| cleanup | Rank-up unlock icons were buttons with a no-op press. | `RankUp.tsx`, `IconGrid` | `b4d1700` |
+| cleanup | Level-up had no pixel burst; its timer restarted when XP changed; used the deprecated `pointerEvents` prop. | `LevelUp.tsx` | `b4d1700` |
+| cleanup | Two `expo-audio` modules each call `setAudioModeAsync`, with identical options (silent switch respected, mix with others). | `src/feedback/audio.ts`, `src/game/audio.ts` | Kept: same mode, no conflict; noted. |
+| cleanup | Legacy synced `sfx/music/haptics/motion` in `quest_meta.settings` are still parsed but read by nothing. | `items/types.ts` | Kept for older builds (see 33). |
+| spec | Spec names the AI flag `settings.aiSage`; code uses `settings.ai`. | `items/types.ts` | Kept (see 36). |
+| — | Scope and safety checks: no secrets in the diff; `ANTHROPIC_API_KEY` appears only in worker code and docs; no React in `src/domain/game`; no TODO/FIXME/`console.log` in Quest code; migration 006 unchanged since Q1; new deps (Skia 2.6.2, expo-font, Google pixel fonts) are in Expo Go; `sharp` is dev-only. | | pass |
+
+### Health checks (clean worktree of the committed tree)
+
+- Typecheck: pass (`tsc --noEmit`; worker: `tsc --noEmit` in `worker/`).
+- Tests: 392 pass, 0 fail (`npm test`) at `b4d1700`.
+- Lint: no lint script in the repo (see 9).
+- Bundle: `expo export --platform ios` succeeds on `main` and the branch.
+  Hermes bytecode 4,132,477 → 5,109,178 bytes (+977 KB, +23.6%); assets
+  282 KB → 617 KB (+335 KB).
+- `expo-doctor`: 20/21. The one failure is a patch mismatch inherited from
+  `main` (`expo` 57.0.25 installed, ~57.0.26 expected), not an Expo Go
+  incompatibility.
+
+## Codex handoff notes
 
 ### Inconsistencies found
 
@@ -241,6 +279,22 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
 35. **Old ceremony marks are ignored.** The previous map-only local `played`
     list could miss an event on a second device. The new per-user key
     `adet.quest.ceremonyMarks.v1` seeds current history on first load instead.
+
+36. **The AI flag keeps its shipped key.** Part 2 calls it
+    `quest_meta.settings.aiSage`; the synced key has been `settings.ai` since
+    Q7. Renaming it would silently turn AI off for anyone who enabled it, so
+    the code keeps `ai` and `enableSage()` is the only way to set it.
+37. **One full-screen moment at a time.** Ceremonies wait for any open app
+    sheet, the Loot sheet, Quest sheets and panels, the intro replay and a
+    queued celebration; celebrations wait while a full-screen ceremony plays.
+    The level-up toast is small and doesn't hold celebrations back.
+38. **Boss lines are asked for, not pushed.** The revised Q9 has four event
+    kinds and no boss intro. A boss's three pre-fight lines are spoken one per
+    tap on the boss you face (the Hollow Echo adds the player's own words),
+    and its defeat line shows as it dissolves.
+39. **The spec lives in the repo now.** `QUEST_PROMPT.md` and
+    `QUEST_PROMPT_PART2.md` were never committed; their text was recovered
+    from the Codex session into `docs/quest/spec/`.
 
 ## Risks
 
