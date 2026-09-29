@@ -1,5 +1,57 @@
 # Quest Mode — implementation plan
 
+## Handoff audit — 2026-09-29
+
+Status is based on code and checks, not commit titles. The Q0–Q8 implementation
+is present; physical-device acceptance is part of Q13.
+
+| Ticket | Status | Evidence |
+|---|---|---|
+| Q0 | done | This plan records architecture, files, assumptions and risks. |
+| Q1 | done | `006_quest.sql`, typed item/link ops, sync adapters and tests exist. |
+| Q2 | done | `deriveGameState` is real; `derive.test.ts` includes a 5,000-session benchmark. |
+| Q3 | done | Atlas generator, logical manifest, committed atlases and credits exist; manifest test passes. |
+| Q4 | done | Skia render kit and dev playground exist; web export bundles. |
+| Q5 | done | Seven biome definitions and node/asset tests exist. |
+| Q6 | done | Quest tab, map reveal, HUD, badge and map model tests exist. |
+| Q7 | done | Board, Merchant, Scribe and rule-based Sage sheets exist. |
+| Q8 | done | Weak points, battle strip and Loot sheet are wired into the session flow. |
+| Q9 | partial | Map-only `CeremonyHost` exists; revised pure detection, root host and Ascension are absent. |
+| Q10 | partial | Layered Avatar, gear eligibility, full sheet and unit tests exist; 3×/4× and restart/sync acceptance remains unverified. |
+| Q11 | partial | Local Sage fallback exists; `worker/`, authenticated AI client and cache are absent. |
+| Q12 | partial | Audio is a silent placeholder and SettingsPanel is text; haptics lack timer gating. |
+| Q13 | not started | No kill switch or Quest README; device QA and PR checklist remain. |
+| R | done | Branch/history/code audited; typecheck and 39 test files pass, web export bundles; no lint script exists. |
+| A1 | done | Welcome credits and journey-only chests/credits have tests. |
+| A2 | done | Only boss defeats are written; legacy achievement kinds are deprecated. |
+| A3 | done | `useQuestStarted()` gates Loot, strip and weak points; badge invites onboarding. |
+| A4 | partial | Loot calls `ceremonyHost.evaluate()`, but no component registers an evaluator. |
+
+### Inconsistencies found
+
+- `src/game/ceremonies/host.ts` exposes an evaluator hook, while the real
+  `CeremonyHost` is mounted only inside `QuestScreen` and never registers it.
+  Q9 will consolidate this into the root host required by Part 2.
+- `src/game/feedback.ts` gates sound during a timer but not haptics; Q12 will
+  put both through one context gate, including paused sessions.
+- `quest_meta.settings` currently holds device audio/motion preferences,
+  whereas Part 2 makes SFX, music, haptics and motion local per device. Q12
+  will migrate reads to local preferences while preserving synced battle strip,
+  AI Sage and NPC names.
+
+### Audit environment
+
+- Both prompt files were absent from the repository and Git history; their full
+  text was supplied in the handoff conversation before this audit was written.
+- `feat/quest` was pushed to `origin/feat/quest` at `226e664`.
+- The checkout contained pre-existing changes to `index.ts`, `index.tsx`,
+  `package.json` and `src/qa-ceremony.tsx`; this audit leaves them untouched.
+- `npm run lint` is unavailable because this repository has no lint script.
+- `npx expo start --offline` reached project startup but did not report a ready
+  bundle; `expo export --platform web` bundled 1,464 modules successfully.
+- `expo-doctor` could not download through sandbox DNS; it needs an unrestricted
+  rerun.
+
 Quest Mode gives focused time a purpose through one loop: **choose** weak points →
 **fight** (the timer damages the current enemy) → **loot** (a chest opened by ticking
 weak points and/or writing one line). The game is a pixel-art journey through 7
