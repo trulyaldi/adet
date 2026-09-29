@@ -22,7 +22,8 @@ function Note({ title, body, busy }: { title: string; body: string; busy?: boole
 }
 
 const loadQuestScreen = () => import('./QuestScreen');
-const loadPlayground = () => import('./Playground');
+// Dev builds only: in production __DEV__ is false, so the playground and its QA tools aren't bundled.
+const loadPlayground = __DEV__ ? () => import('./Playground') : null;
 
 export function QuestTab() {
   const tables = useQuestTables();
@@ -36,7 +37,7 @@ export function QuestTab() {
   return (
     <>
       <SkiaGate load={loadQuestScreen} props={{ onPlayground: () => setPlayground(true) }} fallback={fallback} />
-      {__DEV__ && playground && <SkiaGate load={loadPlayground} props={{ onClose: () => setPlayground(false) }} />}
+      {__DEV__ && playground && loadPlayground && <SkiaGate load={loadPlayground} props={{ onClose: () => setPlayground(false) }} />}
     </>
   );
 }

@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import * as ops from '../items/ops';
+import * as B from './balance';
+import { DeriveInput, deriveGameState } from './derive';
+import { fixedTz } from './tz';
+import { isWhatIfOff, NO_WHAT_IF, whatIfGame, withWhatIf } from './whatIf';
+
+const D0 = Date.UTC(2026, 8, 1, 12);
+const real: DeriveInput = {
+  sessions: [{ id: 's1', habitId: 'h1', start: D0 - 40 * 60_000 - 86_400_000, end: D0 - 86_400_000, duration: 2400 }],
+  habits: [{ id: 'h1', weeklyTargetMin: 300 }],
+  items: ops.startQuest({ items: [], links: [] }, D0 - 2 * 86_400_000).items,
+  links: [],
+  now: D0,
+  tz: fixedTz(0),
+};
+
+test('off: the what-if game is exactly the real game, and the input is untouched', () => {
+  const before = JSON.stringify(real);
+  assert.ok(isWhatIfOff(NO_WHAT_IF));
+  assert.deepEqual(whatIfGame(real, NO_WHAT_IF), deriveGameState(real));
+  assert.equal(withWhatIf(real, NO_WHAT_IF), real);
+  whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30, weakPoint: true }], bossHp: 0.5 });
+  assert.equal(JSON.stringify(real), before);
+});
+
+test('a synthetic session adds its minutes as XP and damage', () => {
+  const base = deriveGameState(real);
+  const g = whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30 }] });
+  assert.equal(g.xp.total - base.xp.total, 30);
+  assert.equal(g.journey.totalDamage - base.journey.totalDamage, 30);
+});
+
+test('a completed weak point adds a crit and task XP through a claimed chest', () => {
+  const plain = whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30 }] });
+  const withTask = whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30, weakPoint: true }] });
+  assert.equal(withTask.journey.totalDamage - plain.journey.totalDamage, B.CRIT_DAMAGE);
+  assert.equal(withTask.xp.total - plain.xp.total, B.TASK_XP);
+});
+
+test('before onboarding, what-if sessions still move a (synthetic) journey', () => {
+  const fresh = { ...real, items: [] };
+  assert.equal(deriveGameState(fresh).journey.started, false);
+  const g = whatIfGame(fresh, { sessions: [{ habitId: 'h1', minutes: 60 }] });
+  assert.equal(g.journey.started, true);
+  assert.ok(g.journey.totalDamage >= 60);
+});
+
+test('boss HP puts the current biome boss at that share of its HP', () => {
+  const g = whatIfGame(real, { sessions: [], bossHp: 0.25 });
+  assert.equal(g.journey.position.kind, 'boss');
+  assert.equal(g.journey.position.biomeIndex, deriveGameState(real).journey.position.biomeIndex);
+  assert.equal(g.journey.hp, Math.round(0.25 * g.journey.bossMaxHp));
+});
