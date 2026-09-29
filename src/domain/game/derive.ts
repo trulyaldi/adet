@@ -392,10 +392,8 @@ export function deriveGameState(input: DeriveInput): GameState {
 
   // Bosses: XP and credits, whichever way they were beaten.
   const defeated = [...defeats.values()].sort((a, b) => a.at - b.at || a.loop - b.loop);
-  for (const d of defeated) {
-    xpTotal += BOSS_XP;
-    if (startedAt !== null) earned += BOSS_CREDITS;
-  }
+  xpTotal += BOSS_XP * defeated.length;
+  if (startedAt !== null) earned += BOSS_CREDITS * defeated.length;
 
   // ---- levels, rank, skills ----
   const lv = levelFromXp(xpTotal);

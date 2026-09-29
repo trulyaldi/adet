@@ -27,6 +27,8 @@ export function QuestFocusStrip(p: { bottom: number; left: number; paused: boole
   return QUEST_ENABLED ? <Strip {...p} /> : null;
 }
 
+const loadBattleStrip = () => import('./BattleStrip');
+
 function Strip({ bottom, left, paused, dimmed }: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
   const started = useQuestStarted();
   const { battleStrip } = useQuestSettings();
@@ -38,7 +40,7 @@ function Strip({ bottom, left, paused, dimmed }: { bottom: number; left: number;
   const w = width - left - 16;
   return (
     <View style={{ position: 'absolute', left, bottom, width: w, height: STRIP_H }}>
-      <SkiaGate load={() => import('./BattleStrip')} props={{ running: active && !paused && !dimmed, reduced, width: w }} />
+      <SkiaGate load={loadBattleStrip} props={{ running: active && !paused && !dimmed, reduced, width: w }} />
     </View>
   );
 }

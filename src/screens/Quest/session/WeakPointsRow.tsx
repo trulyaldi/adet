@@ -8,7 +8,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Glyph } from '../../../components/Glyph';
 import { useQuestStarted, useQuestWrites } from '../../../data/itemsRepo';
 import { openTasksFor, TASK_TITLE_MAX } from '../../../domain/items/ops';
-import { setActivePlan, useQuestLocal } from '../../../game/state/local';
+import { pickWeakPoints, useQuestLocal } from '../../../game/state/local';
 import { useData } from '../../../store/StreakStore';
 import { useQuestTables } from '../../../sync/questTables';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -31,7 +31,7 @@ export function WeakPointsRow({ habitId }: { habitId: string }) {
   // First open: the top three by order are preselected.
   useEffect(() => {
     if (!open || plan || !tasks.length) return;
-    setActivePlan({ habitId, createdAt: Date.now(), taskIds: tasks.slice(0, MAX).map((t) => t.id) });
+    pickWeakPoints(habitId, tasks.slice(0, MAX).map((t) => t.id));
   }, [open, plan, tasks, habitId]);
 
   if (!started || tables !== 'available') return null;
@@ -39,7 +39,7 @@ export function WeakPointsRow({ habitId }: { habitId: string }) {
   const toggle = (id: string) => {
     const on = picked.includes(id);
     const next = on ? picked.filter((x) => x !== id) : [...picked, id].slice(-MAX);
-    setActivePlan({ habitId, createdAt: plan?.createdAt ?? Date.now(), taskIds: next });
+    pickWeakPoints(habitId, next);
   };
   const add = () => {
     const t = text.trim();

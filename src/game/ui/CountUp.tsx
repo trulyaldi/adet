@@ -1,7 +1,7 @@
 // A number that counts up from `from` to `to` (XP, credits), ticking in
 // steps. `onTick` fires on each step (for a light haptic).
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useState } from 'react';
 
 import { PixelSize, PixelText } from './PixelText';
 
@@ -28,15 +28,14 @@ export function CountUp({
   onDone?(): void;
   accessibilityLabel?: string;
 }) {
-  const [v, setV] = useState(reduced ? to : from);
-  const tick = useRef(onTick);
-  tick.current = onTick;
-  const done = useRef(onDone);
-  done.current = onDone;
+  const [v, setV] = useState(from);
+  const tick = useEffectEvent(() => onTick?.());
+  const finish = useEffectEvent(() => onDone?.());
+  // Reduced motion (or nothing to count): the final number, at once.
+  const instant = !!reduced || to <= from;
   useEffect(() => {
-    if (reduced || to <= from) {
-      setV(to);
-      done.current?.();
+    if (instant) {
+      finish();
       return;
     }
     const steps = Math.min(12, to - from);
@@ -44,18 +43,18 @@ export function CountUp({
     const t = setInterval(() => {
       i++;
       setV(Math.round(from + ((to - from) * i) / steps));
-      tick.current?.();
+      tick();
       if (i >= steps) {
         clearInterval(t);
-        done.current?.();
+        finish();
       }
     }, duration / steps);
     return () => clearInterval(t);
-  }, [from, to, duration, reduced]);
+  }, [from, to, duration, instant]);
   return (
     <PixelText size={size} bold color={color} accessibilityLabel={accessibilityLabel ?? `${prefix}${to}`}>
       {prefix}
-      {v}
+      {instant ? to : v}
     </PixelText>
   );
 }

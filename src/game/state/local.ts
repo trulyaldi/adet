@@ -114,3 +114,11 @@ export function planForSession(plan: ActivePlan | null, session: { habitId: stri
 export function setActivePlan(plan: ActivePlan | null): void {
   updateQuestLocal((s) => ({ ...s, plan }));
 }
+
+/** Pick the weak points for the running timer (a plan keeps the time it was first made). */
+export function pickWeakPoints(habitId: string, taskIds: string[]): void {
+  updateQuestLocal((s) => ({
+    ...s,
+    plan: { habitId, createdAt: s.plan?.habitId === habitId ? s.plan.createdAt : Date.now(), taskIds },
+  }));
+}

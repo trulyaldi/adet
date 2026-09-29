@@ -12,6 +12,8 @@ import { closeLoot, useLootRequest } from '../../../game/state/loot';
 import { useQuestReduced } from '../../../game/state/settings';
 import { MODAL_GAP_MS } from '../../../theme/motion';
 
+const loadLootSheet = () => import('./LootSheet');
+
 export function LootHost() {
   const req = useLootRequest();
   const insets = useSafeAreaInsets();
@@ -26,7 +28,7 @@ export function LootHost() {
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,20,0.55)' }]} />
       <Pressable style={StyleSheet.absoluteFill} onPress={() => {}} accessible={false} />
       <View style={{ marginTop: 'auto', paddingHorizontal: 12, paddingBottom: Math.max(insets.bottom, 12) + 8 }}>
-        {req && <SkiaGate key={req.sessionId} load={() => import('./LootSheet')} props={{ sessionId: req.sessionId, fresh: req.fresh, onClose: close }} />}
+        {req && <SkiaGate key={req.sessionId} load={loadLootSheet} props={{ sessionId: req.sessionId, fresh: req.fresh, onClose: close }} />}
       </View>
     </Modal>
   );

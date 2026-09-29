@@ -19,3 +19,8 @@ export async function loadCeremonyMarks(userId: string): Promise<CeremonyMarks |
 export function saveCeremonyMarks(userId: string, marks: CeremonyMarks): void {
   AsyncStorage.setItem(key(userId), JSON.stringify(marks)).catch(() => {});
 }
+
+/** Forget this device's marks (dev QA). The host then reseeds silently: nothing replays. */
+export function clearCeremonyMarks(userId: string): void {
+  AsyncStorage.removeItem(key(userId)).catch(() => {});
+}

@@ -21,6 +21,9 @@ function Note({ title, body, busy }: { title: string; body: string; busy?: boole
   );
 }
 
+const loadQuestScreen = () => import('./QuestScreen');
+const loadPlayground = () => import('./Playground');
+
 export function QuestTab() {
   const tables = useQuestTables();
   const [playground, setPlayground] = useState(false);
@@ -31,8 +34,8 @@ export function QuestTab() {
   const fallback = <Note title="Finding the path…" body="" busy />;
   return (
     <>
-      <SkiaGate load={() => import('./QuestScreen')} props={{ onPlayground: () => setPlayground(true) }} fallback={fallback} />
-      {__DEV__ && playground && <SkiaGate load={() => import('./Playground')} props={{ onClose: () => setPlayground(false) }} />}
+      <SkiaGate load={loadQuestScreen} props={{ onPlayground: () => setPlayground(true) }} fallback={fallback} />
+      {__DEV__ && playground && <SkiaGate load={loadPlayground} props={{ onClose: () => setPlayground(false) }} />}
     </>
   );
 }
