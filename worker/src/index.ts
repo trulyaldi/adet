@@ -41,13 +41,20 @@ const cors = (origin: string | null, env: Env): HeadersInit => {
   } : {};
 };
 
+// One key set per isolate: jose caches and refreshes it between requests.
+let jwks: { url: string; set: ReturnType<typeof createRemoteJWKSet> } | null = null;
+const keySet = (url: string) => {
+  if (jwks?.url !== url) jwks = { url, set: createRemoteJWKSet(new URL(url)) };
+  return jwks.set;
+};
+
 async function userId(request: Request, env: Env): Promise<string | null> {
   const token = /^Bearer (.+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) return null;
   try {
     const options = { audience: 'authenticated' };
     const verified = env.SUPABASE_JWKS_URL
-      ? await jwtVerify(token, createRemoteJWKSet(new URL(env.SUPABASE_JWKS_URL)), { ...options, algorithms: ['RS256', 'ES256'] })
+      ? await jwtVerify(token, keySet(env.SUPABASE_JWKS_URL), { ...options, algorithms: ['RS256', 'ES256'] })
       : env.SUPABASE_JWT_SECRET
         ? await jwtVerify(token, new TextEncoder().encode(env.SUPABASE_JWT_SECRET), { ...options, algorithms: ['HS256'] })
         : null;
@@ -78,7 +85,8 @@ async function askClaude(env: Env, system: string, data: unknown): Promise<unkno
   const raw = await response.json() as { content?: { type: string; text?: string }[] };
   const text = raw.content?.find((c) => c.type === 'text')?.text;
   if (!text) throw new Error('bad_output');
-  return JSON.parse(text);
+  // Models sometimes fence JSON despite the instruction; the content is still validated.
+  return JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
 }
 
 export default {
@@ -91,10 +99,11 @@ export default {
     if (request.method !== 'POST' || !['/sage/suggest', '/sage/recap'].includes(path)) return json({ error: 'not_found' }, 404, headers);
     const id = await userId(request, env);
     if (!id) return json({ error: 'unauthorized' }, 401, headers);
-    if (!await permitted(id, env)) return json({ error: 'rate_limited' }, 429, headers);
+    // Size first: an oversized request never spends one of the day's calls.
     if (Number(request.headers.get('Content-Length') ?? 0) > 32768) return json({ error: 'too_large' }, 413, headers);
     const body = await request.text();
     if (new TextEncoder().encode(body).byteLength > 32768) return json({ error: 'too_large' }, 413, headers);
+    if (!await permitted(id, env)) return json({ error: 'rate_limited' }, 429, headers);
     let input: unknown;
     try { input = JSON.parse(body); } catch { return json({ error: 'bad_request' }, 400, headers); }
     if (path === '/sage/suggest') {
