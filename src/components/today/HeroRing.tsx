@@ -168,7 +168,7 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
       <Animated.View style={[{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center' }, ringStyle]}>
         <Svg width={size} height={size} style={{ position: 'absolute' }}>
           {/* Capacity: a quiet gauge, secondary to the habit ring. */}
-          <G rotation={-90} origin={`${c}, ${c}`}>
+          <G transform={`rotate(-90 ${c} ${c})`}>
             <Circle cx={c} cy={c} r={rCap} fill="none" stroke={colors.track} strokeWidth={CAP_LINE} opacity={0.7} />
             <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={colors.brand} strokeWidth={CAP_LINE} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} opacity={0.55} animatedProps={lap1} />
             <ACircle cx={c} cy={c} r={rCap} fill="none" stroke={t.brand.bonus} strokeWidth={CAP_LINE} strokeLinecap="round" strokeDasharray={`${capCirc} ${capCirc}`} opacity={0.8} animatedProps={lap2} />

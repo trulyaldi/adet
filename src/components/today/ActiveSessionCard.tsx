@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
@@ -11,7 +11,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { Glyph, IconButton } from '../Glyph';
 import { Icon } from '../Icon';
-import { Press } from '../motion/Press';
+import { usePressMotion } from '../motion/Press';
 import { ProgressRing } from '../motion/ProgressRing';
 import { SessionClock } from '../SessionClock';
 
@@ -29,28 +29,36 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
   // Refreshes slowly; the clock and the bonus sparkle tick on their own.
   const p = useActiveProgress(TIMER_FRAME_MS);
   const doneRef = useRef<View>(null);
+  // The whole card dims on press, like a hero Press.
+  const open = usePressMotion('hero');
   if (!p) return null;
   const frac = p.sec / p.targetSec;
 
   return (
     <Animated.View entering={reduced ? FadeIn : ZoomIn.springify().damping(14)} style={{ marginTop: 18 }}>
-      <Press
-        kind="hero"
-        onPress={actions.openTimer}
-        accessibilityRole="button"
-        accessibilityLabel={`${item.name}, ${p.paused ? 'paused' : 'running'}, ${sayDur(p.sessionSec)}. Open focus`}
-        style={[{ backgroundColor: sw.base, borderRadius: radius.xxl, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 5, borderBottomColor: sw.dark }, t.shadow]}
+      {/* The open-focus press and the buttons are siblings: a button inside a button is invalid (web renders both as <button>). */}
+      <Animated.View
+        style={[{ backgroundColor: sw.base, borderRadius: radius.xxl, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 5, borderBottomColor: sw.dark }, t.shadow, open.style]}
       >
-        <ProgressRing size={92} stroke={9} value={frac} color={sw.on} bonusColor={sw.light} track={sw.dark} live={!p.paused} rate={1 / p.targetSec} marker>
-          <Icon path={item.iconPath} size={28} color={sw.on} />
-        </ProgressRing>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text numberOfLines={2} style={{ fontSize: 16, fontWeight: '800', color: sw.on, opacity: 0.9 }}>
-            {item.name}
-          </Text>
-          <SessionClock numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 34, fontWeight: '800', color: sw.on, fontVariant: ['tabular-nums'], opacity: p.paused ? 0.6 : 1 }} />
-          <BonusSparkle color={sw.on} bg={sw.base} />
-        </View>
+        <Pressable
+          onPress={actions.openTimer}
+          onPressIn={open.onPressIn}
+          onPressOut={open.onPressOut}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name}, ${p.paused ? 'paused' : 'running'}, ${sayDur(p.sessionSec)}. Open focus`}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}
+        >
+          <ProgressRing size={92} stroke={9} value={frac} color={sw.on} bonusColor={sw.light} track={sw.dark} live={!p.paused} rate={1 / p.targetSec} marker>
+            <Icon path={item.iconPath} size={28} color={sw.on} />
+          </ProgressRing>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text numberOfLines={2} style={{ fontSize: 16, fontWeight: '800', color: sw.on, opacity: 0.9 }}>
+              {item.name}
+            </Text>
+            <SessionClock numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 34, fontWeight: '800', color: sw.on, fontVariant: ['tabular-nums'], opacity: p.paused ? 0.6 : 1 }} />
+            <BonusSparkle color={sw.on} bg={sw.base} />
+          </View>
+        </Pressable>
         <View style={{ gap: 10 }}>
           <IconButton
             label={p.paused ? 'Resume' : 'Pause'}
@@ -81,7 +89,7 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
             />
           </View>
         </View>
-      </Press>
+      </Animated.View>
     </Animated.View>
   );
 }

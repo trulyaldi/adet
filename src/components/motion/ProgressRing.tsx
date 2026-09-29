@@ -87,7 +87,7 @@ export function ProgressRing({ size, stroke, value, color, bonusColor, track, li
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
     >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <G rotation={-90} origin={`${c}, ${c}`}>
+        <G transform={`rotate(-90 ${c} ${c})`}>
           <Circle cx={c} cy={c} r={r} fill="none" stroke={track ?? colors.track} strokeWidth={stroke} />
           <ACircle cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${circ} ${circ}`} animatedProps={lap1} />
           {bonusColor && (
