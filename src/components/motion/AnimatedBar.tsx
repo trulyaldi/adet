@@ -72,8 +72,7 @@ export function AnimatedBar({ value, color, track, height = 12, label }: Animate
         <View style={{ position: 'absolute', left: height / 2, right: height / 2, top: height * 0.2, height: Math.max(2, height * 0.22), borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.35)' }} />
         {/* The shine travels inside the fill only. */}
         <Animated.View
-          pointerEvents="none"
-          style={[{ position: 'absolute', top: 0, bottom: 0, width: Math.max(20, w * 0.16), backgroundColor: 'rgba(255,255,255,0.45)', borderRadius: height / 2 }, shineStyle]}
+          style={[{ position: 'absolute', pointerEvents: 'none', top: 0, bottom: 0, width: Math.max(20, w * 0.16), backgroundColor: 'rgba(255,255,255,0.45)', borderRadius: height / 2 }, shineStyle]}
         />
       </Animated.View>
     </View>

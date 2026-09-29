@@ -13,7 +13,7 @@ export function ScenePreview({ kind, swatch, width = 92, height = 112, progress 
   const reduced = useReducedMotion();
   const active = useAppActive();
   return (
-    <View pointerEvents="none" style={{ width, height, overflow: 'hidden', borderRadius: 16, backgroundColor: swatch.light }}>
+    <View style={{ width, height, overflow: 'hidden', borderRadius: 16, backgroundColor: swatch.light, pointerEvents: 'none' }}>
       {/* Scenes are laid out for a full screen; draw at 3x and scale down. */}
       <View style={{ width: width * 3, height: height * 3, transform: [{ translateX: -width }, { translateY: -height }, { scale: 1 / 3 }] }}>
         <Scene

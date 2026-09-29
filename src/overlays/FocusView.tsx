@@ -186,7 +186,7 @@ function FocusContent() {
         </View>
 
         {/* Ilmek, bottom corner */}
-        <View pointerEvents="none" style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108 }}>
+        <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
           <Ilmek state={mascot} size={78} tint={look.color} />
         </View>
 

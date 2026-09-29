@@ -45,7 +45,7 @@ export function PlantScene({ width, height, cx, progress, swatch, payoff, moving
   const open = useDerivedValue(() => Math.max(0, Math.min(1, (p.value - 0.97) / 0.03)) * (1 + pop.value * 0.25));
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', width, height }}>
+    <View style={{ position: 'absolute', width, height, pointerEvents: 'none' }}>
       <Svg width={width} height={height} style={{ position: 'absolute' }}>
         <Ellipse cx={cx} cy={baseY + 18} rx={width * 0.36} ry={34} fill={swatch.base} opacity={0.18} />
         <Ellipse cx={cx} cy={baseY + 10} rx={70} ry={16} fill={swatch.dark} opacity={0.35} />

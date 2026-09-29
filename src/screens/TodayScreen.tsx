@@ -189,7 +189,7 @@ function DayCheer() {
   }, [confetti]);
   if (!on) return null;
   return (
-    <Animated.View entering={ZoomIn.springify().damping(12)} exiting={FadeOut} pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: -6 }}>
+    <Animated.View entering={ZoomIn.springify().damping(12)} exiting={FadeOut} style={{ position: 'absolute', right: 0, bottom: -6, pointerEvents: 'none' }}>
       <ScreenIlmek state="celebrating" size={76} />
     </Animated.View>
   );

@@ -17,6 +17,7 @@ import { projectsViewOf } from '../domain/selectors';
 import { fmtDur, sayDur } from '../domain/time';
 import { feedback } from '../feedback/feedback';
 import { useActions, useData, useSettings, useStoreNow } from '../store/StreakStore';
+import { shadow } from '../theme/theme';
 import { useTheme } from '../theme/ThemeProvider';
 
 export function ProjectsScreen() {
@@ -91,7 +92,7 @@ function ProjectCard({ pc, expanded, onToggle }: { pc: ProjectView; expanded: bo
       style={[
         { backgroundColor: colors.card, borderRadius: radius.xxl, overflow: 'visible' },
         t.shadow,
-        pc.reached ? { shadowColor: sw.base, shadowOpacity: t.dark ? 0.55 : 0.35, shadowRadius: 14, borderWidth: 2, borderColor: sw.light } : null,
+        pc.reached ? [shadow(sw.base, t.dark ? 0.55 : 0.35, 14, 2), { borderWidth: 2, borderColor: sw.light }] : null,
       ]}
     >
       <Press

@@ -22,7 +22,7 @@ function Confetti({ colors }: { colors: string[] }) {
     t.value = withTiming(1, { duration: DURATION, easing: Easing.linear });
   }, [t]);
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       {Array.from({ length: PIECES }, (_, i) => (
         <Piece key={i} i={i} t={t} w={width} h={height} color={colors[i % colors.length]} />
       ))}

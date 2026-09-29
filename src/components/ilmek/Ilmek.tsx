@@ -57,6 +57,7 @@ const ARect = Animated.createAnimatedComponent(Rect);
 const PAD = 24;
 const SPAN = 200 + PAD * 2;
 const VIEWBOX = `${-PAD} ${-PAD} ${SPAN} ${SPAN}`;
+const NO_TOUCH = { pointerEvents: 'none' } as const;
 
 /** A canvas point as a padded layer's transform origin, in px (RN's origin string parser rejects long decimals). */
 const origin = ([x, y]: [number, number], k: number) => [(x + PAD) * k, (y + PAD) * k, 0];
@@ -108,7 +109,7 @@ export const Ilmek = memo(function Ilmek({ state = 'idle', size = 120, tint, ani
 
   const box = { position: 'absolute' as const, left: -PAD * k, top: -PAD * k, width: SPAN * k, height: SPAN * k };
   const layer = (key: string, children: React.ReactNode, animatedStyle?: object, pivot?: [number, number]) => (
-    <Animated.View key={key} pointerEvents="none" style={[pivot ? [box, { transformOrigin: origin(pivot, k) }] : box, animatedStyle]}>
+    <Animated.View key={key} style={[pivot ? [box, { transformOrigin: origin(pivot, k) }] : box, NO_TOUCH, animatedStyle]}>
       <Svg width={SPAN * k} height={SPAN * k} viewBox={VIEWBOX}>
         {children}
       </Svg>
@@ -131,7 +132,7 @@ export const Ilmek = memo(function Ilmek({ state = 'idle', size = 120, tint, ani
     <View {...a11y} style={[{ width: size, height: size }, style]}>
       {layer('shadow', <Shadow color={t.colors.shadow} opacity={t.dark ? 0.35 : 0.12} />, shadowStyle, [100, 186])}
       {/* The rig is the unpadded size × size box; its layers sit on it like the outer ones. */}
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transformOrigin: [100 * k, 180 * k, 0] }, rigStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: [100 * k, 180 * k, 0] }, NO_TOUCH, rigStyle]}>
         {behind && arms}
         {layer('tuft', <Tuft tones={tones} small={small} />, tuftStyle, [100, 52])}
         {layer(

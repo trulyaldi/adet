@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { BRAND, contrast, INK, mix, PROJECT_COLORS, resolveSwatch, SWATCHES, WHITE } from './palette';
-import { DARK_THEME, LIGHT_THEME } from './theme';
+import { DARK_THEME, LIGHT_THEME, shadow } from './theme';
 
 test('eight project colors, each with base, light, dark and on-color', () => {
   assert.equal(PROJECT_COLORS.length, 8);
@@ -44,4 +44,18 @@ test('brand blue stays #0A7AFF; white on it passes AA for large bold text (3:1)'
 test('mix blends linearly', () => {
   assert.equal(mix('#000000', '#FFFFFF', 0), '#000000');
   assert.equal(mix('#000000', '#FFFFFF', 1), '#FFFFFF');
+});
+
+test('shadow: shadow* props on native, one boxShadow on web', () => {
+  const os = process.env.EXPO_OS;
+  try {
+    delete process.env.EXPO_OS;
+    assert.deepEqual(shadow('#000000', 0.3, 8, 2, 2), { shadowColor: '#000000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 });
+    assert.equal('elevation' in shadow('#000000', 0.3, 8), false);
+    process.env.EXPO_OS = 'web';
+    assert.deepEqual(shadow('#000000', 0.3, 8, 2, 2), { boxShadow: '0px 2px 8px #0000004D' });
+  } finally {
+    if (os === undefined) delete process.env.EXPO_OS;
+    else process.env.EXPO_OS = os;
+  }
 });

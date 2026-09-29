@@ -1,7 +1,7 @@
 // Design tokens for both themes. Components read them through useTheme(),
 // never as static imports, so the app follows the system light/dark setting.
 
-import { BRAND, INK, PROJECT_COLORS, ProjectColor, resolveSwatch, Swatch, SWATCHES } from './palette';
+import { alpha, BRAND, INK, PROJECT_COLORS, ProjectColor, resolveSwatch, Swatch, SWATCHES } from './palette';
 
 export interface Colors {
   /** Screen background. */
@@ -100,7 +100,20 @@ export interface Theme {
   /** A project color resolved for this theme. */
   swatch(key: ProjectColor): Swatch;
   brand: Swatch;
-  shadow: { shadowColor: string; shadowOpacity: number; shadowRadius: number; shadowOffset: { width: number; height: number }; elevation: number };
+  shadow: Shadow;
+}
+
+export type Shadow =
+  | { boxShadow: string }
+  | { shadowColor: string; shadowOpacity: number; shadowRadius: number; shadowOffset: { width: number; height: number }; elevation?: number };
+
+/**
+ * A drop shadow: `boxShadow` on web (react-native-web deprecates shadow*),
+ * the shadow* props on native, where they render as before.
+ */
+export function shadow(color: string, opacity: number, blur: number, y = 0, elevation?: number): Shadow {
+  if (process.env.EXPO_OS === 'web') return { boxShadow: `0px ${y}px ${blur}px ${alpha(color, opacity)}` };
+  return { shadowColor: color, shadowOpacity: opacity, shadowRadius: blur, shadowOffset: { width: 0, height: y }, ...(elevation != null && { elevation }) };
 }
 
 export function makeTheme(isDark: boolean): Theme {
@@ -116,13 +129,7 @@ export function makeTheme(isDark: boolean): Theme {
     type,
     swatch: (k) => swatches[k] ?? swatches.indigo,
     brand,
-    shadow: {
-      shadowColor: colors.shadow,
-      shadowOpacity: isDark ? 0.3 : 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
-    },
+    shadow: shadow(colors.shadow, isDark ? 0.3 : 0.06, 8, 2, 2),
   };
 }
 
