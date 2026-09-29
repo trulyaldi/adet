@@ -46,7 +46,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"supabase/**/*.test.ts\"",
     "game:assets": "tsx scripts/build-atlases.ts",
     "game:preview": "tsx scripts/preview-world.ts world-preview.png && tsx scripts/preview-avatar.ts avatar-preview.png",
     "lint": "eslint ."

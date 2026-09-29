@@ -3,5 +3,5 @@
   "compilerOptions": {
     "strict": true
   },
-  "exclude": ["**/*.test.ts", "node_modules", "worker"]
+  "exclude": ["**/*.test.ts", "node_modules", "worker", "supabase/functions/sage"]
 }

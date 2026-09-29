@@ -1,18 +1,10 @@
 // Pure transport for Aqyl. The caller supplies the local answer, so every
 // network, auth, timeout or validation failure quietly keeps that answer.
 
-export interface SageSuggestion { habitId: string; title: string }
-export interface SuggestPayload {
-  habits: { id: string; name: string; openTasks: string[] }[];
-  entries: { habitId: string; text: string; at: string }[];
-}
-export interface RecapPayload {
-  biomeName: string;
-  bossName: string;
-  entries: string[];
-  sessionCount: number;
-  taskCount: number;
-}
+import { parseRecap, parseSuggestions, RecapPayload, SuggestPayload } from '../../supabase/functions/_shared/sageContract';
+
+export { parseRecap, parseSuggestions };
+export type { RecapPayload, SageSuggestion, SuggestPayload } from '../../supabase/functions/_shared/sageContract';
 export interface SageAnswer<T> { value: T; source: 'ai' | 'local' }
 export interface SageStorage { getItem(key: string): Promise<string | null>; setItem(key: string, value: string): Promise<unknown> }
 export interface SageTransport {
@@ -21,29 +13,6 @@ export interface SageTransport {
   storage: SageStorage;
   fetcher: typeof fetch;
   now(): number;
-}
-
-const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
-export function parseSuggestions(raw: unknown, allowed: ReadonlySet<string>): { suggestions: SageSuggestion[]; insight: string } | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const v = raw as Record<string, unknown>;
-  if (!Array.isArray(v.suggestions) || v.suggestions.length > 3 || typeof v.insight !== 'string' || words(v.insight) > 12) return null;
-  const suggestions: SageSuggestion[] = [];
-  for (const item of v.suggestions) {
-    if (!item || typeof item !== 'object') return null;
-    const s = item as Record<string, unknown>;
-    if (typeof s.habitId !== 'string' || typeof s.title !== 'string' || !s.title.trim() || s.title.length > 60) return null;
-    if (allowed.has(s.habitId)) suggestions.push({ habitId: s.habitId, title: s.title.trim() });
-  }
-  return { suggestions, insight: v.insight.trim() };
-}
-
-export function parseRecap(raw: unknown): { recap: string } | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const recap = (raw as Record<string, unknown>).recap;
-  if (typeof recap !== 'string' || !recap.trim() || recap.length > 400) return null;
-  const sentences = recap.trim().split(/[.!?]+/).filter((s) => s.trim()).length;
-  return sentences >= 2 && sentences <= 3 ? { recap: recap.trim() } : null;
 }
 
 // FNV-1a over the exact input: a small, stable cache key with no private text
@@ -86,7 +55,7 @@ export function createSageClient(t: SageTransport) {
     }
   }
   return {
-    suggest(input: SuggestPayload, fallback: { suggestions: SageSuggestion[]; insight: string }) {
+    suggest(input: SuggestPayload, fallback: { suggestions: { habitId: string; title: string }[]; insight: string }) {
       const allowed = new Set(input.habits.map((h) => h.id));
       return ask('suggest', input, fallback, (v) => parseSuggestions(v, allowed));
     },

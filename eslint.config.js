@@ -24,6 +24,12 @@ const warn = (rules) =>
 module.exports = defineConfig([
   { ignores: ['dist/**', 'node_modules/**', 'worker/node_modules/**', '.expo/**', 'src/game/assets/frames.generated.ts'] },
   expoConfig,
+  // The Sage Edge Function runs on Deno: `npm:` specifiers and the Deno global.
+  {
+    files: ['supabase/functions/**'],
+    languageOptions: { globals: { Deno: 'readonly' } },
+    rules: { 'import/no-unresolved': ['error', { ignore: ['^npm:', '^jsr:'] }] },
+  },
   // Outside Quest: every error-level rule, as a warning.
   ...expoConfig
     .filter((c) => c.rules)
