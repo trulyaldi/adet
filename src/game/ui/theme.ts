@@ -3,7 +3,7 @@
 
 import { useWindowDimensions } from 'react-native';
 
-import { pixelScale } from '../render/pixel';
+import { pixelScale } from '../render/grid';
 
 export const QUI = {
   ink: '#1c1a24',
