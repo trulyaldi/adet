@@ -22,6 +22,11 @@ export function closeLoot(): void {
   listeners.forEach((l) => l());
 }
 
+/** The Loot sheet is up (full-screen celebrations wait for it). */
+export function isLootOpen(): boolean {
+  return current !== null;
+}
+
 export function useLootRequest(): LootRequest | null {
   return useSyncExternalStore(
     (l) => {

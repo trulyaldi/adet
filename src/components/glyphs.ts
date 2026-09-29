@@ -178,6 +178,8 @@ export const GLYPHS = {
   /** Tabs. */
   today: [{ d: 'M6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11A2.5 2.5 0 0 1 6.5 4zM8 2.5V5M16 2.5V5M4 8.5h16M9 13.5l2 2 4-4' }],
   target: [{ d: circle(12, 12, 9) }, { d: circle(12, 12, 5) }, { d: circle(12, 12, 1.2) }],
+  /** A weak point (a sword, point up). */
+  sword: [{ d: 'M12 3l2 3v9h-4V6zM7.5 15h9M12 18v3.5M10.5 21.5h3' }],
   /** Quest (a game controller: body, d-pad, two buttons). */
   quest: [
     { d: 'M7.6 7.5h8.8a4.5 4.5 0 0 1 4.4 3.6l1 5.1a2.4 2.4 0 0 1-4.1 2.1L15.3 16H8.7l-2.4 2.3a2.4 2.4 0 0 1-4.1-2.1l1-5.1a4.5 4.5 0 0 1 4.4-3.6z' },

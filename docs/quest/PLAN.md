@@ -139,6 +139,19 @@ sessions, habits, items, links ──▶ deriveGameState(…, now, tz) ──▶
 17. **Rank-gated cosmetics** unlock at a rank's first level; the shop shows them locked (dimmed with a small lock) until then.
 18. **Streak freeze** purchases count for the calendar month they were bought in (`props.month`), max 2 per month.
 19. **AI cache** is per device per day (AsyncStorage), keyed by endpoint and an input hash.
+20. **Chest weak points.** The Loot sheet offers the weak points planned for that session. When none were planned (a chest
+    from camp, or a session started without choosing), it offers the habit's top three open ones instead.
+21. **Credits count the journey only** (sessions after `startedAt`). XP, levels and skills count all history, but credits
+    for years of history would empty the shop on day one.
+22. **Chests exist only for journey sessions.** An existing user doesn't start with thousands of chests.
+23. **The Burnout Drake "can't be ground down"** means it takes at most a third of its HP per local day (at least three
+    days). Days over 240 effective minutes also lose the ×1.3 day bonus.
+24. **Only qualifying sessions (10+ min) fill the day's 100% / 50% bands**, in start order. A session counts on the day
+    it started.
+25. **Ceremonies are primed**, like `badgesPrimed`. A device that first sees a started journey records everything
+    reached so far as played. Level-ups count from the last level shown, so history never replays.
+26. **The derived game is memoised on data only.** Chest freshness, the only clock-dependent part, is a separate
+    selector, so a ticking store never re-derives.
 
 ## Risks
 

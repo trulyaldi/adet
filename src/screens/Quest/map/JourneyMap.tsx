@@ -157,7 +157,7 @@ export const JourneyMap = memo(function JourneyMap(p: JourneyMapProps) {
                 {p.fx.pops.map((pop, i) => (
                   <Particles key={i} kind="sparkle" x={pop.x - 8} y={pop.y - 16} w={16} h={16} count={14} clock={p.clock} startAt={pop.at} />
                 ))}
-                <AnimatedSprite id="fx.dust" x={p.fx.dust.x} y={p.fx.dust.y} clock={p.clock} startAt={p.fx.dust.at} />
+                <AnimatedSprite id="fx.dust" x={p.fx.dust.x} y={p.fx.dust.y} clock={p.clock} startAt={p.fx.dust.at} transient />
               </>
             )}
           </Camera>

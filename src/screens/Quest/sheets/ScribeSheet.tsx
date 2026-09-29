@@ -22,6 +22,7 @@ import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
+import { MODAL_GAP_MS } from '../../../theme/motion';
 import type { QuestModel } from '../useQuestModel';
 import { QuestSheet, Row } from './common';
 import { QuestSettingsPanel } from './SettingsPanel';
@@ -48,7 +49,8 @@ export function ScribeSheet({ model, onClose, reduced, initialTab = 'chronicle' 
       {tab === 'chronicle' && <Chronicle model={model} />}
       {tab === 'chests' && <Chests model={model} onOpen={(id) => {
         onClose();
-        openLoot({ sessionId: id, fresh: false });
+        // After this sheet has gone: iOS shows one modal at a time.
+        setTimeout(() => openLoot({ sessionId: id, fresh: false }), MODAL_GAP_MS);
       }} />}
       {tab === 'credits' && <Credits />}
       {tab === 'settings' && <QuestSettingsPanel model={model} />}

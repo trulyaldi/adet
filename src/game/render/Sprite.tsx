@@ -29,6 +29,8 @@ export interface AnimatedSpriteProps {
   opacity?: Num;
   /** Integer upscale inside the world (1 = world density). */
   scale?: number;
+  /** One-shot effects: visible only while playing (dust, hits). */
+  transient?: boolean;
 }
 
 type Rect4 = [number, number, number, number];
@@ -80,7 +82,15 @@ export const AnimatedSprite = memo(function AnimatedSprite(p: AnimatedSpriteProp
     const ax = flipped ? d.fax : d.ax;
     xf.set(k, 0, Math.round(px) - ax * k, Math.round(py) - d.ay * k);
   });
-  const opacity = useDerivedValue(() => (p.opacity === undefined ? 1 : typeof p.opacity === 'number' ? p.opacity : p.opacity.value));
+  const transient = !!p.transient;
+  const dur = d.fps > 0 ? (d.f.length / d.fps) * 1000 : 0;
+  const opacity = useDerivedValue(() => {
+    const o = p.opacity === undefined ? 1 : typeof p.opacity === 'number' ? p.opacity : p.opacity.value;
+    if (!transient) return o;
+    const t0 = startAt === undefined ? 0 : typeof startAt === 'number' ? startAt : startAt.value;
+    const t = clock.value - t0;
+    return t >= 0 && t < dur ? o : 0;
+  });
   if (!image) return null;
   return (
     <Group opacity={opacity}>

@@ -1,0 +1,37 @@
+// Quest Mode's part of the focus view: the weak points row under the header
+// and the battle strip beside Ilmek. Both are optional: nothing shows before
+// the journey starts, and the strip can be turned off in Quest settings.
+
+import React from 'react';
+import { useWindowDimensions, View } from 'react-native';
+
+import { useQuestMeta } from '../../../data/itemsRepo';
+import { SkiaGate } from '../../../game/render/SkiaGate';
+import { useQuestReduced } from '../../../game/state/settings';
+import { useQuestTables } from '../../../sync/questTables';
+import { useAppActive } from '../../../theme/useMotion';
+import { STRIP_H } from './stripSize';
+import { WeakPointsRow } from './WeakPointsRow';
+
+export function QuestFocusRow({ habitId, top }: { habitId: string; top: number }) {
+  return (
+    <View style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 6 }}>
+      <WeakPointsRow habitId={habitId} />
+    </View>
+  );
+}
+
+export function QuestFocusStrip({ bottom, left, paused, dimmed }: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
+  const meta = useQuestMeta();
+  const tables = useQuestTables();
+  const reduced = useQuestReduced();
+  const active = useAppActive();
+  const { width } = useWindowDimensions();
+  if (!meta || tables !== 'available' || !meta.props.settings.battleStrip) return null;
+  const w = width - left - 16;
+  return (
+    <View style={{ position: 'absolute', left, bottom, width: w, height: STRIP_H }}>
+      <SkiaGate load={() => import('./BattleStrip')} props={{ running: active && !paused && !dimmed, reduced, width: w }} />
+    </View>
+  );
+}

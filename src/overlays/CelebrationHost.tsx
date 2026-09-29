@@ -8,6 +8,7 @@ import { Ilmek } from '../components/ilmek/Ilmek';
 import { projectLook } from '../domain/look';
 import { badgeInfo } from '../domain/milestones';
 import { feedback } from '../feedback/feedback';
+import { useLootRequest } from '../game/state/loot';
 import { anyModalOpen, useActions, useData, useSettings, useUi } from '../store/StreakStore';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
@@ -22,7 +23,9 @@ export function CelebrationHost() {
   const t = useTheme();
   const { colors, radius } = t;
   const data = useData();
-  const modalOpen = useUi(anyModalOpen);
+  // The Quest Loot sheet lives outside the store's UI state; it counts too.
+  const loot = useLootRequest();
+  const modalOpen = useUi(anyModalOpen) || !!loot;
   const first = useUi((u) => u.celebrations[0]);
   const settings = useSettings();
   const actions = useActions();

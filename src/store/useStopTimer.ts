@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { activeSec } from '../domain/engine';
 import { longSessionSec } from '../domain/reminder';
 import { fmtHM } from '../domain/time';
+import { useQuestAfterStop } from '../game/state/useQuestAfterStop';
 import { useActions, useData, useSettings } from './StreakStore';
 
 /**
@@ -14,16 +15,18 @@ export function useStopTimer(): () => void {
   const data = useData();
   const settings = useSettings();
   const actions = useActions();
+  // Quest Mode: planned weak points, and the Loot sheet for 10+ minutes.
+  const afterStop = useQuestAfterStop();
   return () => {
     const secs = activeSec(data.active, Date.now());
     if (secs <= longSessionSec(settings.reminderHours)) {
-      actions.stopTimer({ done: true });
+      afterStop(actions.stopTimer({ done: true }));
       return;
     }
     const tracked = fmtHM(secs);
     Alert.alert('Long session', `You tracked ${tracked}. Keep it, or set the end time?`, [
-      { text: `Keep ${tracked}`, onPress: () => actions.stopTimer({ done: true }) },
-      { text: 'Set end time', onPress: () => actions.stopTimer({ done: true, editAfter: true }) },
+      { text: `Keep ${tracked}`, onPress: () => afterStop(actions.stopTimer({ done: true })) },
+      { text: 'Set end time', onPress: () => afterStop(actions.stopTimer({ done: true, editAfter: true }), { editAfter: true }) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };

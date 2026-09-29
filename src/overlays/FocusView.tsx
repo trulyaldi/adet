@@ -19,6 +19,7 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
+import { QuestFocusRow, QuestFocusStrip } from '../screens/Quest/session/QuestFocus';
 import { useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { TIMER_FRAME_MS, useActiveProgress } from '../store/useActiveProgress';
@@ -167,6 +168,9 @@ function FocusContent() {
           <IconButton label="Minimize" name="chevronDown" size={22} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.closeTimer} tipBelow />
         </View>
 
+        {/* Quest Mode: weak points for this session (optional, collapsed). */}
+        <QuestFocusRow habitId={habit.id} top={insets.top + 60} />
+
         {/* The timer */}
         <View style={{ position: 'absolute', left: 0, right: 0, top: cy - ringSize / 2, alignItems: 'center' }}>
           <ProgressRing
@@ -189,6 +193,9 @@ function FocusContent() {
         <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
           <Ilmek state={mascot} size={78} tint={look.color} />
         </View>
+
+        {/* Quest Mode: the battle strip beside Ilmek. */}
+        <QuestFocusStrip bottom={insets.bottom + 114} left={104} paused={p.paused} dimmed={dimmed} />
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>
           <MessageToast />

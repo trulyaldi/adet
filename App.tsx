@@ -27,6 +27,7 @@ import { QuestTab } from './src/screens/Quest/QuestTab';
 import { StreakProvider, useActions, useReady, useUi } from './src/store/StreakStore';
 import { Watchers } from './src/store/Watchers';
 import { QuestWatcher } from './src/game/state/QuestWatcher';
+import { LootHost } from './src/screens/Quest/session/LootHost';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
 import { WelcomeFlow } from './src/overlays/WelcomeFlow';
 import { BurstHost } from './src/components/celebrate/Burst';
@@ -83,6 +84,7 @@ const Root = memo(function Root() {
       <WelcomeFlow />
       <Watchers />
       <QuestWatcher />
+      <LootHost />
       <ConfettiHost />
       <BurstHost />
       <HabitSheet />

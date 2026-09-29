@@ -48,6 +48,7 @@ import {
   SceneKind,
   Session,
 } from '../domain/types';
+import { isLootOpen } from '../game/state/loot';
 import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
 import { MODAL_GAP_MS } from '../theme/motion';
@@ -199,6 +200,7 @@ const INITIAL_UI: UIState = {
 /** Whether any sheet or the focus view is up (full-screen celebrations wait for them). */
 export function anyModalOpen(ui: UIState): boolean {
   return (
+    isLootOpen() ||
     ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix ||
     !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet
   );
@@ -228,8 +230,9 @@ export interface StreakActions {
   /**
    * Save the running timer as a session. `done` also marks the habit done for
    * today (the done button); `editAfter` then opens it in the edit sheet.
+   * Returns the saved session (null when it was too short to keep).
    */
-  stopTimer(opts?: { editAfter?: boolean; done?: boolean }): void;
+  stopTimer(opts?: { editAfter?: boolean; done?: boolean }): Session | null;
   /** Log `minutes` ending now (the +15 / +30 / +60 chips). */
   quickLog(habitId: string, minutes: number): void;
   /** Check-off habits: mark done for today, or clear the mark. */
@@ -708,6 +711,7 @@ export function StreakProvider({ userId, children }: { userId: string; children:
           // edit sheet while another modal is animating out.
           setTimeout(() => actionsRef.current?.openSessionSheet(saved.id), MODAL_GAP_MS);
         }
+        return saved;
       },
 
       quickLog: (habitId, minutes) => {

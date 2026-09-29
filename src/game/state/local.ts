@@ -5,10 +5,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
 
+/**
+ * Weak points picked for the running timer. Matched to the saved session at
+ * stop by habit and time (a pause/resume changes the timer's start, so its
+ * start can't identify it).
+ */
 export interface ActivePlan {
   habitId: string;
-  /** The timer it belongs to (ActiveTimer identity: habit + first start). */
-  timerKey: string;
+  /** Epoch ms the plan was made. */
+  createdAt: number;
   taskIds: string[];
 }
 
@@ -43,8 +48,8 @@ function parse(raw: string | null): QuestLocal {
     if (!v || typeof v !== 'object') return EMPTY;
     const seen = v.seen && Number.isFinite(v.seen.global) && Number.isFinite(v.seen.hp) ? { global: v.seen.global, hp: v.seen.hp } : null;
     const plan =
-      v.plan && typeof v.plan.habitId === 'string' && typeof v.plan.timerKey === 'string' && Array.isArray(v.plan.taskIds)
-        ? { habitId: v.plan.habitId, timerKey: v.plan.timerKey, taskIds: v.plan.taskIds.filter((t: unknown) => typeof t === 'string').slice(0, 3) }
+      v.plan && typeof v.plan.habitId === 'string' && Number.isFinite(v.plan.createdAt) && Array.isArray(v.plan.taskIds)
+        ? { habitId: v.plan.habitId, createdAt: v.plan.createdAt, taskIds: v.plan.taskIds.filter((t: unknown) => typeof t === 'string').slice(0, 3) }
         : null;
     return {
       seen,
@@ -116,4 +121,15 @@ export function useQuestLocal(): QuestLocal & { loaded: boolean } {
   const s = useSyncExternalStore(subscribe, () => state);
   const l = useSyncExternalStore(subscribe, () => loaded);
   return { ...s, loaded: l };
+}
+
+/** The plan that belongs to a just-saved session: same habit, made during it. */
+export function planForSession(plan: ActivePlan | null, session: { habitId: string; start: number; end: number }): string[] {
+  if (!plan || plan.habitId !== session.habitId) return [];
+  if (plan.createdAt < session.start - 60_000 || plan.createdAt > session.end + 1000) return [];
+  return plan.taskIds;
+}
+
+export function setActivePlan(plan: ActivePlan | null): void {
+  updateQuestLocal((s) => ({ ...s, plan }));
 }
