@@ -60,7 +60,7 @@ repo; their text was recovered from Codex's session log into
 - Lint: no lint script in the repo (see 9).
 - `npx expo start`: Metro serves `index.bundle?platform=ios` with HTTP 200.
 - `expo export`: iOS (Quest on and off) and web succeed. iOS Hermes bytecode
-  4,132,477 → 5,113,971 bytes (+981 KB, +23.8%); assets 282 KB → 617 KB.
+  4,132,477 → 5,115,456 bytes (+983 KB, +23.8%); assets 282 KB → 617 KB.
 - Static imports from `App.tsx` reach no Skia module (as on `main`).
 - `expo-doctor`: 20/21. The one failure is a patch mismatch inherited from
   `main` (`expo` 57.0.25 installed, ~57.0.26 expected), not an Expo Go
