@@ -17,7 +17,7 @@ is present; physical-device acceptance is part of Q13.
 | Q7 | done | Board, Merchant, Scribe and rule-based Sage sheets exist. |
 | Q8 | done | Weak points, battle strip and Loot sheet are wired into the session flow. |
 | Q9 | partial | Map-only `CeremonyHost` exists; revised pure detection, root host and Ascension are absent. |
-| Q10 | partial | Layered Avatar, gear eligibility, full sheet and unit tests exist; 3×/4× and restart/sync acceptance remains unverified. |
+| Q10 | done | Layered Avatar, gear eligibility, sheet and tests pass; 3×/4× previews were inspected without clipping. |
 | Q11 | partial | Local Sage fallback exists; `worker/`, authenticated AI client and cache are absent. |
 | Q12 | partial | Audio is a silent placeholder and SettingsPanel is text; haptics lack timer gating. |
 | Q13 | not started | No kill switch or Quest README; device QA and PR checklist remain. |
@@ -38,6 +38,8 @@ is present; physical-device acceptance is part of Q13.
   whereas Part 2 makes SFX, music, haptics and motion local per device. Q12
   will migrate reads to local preferences while preserving synced battle strip,
   AI Sage and NPC names.
+- The avatar preview script rebuilt its own layer order instead of calling
+  `resolveAvatarLayers`. Q10 now uses the shared resolver for previews too.
 
 ### Audit environment
 
@@ -51,6 +53,8 @@ is present; physical-device acceptance is part of Q13.
   bundle; `expo export --platform web` bundled 1,464 modules successfully.
 - `expo-doctor` could not download through sandbox DNS; it needs an unrestricted
   rerun.
+- Q10 previews at 3× and 4× were generated and inspected. Live restart and
+  two-device equip persistence still need the Q13 Expo Go QA pass.
 
 Quest Mode gives focused time a purpose through one loop: **choose** weak points →
 **fight** (the timer damages the current enemy) → **loot** (a chest opened by ticking
