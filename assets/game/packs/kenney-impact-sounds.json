@@ -1,0 +1,28 @@
+{
+  "name": "kenney-impact-sounds",
+  "title": "Impact Sounds (1.0)",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+  "url": "https://kenney.nl/assets/impact-sounds",
+  "download": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "sha256": "029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8",
+  "downloaded": "2026-09-29",
+  "sounds": {
+    "chest_open": {
+      "file": "Audio/impactWood_light_001.ogg",
+      "gain": 0,
+      "why": "a light wooden knock (0.26 s, 456 Hz) for a wooden lid; warmer than the metal latch"
+    },
+    "hit": {
+      "file": "Audio/impactSoft_medium_000.ogg",
+      "gain": -2,
+      "why": "a soft thud (0.12 s, 174 Hz)"
+    },
+    "crit": {
+      "file": "Audio/impactGeneric_light_001.ogg",
+      "gain": 0,
+      "why": "a brighter, still gentle knock (0.11 s, 924 Hz) so a crit reads apart from a hit"
+    }
+  }
+}

@@ -50,7 +50,9 @@
     "test": "node --import tsx --test \"src/**/*.test.ts\" \"supabase/**/*.test.ts\"",
     "game:assets": "tsx scripts/build-atlases.ts",
     "game:preview": "tsx scripts/preview-world.ts world-preview.png && tsx scripts/preview-avatar.ts avatar-preview.png",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "game:fetch": "tsx scripts/fetch-packs.ts",
+    "game:audio": "tsx scripts/build-audio.ts"
   },
   "private": true
 }

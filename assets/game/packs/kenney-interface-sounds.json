@@ -1,0 +1,18 @@
+{
+  "name": "kenney-interface-sounds",
+  "title": "Interface Sounds (1.0)",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+  "url": "https://kenney.nl/assets/interface-sounds",
+  "download": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+  "sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+  "downloaded": "2026-09-29",
+  "sounds": {
+    "ui_tap": {
+      "file": "Audio/select_002.ogg",
+      "gain": -4,
+      "why": "40 ms, soft select; centroid 2.4 kHz (the tick and pluck options are brighter)"
+    }
+  }
+}

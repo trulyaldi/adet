@@ -1,0 +1,33 @@
+{
+  "name": "kenney-music-jingles",
+  "title": "Music Jingles (1.0)",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+  "url": "https://kenney.nl/assets/music-jingles",
+  "download": "https://kenney.nl/media/pages/assets/music-jingles/f37e530b9e-1677590399/kenney_music-jingles.zip",
+  "sha256": "b729ba57959bd58793d2c5cafa348aaf2655d354f3da35ec4729e03ec77197b8",
+  "downloaded": "2026-09-29",
+  "sounds": {
+    "level_up": {
+      "file": "Audio/Steel jingles/jingles_STEEL10.ogg",
+      "gain": -3,
+      "why": "steel drum, 0.91 s, rising (+2.9 semitones): short and bright without being shrill"
+    },
+    "rank_up": {
+      "file": "Audio/Steel jingles/jingles_STEEL02.ogg",
+      "gain": -3,
+      "why": "steel drum, 1.39 s, the most clearly rising phrase (+7.7 semitones), for the biggest moment"
+    },
+    "boss_defeat": {
+      "file": "Audio/Steel jingles/jingles_STEEL12.ogg",
+      "gain": -3,
+      "why": "steel drum, 1.26 s, rising and the warmest of the set (1.0 kHz)"
+    },
+    "gate_open": {
+      "file": "Audio/Steel jingles/jingles_STEEL13.ogg",
+      "gain": -4,
+      "why": "steel drum, 1.05 s, gently rising (+1 semitone), after the boss fanfare"
+    }
+  }
+}
