@@ -10,6 +10,7 @@ import { BOSS_CREDITS, BOSS_XP } from '../../../domain/game/balance';
 import type { GameState } from '../../../domain/game/derive';
 import { sprite } from '../../../game/assets/manifest';
 import { bossRun } from '../../../game/ceremonies';
+import { BIOMES } from '../../../game/content/biomes';
 import { npcName } from '../../../game/content/npcs';
 import { PALETTES } from '../../../game/content/palettes';
 import { bossId, ROSTER } from '../../../game/content/roster';
@@ -106,6 +107,11 @@ export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: 
       }
     >
       <View style={[PE.boxNone, { flex: 1, justifyContent: 'flex-end', padding: 16, paddingBottom: 48, gap: 12 }]}>
+        {step === 'fall' && gone && (
+          <PixelText size="md" color={QUI.white} style={{ textAlign: 'center' }} accessibilityLiveRegion="polite">
+            {BIOMES[b].boss.defeat}
+          </PixelText>
+        )}
         {step === 'report' && (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20 }}>

@@ -12,7 +12,7 @@ import { QUI } from '../../game/ui/theme';
 
 export type Panel =
   | { kind: 'mob'; sprite: string; name: string; hp: number; max: number; x: number; y: number }
-  | { kind: 'boss'; sprite: string; name: string; hp: number; max: number; active: boolean; x: number; y: number }
+  | { kind: 'boss'; sprite: string; name: string; hp: number; max: number; active: boolean; line?: string; x: number; y: number }
   | { kind: 'say'; text: string; x: number; y: number }
   | { kind: 'emote'; x: number; y: number };
 
@@ -24,7 +24,7 @@ export function TapPanel({ panel, width, onClose, reduced }: { panel: Panel; wid
   }, [panel, onClose]);
   const w = panel.kind === 'boss' ? 200 : panel.kind === 'mob' ? 150 : panel.kind === 'say' ? 210 : 40;
   const left = Math.max(8, Math.min(width - w - 8, panel.x - w / 2));
-  const top = Math.max(70, panel.y - (panel.kind === 'boss' ? 190 : panel.kind === 'mob' ? 120 : 76));
+  const top = Math.max(70, panel.y - (panel.kind === 'boss' ? (panel.line ? 230 : 190) : panel.kind === 'mob' ? 120 : 76));
   return (
     <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={{ position: 'absolute', left, top, width: w }}>
       {panel.kind === 'emote' ? (
@@ -41,6 +41,11 @@ export function TapPanel({ panel, width, onClose, reduced }: { panel: Panel; wid
           {panel.kind === 'boss' && (
             <PixelText size="sm" bold color={QUI.wood}>
               {panel.name}
+            </PixelText>
+          )}
+          {panel.kind === 'boss' && panel.line && (
+            <PixelText size="sm" accessibilityLiveRegion="polite" style={{ textAlign: 'center' }}>
+              {panel.line}
             </PixelText>
           )}
           <View>

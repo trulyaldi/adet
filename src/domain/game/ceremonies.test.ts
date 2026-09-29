@@ -49,10 +49,12 @@ test('a derived boss waits until its achievement has been recorded', () => {
   assert.deepEqual(detectCeremonies(marks, pending).map((e) => e.id), ['boss:forest:0']);
 });
 
-test('host defers during running or paused sessions, loot, reveal and background', () => {
-  assert.equal(ceremonyMayPlay(true, false, false, true), false);
-  assert.equal(ceremonyMayPlay(false, true, false, true), false);
-  assert.equal(ceremonyMayPlay(false, false, true, true), false);
-  assert.equal(ceremonyMayPlay(false, false, false, false), false);
-  assert.equal(ceremonyMayPlay(false, false, false, true), true);
+test('host defers during running or paused sessions, loot, other sheets, reveal and background', () => {
+  const quiet = { timerActive: false, lootOpen: false, modalOpen: false, revealPending: false, appActive: true };
+  assert.equal(ceremonyMayPlay(quiet), true);
+  assert.equal(ceremonyMayPlay({ ...quiet, timerActive: true }), false);
+  assert.equal(ceremonyMayPlay({ ...quiet, lootOpen: true }), false);
+  assert.equal(ceremonyMayPlay({ ...quiet, modalOpen: true }), false);
+  assert.equal(ceremonyMayPlay({ ...quiet, revealPending: true }), false);
+  assert.equal(ceremonyMayPlay({ ...quiet, appActive: false }), false);
 });

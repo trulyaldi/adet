@@ -57,7 +57,7 @@ export function RankUp({ tier, level = RANKS[tier].fromLevel, look, onDone, redu
             <PixelText size="xl" bold color={QUI.goldLight} accessibilityRole="header">{title}</PixelText>
             <PixelText size="md" color={QUI.white}>LV {level}</PixelText>
             {unlocked.length > 0 && <IconGrid cells={unlocked.map((s) => ({ key: s.sku, icon: s.icon, label: `Unlocked: ${s.name}` }))}
-              columns={Math.min(4, unlocked.length)} cell={Math.max(44, Math.min(64, Math.floor((width - 80) / 4)))} scale={Math.max(2, scale - 1)} onPress={() => {}} />}
+              columns={Math.min(4, unlocked.length)} cell={Math.max(44, Math.min(64, Math.floor((width - 80) / 4)))} scale={Math.max(2, scale - 1)} />}
           </>
         )}
       </View>

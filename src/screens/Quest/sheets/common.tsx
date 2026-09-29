@@ -86,8 +86,8 @@ export interface GridCell {
   count?: number;
 }
 
-/** Icons in a grid: one canvas draws them all; buttons sit on top. */
-export function IconGrid({ cells, columns, cell, scale, onPress, selected }: { cells: GridCell[]; columns: number; cell: number; scale: number; onPress(key: string): void; selected?: string | null }) {
+/** Icons in a grid: one canvas draws them all; buttons sit on top (labelled pictures without `onPress`). */
+export function IconGrid({ cells, columns, cell, scale, onPress, selected }: { cells: GridCell[]; columns: number; cell: number; scale: number; onPress?(key: string): void; selected?: string | null }) {
   const rows = Math.ceil(cells.length / columns);
   const w = columns * cell;
   const h = rows * cell;
@@ -121,7 +121,9 @@ export function IconGrid({ cells, columns, cell, scale, onPress, selected }: { c
         </Group>
       </Canvas>
       <View style={[StyleSheet.absoluteFill, { flexDirection: 'row', flexWrap: 'wrap' }]}>
-        {cells.map((c) => (
+        {cells.map((c) => !onPress ? (
+          <View key={c.key} accessible accessibilityRole="image" accessibilityLabel={c.label} style={{ width: cell, height: cell }} />
+        ) : (
           <Pressable
             key={c.key}
             onPress={() => onPress(c.key)}

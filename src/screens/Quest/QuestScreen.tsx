@@ -8,10 +8,10 @@ import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'rea
 import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { NODE_MOBS } from '../../domain/game/balance';
-import { seedCeremonyMarks } from '../../domain/game/ceremonies';
 import { nodeAt } from '../../domain/game/derive';
 import { npcName, npcTitle } from '../../game/content/npcs';
 import { bossId, mobId, NpcId, ROSTER } from '../../game/content/roster';
+import { bossLine } from '../../game/content/bossLines';
 import { useQuestWrites } from '../../data/itemsRepo';
 import { useQuestFonts } from '../../game/assets/fonts';
 import { useGameClock } from '../../game/render/clock';
@@ -23,10 +23,9 @@ import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { QUI } from '../../game/ui/theme';
 import { ceremonyHost } from '../../game/ceremonies/host';
-import { saveCeremonyMarks } from '../../game/ceremonies/marks';
+import { holdCeremonies } from '../../game/ceremonies/gate';
 import { preloadQuestSounds } from '../../game/audio';
 import { feedback } from '../../game/feedback';
-import { echoQuote } from './ceremonies/BossIntro';
 import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
 import { cameraFor, JourneyMap, MapFx } from './map/JourneyMap';
@@ -36,14 +35,12 @@ import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
 import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
-import { useAuth } from '../../sync/AuthProvider';
 
 const POPS = 12;
 
 export default function QuestScreen({ onPlayground }: { onPlayground?(): void }) {
   useQuestFonts();
   const m = useQuestModel();
-  const { session } = useAuth();
   const reduced = useQuestReduced();
   const running = useWorldRunning();
   const clock = useGameClock(running);
@@ -53,6 +50,10 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
   const [replayIntro, setReplayIntro] = useState(false);
+  const bossTaps = useRef(0);
+  // Ceremonies wait while a sheet, a panel or the intro replay is up.
+  const busy = !!sheet || !!panel || replayIntro;
+  useEffect(() => (busy ? holdCeremonies() : undefined), [busy]);
   const [screenReader, setScreenReader] = useState(false);
   useEffect(() => { preloadQuestSounds(); }, []);
   useEffect(() => {
@@ -213,15 +214,9 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const map = m.maps[biome];
           const active = biome === g.position.biomeIndex && g.position.node === 7;
           const beaten = biome < g.position.biomeIndex;
-          // The Hollow Echo answers doubt with the player's own words.
-          if (active && map.id === 'astral') {
-            const quote = echoQuote(m.game, Date.now() >> 12);
-            if (quote) {
-              setPanel({ kind: 'say', text: quote, x: sx, y: sy });
-              break;
-            }
-          }
-          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : biome === g.position.biomeIndex ? g.bossMaxHp : g.bossMaxHp, max: g.bossMaxHp, active, x: sx, y: sy });
+          // The boss you face speaks a pre-fight line each tap (the Hollow Echo also quotes you).
+          const line = active ? bossLine(m.game, map.id, bossTaps.current++) : undefined;
+          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, x: sx, y: sy });
           break;
         }
         case 'villager':
@@ -311,7 +306,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
             sageName={npcName('sage')}
             reduced={reduced}
             onBegin={() => {
-              if (session) saveCeremonyMarks(session.user.id, seedCeremonyMarks(m.game));
+              ceremonyHost.seed(m.game);
               writes.startQuest();
             }}
           />

@@ -47,6 +47,18 @@ export function markCeremonyStarted(marks: CeremonyMarks, event: CeremonyEvent, 
   }
 }
 
-export function ceremonyMayPlay(timerActive: boolean, lootOpen: boolean, revealPending: boolean, appActive: boolean): boolean {
-  return !timerActive && !lootOpen && !revealPending && appActive;
+export interface CeremonyContext {
+  /** A session is running or paused. */
+  timerActive: boolean;
+  lootOpen: boolean;
+  /** Another sheet, a Quest panel or the intro replay is up. */
+  modalOpen: boolean;
+  /** The map reveal hasn't played yet (it goes first). */
+  revealPending: boolean;
+  appActive: boolean;
+}
+
+/** Ceremonies wait for a quiet moment: never during a session, never over another sheet. */
+export function ceremonyMayPlay(c: CeremonyContext): boolean {
+  return !c.timerActive && !c.lootOpen && !c.modalOpen && !c.revealPending && c.appActive;
 }

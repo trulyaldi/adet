@@ -4,27 +4,33 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Modal } from 'react-native';
 
 import { ceremonyMayPlay, CeremonyEvent, CeremonyMarks, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from '../../domain/game/ceremonies';
+import type { GameState } from '../../domain/game/derive';
 import { gameStateOf } from '../../domain/game/fromData';
 import { useLootRequest } from '../state/loot';
 import { useQuestLocal } from '../state/local';
 import { useQuestReduced } from '../state/settings';
-import { useData, useSyncStatus, useUi } from '../../store/StreakStore';
+import { anyModalOpen, useData, useSyncStatus, useUi } from '../../store/StreakStore';
 import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
 import { useAppActive } from '../../theme/useMotion';
 import { MODAL_GAP_MS } from '../../theme/motion';
 import { SkiaGate } from '../render/SkiaGate';
 import { coverWorld } from '../state/focus';
+import { setCeremonyPlaying, useCeremoniesHeld } from './gate';
 import { loadCeremonyMarks, saveCeremonyMarks } from './marks';
 import { LevelUp } from '../../screens/Quest/ceremonies/LevelUp';
 
-type Evaluator = () => void;
-let evaluator: Evaluator | null = null;
-export function setCeremonyEvaluator(fn: Evaluator): () => void {
-  evaluator = fn;
-  return () => { if (evaluator === fn) evaluator = null; };
+interface Handlers { evaluate(): void; seed(game: GameState): void }
+let handlers: Handlers | null = null;
+export function setCeremonyHandlers(h: Handlers): () => void {
+  handlers = h;
+  return () => { if (handlers === h) handlers = null; };
 }
-export const ceremonyHost = { evaluate(): void { evaluator?.(); } };
+export const ceremonyHost = {
+  evaluate(): void { handlers?.evaluate(); },
+  /** Onboarding: record everything reached so far as seen (the host is the one writer). */
+  seed(game: GameState): void { handlers?.seed(game); },
+};
 
 export function RootCeremonyHost() {
   const { session } = useAuth();
@@ -38,6 +44,11 @@ export function RootCeremonyHost() {
   const loot = useLootRequest();
   const reduced = useQuestReduced();
   const active = useAppActive();
+  const sheetOpen = useUi(anyModalOpen);
+  // A queued celebration (badge, streak) goes first; it waits for us in turn.
+  const celebrating = useUi((u) => u.celebrations.length > 0);
+  const held = useCeremoniesHeld();
+  const modalOpen = sheetOpen || celebrating || held;
   const [marks, setMarks] = useState<CeremonyMarks | null>(null);
   const marksRef = useRef<CeremonyMarks | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -45,7 +56,14 @@ export function RootCeremonyHost() {
   const [cooldown, setCooldown] = useState(false);
   const [request, setRequest] = useState(0);
   const bump = useCallback(() => setRequest((n) => n + 1), []);
-  useEffect(() => setCeremonyEvaluator(bump), [bump]);
+  const seed = useCallback((g: GameState) => {
+    if (!userId) return;
+    const seeded = seedCeremonyMarks(g);
+    marksRef.current = seeded;
+    setMarks(seeded);
+    saveCeremonyMarks(userId, seeded);
+  }, [userId]);
+  useEffect(() => setCeremonyHandlers({ evaluate: bump, seed }), [bump, seed]);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => { if (state === 'active') bump(); });
     return () => sub.remove();
@@ -57,8 +75,9 @@ export function RootCeremonyHost() {
     setLoaded(false);
     if (userId) loadCeremonyMarks(userId).then((m) => {
       if (!live) return;
-      marksRef.current = m;
-      setMarks(m);
+      // Onboarding may already have seeded while this was loading.
+      marksRef.current = marksRef.current ?? m;
+      setMarks(marksRef.current);
       setLoaded(true);
     }).catch(() => { if (live) setLoaded(true); });
     return () => { live = false; };
@@ -69,14 +88,10 @@ export function RootCeremonyHost() {
     if (!loaded || !userId || tables !== 'available' || !game.journey.started) return;
     if (!marksRef.current) {
       // A veteran, a new device, or first onboarding: silently seed history.
-      if (!settled) return;
-      const seeded = seedCeremonyMarks(game);
-      marksRef.current = seeded;
-      setMarks(seeded);
-      saveCeremonyMarks(userId, seeded);
+      if (settled) seed(game);
       return;
     }
-    if (playing || cooldown || !ceremonyMayPlay(!!data.active, !!loot, revealPending, active)) return;
+    if (playing || cooldown || !ceremonyMayPlay({ timerActive: !!data.active, lootOpen: !!loot, modalOpen, revealPending, appActive: active })) return;
     const next = detectCeremonies(marksRef.current, game)[0];
     if (!next) return;
     // Mark at start, before showing the Modal. Skip can never replay it.
@@ -85,9 +100,14 @@ export function RootCeremonyHost() {
     setMarks(updated);
     saveCeremonyMarks(userId, updated);
     setPlaying(next);
-  }, [loaded, userId, tables, settled, game, marks, playing, cooldown, data.active, loot, revealPending, active, request]);
+  }, [loaded, userId, tables, settled, game, marks, playing, cooldown, data.active, loot, modalOpen, revealPending, active, request, seed]);
 
   useEffect(() => playing ? coverWorld() : undefined, [playing]);
+  // Full-screen ceremonies hold celebrations back; the level-up is a small toast.
+  useEffect(() => {
+    setCeremonyPlaying(!!playing && playing.kind !== 'level_up');
+    return () => setCeremonyPlaying(false);
+  }, [playing]);
   useEffect(() => {
     if (data.active && playing) setPlaying(null);
   }, [data.active, playing]);

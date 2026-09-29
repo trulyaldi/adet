@@ -9,6 +9,7 @@ import { projectLook } from '../domain/look';
 import { badgeInfo } from '../domain/milestones';
 import { feedback } from '../feedback/feedback';
 import { useLootRequest } from '../game/state/loot';
+import { useCeremonyPlaying } from '../game/ceremonies/gate';
 import { anyModalOpen, useActions, useData, useSettings, useUi } from '../store/StreakStore';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
@@ -23,9 +24,10 @@ export function CelebrationHost() {
   const t = useTheme();
   const { colors, radius } = t;
   const data = useData();
-  // The Quest Loot sheet lives outside the store's UI state; it counts too.
+  // The Quest Loot sheet and ceremonies live outside the store's UI state; they count too.
   const loot = useLootRequest();
-  const modalOpen = useUi(anyModalOpen) || !!loot;
+  const ceremony = useCeremonyPlaying();
+  const modalOpen = useUi(anyModalOpen) || !!loot || ceremony;
   const first = useUi((u) => u.celebrations[0]);
   const settings = useSettings();
   const actions = useActions();
