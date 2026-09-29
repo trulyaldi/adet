@@ -49,7 +49,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
   const inUse = (s: ShopItem) =>
     s.kind === 'gear' ? meta?.avatar.gear[s.slot!] === s.sku : s.kind === 'companion' ? meta?.companion === s.sku : s.kind === 'campfire' ? meta?.campfire === s.sku : false;
 
-  const use = (s: ShopItem, on: boolean) =>
+  const wear = (s: ShopItem, on: boolean) =>
     writes.updateQuestMeta((p) => {
       if (s.kind === 'gear') {
         const gear = { ...p.avatar.gear };
@@ -69,7 +69,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
     setTimeout(() => (busy.current = false), 700);
     writes.purchase(s.sku, s.cost, s.kind === 'freeze' ? month : undefined);
     feedback.sfx('purchase', 'quest');
-    if (s.kind !== 'freeze') use(s, true);
+    if (s.kind !== 'freeze') wear(s, true);
   };
 
   const scale = 3;
@@ -116,7 +116,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
             <PixelButton
               label={inUse(item) ? (item.kind === 'gear' ? 'Take off' : 'Put away') : item.kind === 'gear' ? 'Wear' : item.kind === 'companion' ? 'Bring along' : 'Light it'}
               accessibilityLabel={`${inUse(item) ? 'Stop using' : 'Use'} ${item.name}`}
-              onPress={() => use(item, !inUse(item))}
+              onPress={() => wear(item, !inUse(item))}
             />
           ) : (
             <PixelButton label="Buy" accessibilityLabel={`Buy ${item.name} for ${item.cost} credits`} onPress={() => buy(item)} disabled={!canBuy(item)} />

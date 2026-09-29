@@ -1,0 +1,9 @@
+{
+  "music.forest": "No CC0/CC-BY music loops are downloadable without a browser (Kenney has jingles only). Ninja Adventure includes music: see docs/quest/OWNER_ACTIONS.md. Music is off by default; without files it stays silent.",
+  "music.swamp": "As music.forest.",
+  "music.desert": "As music.forest.",
+  "music.frost": "As music.forest.",
+  "music.iron": "As music.forest.",
+  "music.volcano": "As music.forest.",
+  "music.astral": "As music.forest."
+}

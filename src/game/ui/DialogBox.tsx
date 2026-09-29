@@ -2,7 +2,7 @@
 // Tap to finish the line; tap again to continue. VoiceOver reads the whole
 // line at once. Reduced motion shows it instantly.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useState } from 'react';
 import { AccessibilityInfo, Pressable, View } from 'react-native';
 
 import { SpriteView } from '../render/SpriteView';
@@ -34,22 +34,19 @@ export function DialogBox({
 }) {
   const u = useUiUnit();
   const [index, setIndex] = useState(0);
-  const [shown, setShown] = useState(reduced ? Infinity : 0);
+  const [shown, setShown] = useState(0);
   const line = lines[index] ?? '';
-  const typing = shown < line.length;
-  const blip = useRef(onBlip);
-  blip.current = onBlip;
+  // Reduced motion: every line appears whole.
+  const visible = reduced ? Infinity : shown;
+  const typing = visible < line.length;
+  const blip = useEffectEvent(() => onBlip?.());
 
   useEffect(() => {
-    setShown(reduced ? Infinity : 0);
-  }, [index, reduced]);
-  useEffect(() => {
     if (!typing) return;
+    let letters = 0;
     const t = setInterval(() => {
-      setShown((s) => {
-        if (s % 4 === 0) blip.current?.();
-        return s + 1;
-      });
+      if (letters++ % 4 === 0) blip();
+      setShown((s) => s + 1);
     }, CHAR_MS);
     return () => clearInterval(t);
   }, [typing, index]);
@@ -59,8 +56,10 @@ export function DialogBox({
 
   const next = () => {
     if (typing) return setShown(Infinity);
-    if (index + 1 < lines.length) setIndex(index + 1);
-    else onDone();
+    if (index + 1 < lines.length) {
+      setIndex(index + 1);
+      setShown(0);
+    } else onDone();
   };
 
   return (
@@ -73,7 +72,7 @@ export function DialogBox({
           <PixelText size="sm" bold color={QUI.wood}>
             {name}
           </PixelText>
-          <PixelText size="md">{line.slice(0, shown)}</PixelText>
+          <PixelText size="md">{line.slice(0, visible)}</PixelText>
         </View>
         {!typing && <PixelText size="md" color={QUI.wood} style={{ alignSelf: 'flex-end' }}>▼</PixelText>}
       </PixelPanel>

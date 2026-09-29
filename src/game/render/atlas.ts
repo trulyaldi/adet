@@ -42,14 +42,13 @@ function release(name: AtlasName) {
 
 /** The atlas image once decoded (null until then). Unused atlases are freed. */
 export function useAtlas(name: AtlasName | null): SkImage | null {
-  const [img, setImg] = useState<SkImage | null>(() => (name ? ready.get(name) ?? null : null));
+  // The decoded image, keyed by name so a changed name never shows the old atlas.
+  const [loaded, setLoaded] = useState<{ name: AtlasName; img: SkImage | null } | null>(null);
   useEffect(() => {
     if (!name) return;
     users.set(name, (users.get(name) ?? 0) + 1);
     let alive = true;
-    const have = ready.get(name);
-    if (have) setImg(have);
-    else loadAtlas(name).then((i) => alive && setImg(i));
+    if (!ready.has(name)) loadAtlas(name).then((img) => alive && setLoaded({ name, img }));
     return () => {
       alive = false;
       const n = (users.get(name) ?? 1) - 1;
@@ -58,5 +57,6 @@ export function useAtlas(name: AtlasName | null): SkImage | null {
       if (n <= 0 && name !== 'shared') release(name);
     };
   }, [name]);
-  return name ? img ?? ready.get(name) ?? null : null;
+  if (!name) return null;
+  return ready.get(name) ?? (loaded?.name === name ? loaded.img : null);
 }

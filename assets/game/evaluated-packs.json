@@ -1,0 +1,10 @@
+[
+  { "name": "Kenney Roguelike Characters (2.0)", "url": "https://kenney.nl/assets/roguelike-characters", "license": "CC0", "reason": "16 px and layered, but outline-free: clashes with the dark-outlined world; its 16 px people are shorter than the game's 20×26 characters." },
+  { "name": "Kenney Roguelike RPG Pack", "url": "https://kenney.nl/assets/roguelike-rpg-pack", "license": "CC0", "reason": "16 px, but outline-free top-down tiles in a different style from the Tiny family used for the ground." },
+  { "name": "Kenney Tiny Battle (1.0)", "url": "https://kenney.nl/assets/tiny-battle", "license": "CC0", "reason": "Modern military (tanks, planes, team flags): not relevant to the biomes." },
+  { "name": "Kenney Tiny Farm (1.0)", "url": "https://kenney.nl/assets/tiny-farm", "license": "CC0", "reason": "Crops and farm animals; no biome critters or NPC animals. Its trees share Tiny Town's 16 px proportion problem." },
+  { "name": "Kenney 1-Bit Pack", "url": "https://kenney.nl/assets/1-bit-pack", "license": "CC0", "reason": "Monochrome 1-bit style: can't sit beside full-colour art." },
+  { "name": "Kenney Micro Roguelike", "url": "https://kenney.nl/assets/micro-roguelike", "license": "CC0", "reason": "8 px tiles: a different pixel density (never mixed)." },
+  { "name": "Kenney UI Audio", "url": "https://kenney.nl/assets/ui-audio", "license": "CC0", "reason": "Downloaded and measured; Interface Sounds had a softer, shorter tap." },
+  { "name": "Pixel-boy & AAA: Ninja Adventure", "url": "https://pixel-boy.itch.io/ninja-adventure-asset-pack", "license": "CC0", "reason": "The spec's primary pack (16 px characters, monsters, bosses, animals, music). itch.io needs a browser click-through, so it can't be fetched here: see docs/quest/OWNER_ACTIONS.md." }
+]

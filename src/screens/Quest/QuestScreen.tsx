@@ -33,6 +33,7 @@ import { campLayout, hitTest, planReveal, spotFor, Target, targetAt } from './mo
 import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
+import { useActions } from '../../store/StreakStore';
 import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
 
@@ -50,6 +51,9 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
   const [replayIntro, setReplayIntro] = useState(false);
+  // Android back during onboarding: step out of the Quest tab (nothing is written).
+  const actions = useActions();
+  const leaveQuest = useCallback(() => actions.setScreen('today'), [actions]);
   const bossTaps = useRef(0);
   // Ceremonies wait while a sheet, a panel or the intro replay is up.
   const busy = !!sheet || !!panel || replayIntro;
@@ -98,7 +102,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   useEffect(() => {
     if (!size || placed.current) return;
     placed.current = true;
-    camY.value = cameraFor(m.at.y, size.h, size.w);
+    camY.set(cameraFor(m.at.y, size.h, size.w));
   }, [size, m.at.y, camY]);
 
   useEffect(() => {
@@ -111,50 +115,50 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       finish.current = null;
       cancelAnimation(avatarX);
       cancelAnimation(avatarY);
-      avatarX.value = m.at.x;
-      avatarY.value = m.at.y;
-      avatarMode.value = 0;
+      avatarX.set(m.at.x);
+      avatarY.set(m.at.y);
+      avatarMode.set(0);
       updateQuestLocal((s) => ({ ...s, seen: cur }));
       ceremonyHost.evaluate();
     };
     const plan = seen ? planReveal(m.maps, seen.global, cur.global) : null;
     if (!seen || !plan || reduced) {
       // First visit, nothing new, or reduced motion: just be there.
-      camY.value = cameraFor(m.at.y, size.h, size.w);
+      camY.set(cameraFor(m.at.y, size.h, size.w));
       if (seen && cur.global === seen.global && cur.hp < seen.hp && !reduced) {
         // Same enemy, a bit weaker: a small hit where it stands.
         const n = nodeAt(pos.global);
         const node = m.maps[n.biomeIndex].nodes[n.node];
         setPopSpots([{ x: node.x, y: node.y }]);
-        fx.pops[0].at.value = clock.value;
-        shake.value = withSequence(withTiming(1.5, { duration: 50 }), withTiming(-1.5, { duration: 50 }), withTiming(0, { duration: 60 }));
+        fx.pops[0].at.set(clock.value);
+        shake.set(withSequence(withTiming(1.5, { duration: 50 }), withTiming(-1.5, { duration: 50 }), withTiming(0, { duration: 60 })));
       }
       settle();
       return;
     }
     // Walk it.
     const start = plan.points[0];
-    avatarX.value = start.x;
-    avatarY.value = start.y;
-    camY.value = cameraFor(start.y, size.h, size.w);
+    avatarX.set(start.x);
+    avatarY.set(start.y);
+    camY.set(cameraFor(start.y, size.h, size.w));
     setPopSpots(plan.pops.slice(0, POPS).map((p) => ({ x: p.x, y: p.y })));
     finish.current = () => {
       settle();
-      camY.value = withTiming(cameraFor(m.at.y, size.h, size.w), { duration: 250 });
+      camY.set(withTiming(cameraFor(m.at.y, size.h, size.w), { duration: 250 }));
     };
     const step = plan.stepMs;
     plan.points.slice(1).forEach((pt, i) => {
       timers.current.push(
         setTimeout(() => {
-          avatarMode.value = 1;
-          avatarX.value = withTiming(pt.x, { duration: step, easing: Easing.linear });
-          avatarY.value = withTiming(pt.y, { duration: step, easing: Easing.linear });
-          camY.value = withTiming(cameraFor(pt.y, size.h, size.w), { duration: step, easing: Easing.inOut(Easing.quad) });
-          fx.dust.x.value = plan.points[i].x;
-          fx.dust.y.value = plan.points[i].y;
-          fx.dust.at.value = clock.value;
+          avatarMode.set(1);
+          avatarX.set(withTiming(pt.x, { duration: step, easing: Easing.linear }));
+          avatarY.set(withTiming(pt.y, { duration: step, easing: Easing.linear }));
+          camY.set(withTiming(cameraFor(pt.y, size.h, size.w), { duration: step, easing: Easing.inOut(Easing.quad) }));
+          fx.dust.x.set(plan.points[i].x);
+          fx.dust.y.set(plan.points[i].y);
+          fx.dust.at.set(clock.value);
           const pop = plan.pops.findIndex((p) => p.at === i);
-          if (pop >= 0 && pop < POPS) fx.pops[pop].at.value = clock.value + step * 0.6;
+          if (pop >= 0 && pop < POPS) fx.pops[pop].at.set(clock.value + step * 0.6);
         }, 350 + i * step)
       );
     });
@@ -299,7 +303,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         </View>
       )}
       {!m.meta && local.loaded && (
-        <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
+        <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={leaveQuest}>
           <Onboarding
             game={m.game}
             look={m.look}

@@ -2,7 +2,7 @@
 // campfire in the Whispering Forest; Aqyl says what focus and chests do; the
 // rank earned by past focus is revealed. Then the journey starts.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -48,7 +48,8 @@ export function Onboarding({ game, look, sageName, onBegin, reduced, replay = fa
   const avatar = layers.map((id) => ({ id, x: cx + 4, y: feet, frame: panel === 0 && !awake ? 4 : undefined, seq: [0, 1], fps: 2 }));
   const already = game.rank.tier > 0;
   // A clearing in the Whispering Forest: ground, trees around, the camp in the middle.
-  const clearing = useMemo(() => {
+  // About a hundred sprites, built on the few renders this scene has (no memo needed).
+  const clearing = (() => {
     const out: BatchItem[] = [];
     for (let y = 0; y < worldH + 16; y += 16) for (let x = 0; x < worldW + 16; x += 16) out.push({ id: `tile.forest.ground.${'abc'[((x * 7 + y * 3) >> 4) % 3]}`, x, y });
     const trees: [string, number, number][] = [
@@ -65,13 +66,13 @@ export function Onboarding({ game, look, sageName, onBegin, reduced, replay = fa
     for (const [n, x, y] of trees) out.push({ id: `decor.forest.${n}`, x, y });
     out.push({ id: 'critter.forest.rabbit.idle', x: cx + 44, y: feet + 36, wander: reduced ? 0 : 8 });
     return out.sort((a, b) => (a.id.startsWith('tile.') ? -1 : 0) - (b.id.startsWith('tile.') ? -1 : 0) || a.y - b.y);
-  }, [worldW, worldH, feet, cx, reduced]);
+  })();
   const next = () => setPanel((p) => Math.min(2, p + 1));
 
   return (
     <CeremonyStage
       background={PALETTES.forest.layers[2]}
-      onTap={panel === 0 ? next : () => {}}
+      onTap={panel === 0 ? next : undefined}
       label={panel === 0 ? 'You wake by a campfire in the Whispering Forest' : panel === 2 ? game.rank.title : sageName}
       scene={
         <>

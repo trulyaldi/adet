@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ceremonyMayPlay, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from './ceremonies';
+import { ceremonyMayPlay, ceremonyVisible, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from './ceremonies';
 import type { GameState } from './derive';
 
 const game = (level: number, rank: number, bosses: { biome: string; loop: number }[] = []): GameState => ({
@@ -57,4 +57,13 @@ test('host defers during running or paused sessions, loot, other sheets, reveal 
   assert.equal(ceremonyMayPlay({ ...quiet, modalOpen: true }), false);
   assert.equal(ceremonyMayPlay({ ...quiet, revealPending: true }), false);
   assert.equal(ceremonyMayPlay({ ...quiet, appActive: false }), false);
+});
+
+test('a scene hidden by a session waits for the Loot sheet and other sheets before coming back', () => {
+  const quiet = { timerActive: false, lootOpen: false, modalOpen: false };
+  assert.equal(ceremonyVisible(quiet), true);
+  assert.equal(ceremonyVisible({ ...quiet, timerActive: true }), false);
+  // The session just ended and its Loot sheet is up: still hidden.
+  assert.equal(ceremonyVisible({ ...quiet, lootOpen: true }), false);
+  assert.equal(ceremonyVisible({ ...quiet, modalOpen: true }), false);
 });

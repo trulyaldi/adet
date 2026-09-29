@@ -30,9 +30,12 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@expo/ngrok": "^4.1.3",
     "@types/node": "^26.1.1",
     "@types/react": "~19.2.10",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.2",
     "sharp": "^0.35.5",
     "tsx": "^4.23.0",
     "typescript": "~6.0.3"
@@ -44,9 +47,16 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"supabase/**/*.test.ts\"",
     "game:assets": "tsx scripts/build-atlases.ts",
-    "game:preview": "tsx scripts/preview-world.ts world-preview.png && tsx scripts/preview-avatar.ts avatar-preview.png"
+    "game:preview": "tsx scripts/preview-world.ts world-preview.png && tsx scripts/preview-avatar.ts avatar-preview.png",
+    "lint": "eslint .",
+    "game:fetch": "tsx scripts/fetch-packs.ts",
+    "game:audio": "tsx scripts/build-audio.ts",
+    "game:report": "tsx scripts/asset-report.ts",
+    "game:contact": "tsx scripts/contact-sheet.ts",
+    "game:needs-art": "tsx scripts/needs-art.ts",
+    "check:size": "tsx scripts/check-size.ts"
   },
   "private": true
 }

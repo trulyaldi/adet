@@ -1,11 +1,12 @@
-// Quest audio: a licensed pack can be mapped here when added. The existing
-// UI tap is the only available Quest SFX today; other IDs are silent no-ops.
+// Quest audio: sound effects built from licensed packs (npm run game:audio).
+// An id without a file is a silent no-op. No music loops are shipped yet.
 import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { AppState } from 'react-native';
 
+import { SOUND_SOURCES } from './assets/soundSources';
 import { hasSfxFile, SfxId } from './feedback/gate';
 
-const sources: Partial<Record<SfxId, number>> = { ui_tap: require('../../assets/sounds/tap.wav') };
+const sources = SOUND_SOURCES as Partial<Record<SfxId, number>>;
 const players: Partial<Record<SfxId, AudioPlayer>> = {};
 let configured = false;
 

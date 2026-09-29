@@ -1,5 +1,5 @@
 // Aqyl's opt-in AI answers. A local answer is shown immediately and kept
-// whenever the worker cannot answer safely.
+// whenever the Sage endpoint cannot answer safely.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform } from 'react-native';
@@ -68,33 +68,41 @@ export function useSageAdvice(data: PersistedState, now: number): { advice: Sage
     })),
     entries: itemsOfType(data.items, 'log').filter((l) => !!l.body.trim() && !!l.habitId).sort((a, b) => b.createdAt - a.createdAt).slice(0, 20).map((l) => ({ habitId: l.habitId!, text: l.body.slice(0, 500), at: new Date(l.createdAt).toISOString() })),
   }), [data.habits, data.items]);
-  const [result, setResult] = useState<{ advice: SageAdvice; source: 'ai' | 'local'; loading: boolean }>({ advice, source: 'local', loading: false });
+  // The answer for one request; a newer request shows the local advice while it loads.
+  const [answer, setAnswer] = useState<{ payload: SuggestPayload; advice: SageAdvice; value: SageAdvice; source: 'ai' | 'local' } | null>(null);
   useEffect(() => {
-    if (!enabled) { setResult({ advice, source: 'local', loading: false }); return; }
+    if (!enabled) return;
     let live = true;
-    setResult({ advice, source: 'local', loading: true });
-    sage.suggest({ ...payload, fallback: advice, enabled }).then((answer) => {
-      if (live) setResult({ advice: answer, source: answer.source, loading: false });
+    sage.suggest({ ...payload, fallback: advice, enabled }).then((value) => {
+      if (live) setAnswer({ payload, advice, value, source: value.source });
     });
     return () => { live = false; };
   }, [enabled, payload, advice]);
-  return enabled ? result : { advice, source: 'local', loading: false };
+  if (!enabled) return { advice, source: 'local', loading: false };
+  if (answer && answer.payload === payload && answer.advice === advice) return { advice: answer.value, source: answer.source, loading: false };
+  return { advice, source: 'local', loading: true };
 }
 
 export function useSageRecap(bossName: string, run: { sessions: number; tasks: number; entries: string[] }, enabled = false, biomeName = ''): { recap: string; loading: boolean } {
   const fallback = fallbackRecap(bossName, run.sessions, run.tasks, run.entries.length);
   const entriesKey = JSON.stringify(run.entries);
   const payload = useMemo<RecapPayload>(() => ({ biomeName, bossName, entries: run.entries.slice(0, 20), sessionCount: run.sessions, taskCount: run.tasks }), [biomeName, bossName, entriesKey, run.sessions, run.tasks]);
-  const [result, setResult] = useState({ recap: fallback, loading: false });
+  // The recap for one request: the AI's, or the local one after 3 s.
+  const [answer, setAnswer] = useState<{ payload: RecapPayload; fallback: string; recap: string } | null>(null);
   useEffect(() => {
-    if (!enabled) { setResult({ recap: fallback, loading: false }); return; }
+    if (!enabled) return;
     let live = true;
-    setResult({ recap: fallback, loading: true });
-    const deadline = setTimeout(() => { if (live) { live = false; setResult({ recap: fallback, loading: false }); } }, 3000);
-    sage.recap({ ...payload, fallback, enabled }).then((answer) => {
-      if (live) { clearTimeout(deadline); setResult({ recap: answer.recap, loading: false }); }
-    });
+    const settle = (recap: string) => {
+      if (!live) return;
+      live = false;
+      clearTimeout(deadline);
+      setAnswer({ payload, fallback, recap });
+    };
+    const deadline = setTimeout(() => settle(fallback), 3000);
+    sage.recap({ ...payload, fallback, enabled }).then((a) => settle(a.recap));
     return () => { live = false; clearTimeout(deadline); };
   }, [enabled, payload, fallback]);
-  return enabled ? result : { recap: fallback, loading: false };
+  if (!enabled) return { recap: fallback, loading: false };
+  if (answer && answer.payload === payload && answer.fallback === fallback) return { recap: answer.recap, loading: false };
+  return { recap: fallback, loading: true };
 }

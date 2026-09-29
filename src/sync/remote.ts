@@ -1,97 +1,10 @@
-// Network side of sync: push outbox changes and pull rows changed since a cursor.
+// Network side of sync, bound to the app's Supabase client (see remoteCore.ts).
 
-import { Change, parseTimestamp, SyncTable } from '../domain/sync';
-import { isMissingTableError } from './questRows';
-import { setQuestTables } from './questTables';
-import { changeToRow, CONFLICT_TARGET, OPTIONAL_TABLES, PULL_ORDER, PUSH_ORDER, Row, rowToChange } from './rows';
+import type { Change, SyncTable } from '../domain/sync';
+import { pullChangesWith, pushChangesWith } from './remoteCore';
 import { supabase } from './supabase';
 
-const PUSH_CHUNK = 500;
-const PULL_PAGE = 1000;
-/**
- * Re-read this much history before each cursor. server_updated_at is the
- * writer's transaction start, so a slow commit can land "behind" a cursor we
- * already advanced past; re-reading is harmless because merging is idempotent.
- */
-const PULL_OVERLAP_MS = 30_000;
+export const pushChanges = (changes: Change[], userId: string, onConfirmed: (confirmed: Change[]) => void) =>
+  pushChangesWith(supabase, changes, userId, onConfirmed);
 
-/** An optional table (Quest Mode, 006) the server doesn't have: skip it and say so. */
-function skipMissing(table: SyncTable, error: unknown): boolean {
-  if (!OPTIONAL_TABLES.includes(table) || !isMissingTableError(error)) return false;
-  setQuestTables('missing');
-  return true;
-}
-
-/**
- * Upsert changes parent tables first. `onConfirmed` runs after each chunk the
- * server accepts, so a failure part-way keeps only the unsent changes queued.
- * Changes for an optional table the server lacks stay queued.
- */
-export async function pushChanges(
-  changes: Change[],
-  userId: string,
-  onConfirmed: (confirmed: Change[]) => void
-): Promise<void> {
-  tables: for (const table of PUSH_ORDER) {
-    const forTable = changes.filter((c) => c.table === table);
-    for (let i = 0; i < forTable.length; i += PUSH_CHUNK) {
-      const chunk = forTable.slice(i, i + PUSH_CHUNK);
-      const { error } = await supabase
-        .from(table)
-        .upsert(chunk.map((c) => changeToRow(c, userId)), { onConflict: CONFLICT_TARGET[table] });
-      if (error) {
-        if (skipMissing(table, error)) continue tables;
-        throw error;
-      }
-      onConfirmed(chunk);
-    }
-  }
-}
-
-/** Fetch every row changed since each table's cursor, children first. */
-export async function pullChanges(
-  cursors: Partial<Record<SyncTable, number>>,
-  userId: string
-): Promise<{ changes: Change[]; cursors: Partial<Record<SyncTable, number>> }> {
-  const changes: Change[] = [];
-  const nextCursors: Partial<Record<SyncTable, number>> = {};
-  let questOk = true;
-
-  tables: for (const table of PULL_ORDER) {
-    const since = cursors[table];
-    // A fixed lower bound for the whole pull; one bulk write shares one
-    // server_updated_at, so paging must be by offset, not by timestamp.
-    const lower = since ? new Date(since - PULL_OVERLAP_MS).toISOString() : null;
-    const tiebreak = table === 'active_timers' ? 'user_id' : 'id';
-    let latest = since ?? 0;
-
-    for (let from = 0; ; from += PULL_PAGE) {
-      let query = supabase.from(table).select('*').eq('user_id', userId);
-      if (lower) query = query.gte('server_updated_at', lower);
-      const { data, error } = await query
-        .order('server_updated_at', { ascending: true })
-        .order(tiebreak, { ascending: true })
-        .range(from, from + PULL_PAGE - 1);
-      if (error) {
-        if (skipMissing(table, error)) {
-          questOk = false;
-          continue tables;
-        }
-        throw error;
-      }
-      const rows = (data ?? []) as Row[];
-      for (const row of rows) {
-        const c = rowToChange(table, row);
-        if (c) changes.push(c);
-        const ts = parseTimestamp(String(row.server_updated_at));
-        if (ts > latest) latest = ts;
-      }
-      if (rows.length < PULL_PAGE) break;
-    }
-
-    if (latest) nextCursors[table] = latest;
-  }
-
-  if (questOk) setQuestTables('available');
-  return { changes, cursors: nextCursors };
-}
+export const pullChanges = (cursors: Partial<Record<SyncTable, number>>, userId: string) => pullChangesWith(supabase, cursors, userId);

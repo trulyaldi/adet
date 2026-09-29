@@ -36,7 +36,7 @@ test('a same-day cache hit avoids another request', async () => {
   assert.equal(calls(), 1);
 });
 
-test('worker failure keeps the local recap', async () => {
+test('an endpoint error keeps the local recap', async () => {
   const client = createSageClient({
     url: 'https://example.test', token: async () => 'jwt',
     storage: { getItem: async () => null, setItem: async () => {} },
@@ -45,4 +45,26 @@ test('worker failure keeps the local recap', async () => {
   });
   const answer = await client.recap({ biomeName: 'Forest', bossName: 'Fog Wisp', entries: [], sessionCount: 1, taskCount: 0 }, { recap: 'Well fought.' });
   assert.deepEqual(answer, { value: { recap: 'Well fought.' }, source: 'local' });
+});
+
+test('an unreachable endpoint keeps the local answer, without throwing', async () => {
+  const client = createSageClient({
+    url: 'https://unreachable.test', token: async () => 'jwt',
+    storage: { getItem: async () => null, setItem: async () => {} },
+    fetcher: (async () => { throw new TypeError('Network request failed'); }) as typeof fetch,
+    now: () => 0,
+  });
+  assert.deepEqual(await client.suggest(payload, fallback), { value: fallback, source: 'local' });
+});
+
+test('no endpoint configured: local, and no request is made', async () => {
+  let calls = 0;
+  const client = createSageClient({
+    url: undefined, token: async () => 'jwt',
+    storage: { getItem: async () => null, setItem: async () => {} },
+    fetcher: (async () => { calls++; return new Response('{}'); }) as typeof fetch,
+    now: () => 0,
+  });
+  assert.equal((await client.suggest(payload, fallback)).source, 'local');
+  assert.equal(calls, 0);
 });

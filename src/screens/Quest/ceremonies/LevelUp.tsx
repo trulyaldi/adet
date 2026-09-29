@@ -1,6 +1,6 @@
 // A short, non-blocking level moment near the top edge: a pixel burst,
 // "LV N" and the XP bar refilling. Reduce motion: the panel alone.
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useEffectEvent } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
 import Animated, { SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,13 +19,12 @@ export function LevelUp({ level, game, onDone, reduced }: { level: number; game:
   const fill = useSharedValue(0);
   const burst = useSharedValue(0);
   const progress = game.xp.xpForNextLevel ? game.xp.xpIntoLevel / game.xp.xpForNextLevel : 0;
-  const done = useRef(onDone);
-  done.current = onDone;
+  const done = useEffectEvent(() => onDone());
   useEffect(() => {
     feedback.sfx('level_up', 'ceremony');
     AccessibilityInfo.announceForAccessibility(`Level ${level}`);
     if (!reduced) burst.value = withTiming(1, { duration: 700 });
-    const timer = setTimeout(() => done.current(), SHOWN_MS);
+    const timer = setTimeout(() => done(), SHOWN_MS);
     return () => clearTimeout(timer);
   }, [level, reduced, burst]);
   useEffect(() => {

@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 
 import { useQuestWrites } from '../../data/itemsRepo';
 import { gameStateOf } from '../../domain/game/fromData';
-import { useData, useStoreNow } from '../../store/StreakStore';
+import { useData } from '../../store/StreakStore';
 import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
 import { useQuestFonts } from '../assets/fonts';
@@ -19,7 +19,6 @@ export function QuestWatcher() {
   const { session } = useAuth();
   useQuestLocalFor(session?.user.id ?? 'anon');
   const data = useData();
-  const now = useStoreNow();
   const tables = useQuestTables();
   const writes = useQuestWrites();
   const game = gameStateOf(data);

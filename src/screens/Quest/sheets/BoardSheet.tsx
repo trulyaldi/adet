@@ -12,7 +12,7 @@ import { openTasksFor, tasksFor, TASK_TITLE_MAX } from '../../../domain/items/op
 import { activeHabits } from '../../../domain/projects';
 import type { Habit } from '../../../domain/types';
 import { greeting } from '../../../game/content/npcs';
-import { PIXEL_FONT } from '../../../game/assets/fonts';
+import { PIXEL_FONT, PIXEL_TEXT } from '../../../game/assets/fonts';
 import { PixelButton } from '../../../game/ui/PixelButton';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
@@ -113,7 +113,7 @@ function HabitTasks({ model, habit, onBack }: { model: QuestModel; habit: Habit;
           maxLength={TASK_TITLE_MAX}
           returnKeyType="done"
           accessibilityLabel={`New weak point for ${habit.name}`}
-          style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink }}
+          style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink }}
         />
         <PixelButton small label="Add" accessibilityLabel="Add the weak point" onPress={add} disabled={!text.trim()} />
       </Row>

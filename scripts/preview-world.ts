@@ -1,6 +1,11 @@
-// Dev preview: a small scene per biome from the generated sprites, to judge
-// the art in context. `npx tsx scripts/preview-world.ts out.png`
+// Dev preview: a small scene per biome with the sprites the game ships (pack
+// art where mapped, stand-ins elsewhere), to judge the art in context.
+//   npx tsx scripts/preview-world.ts out.png [--stand-ins]
+// --stand-ins renders the original art only, for a before/after comparison.
 import sharp from 'sharp';
+
+import { SpriteDef } from './art/registry';
+import { resolveSprites } from './art-sources';
 
 import { BIOME_IDS } from '../src/domain/game/biomes';
 import { PALETTES } from '../src/game/content/palettes';
@@ -8,16 +13,18 @@ import { ROSTER } from '../src/game/content/roster';
 import { hex, mix, Px, rng } from './pixel/px';
 import { generatePlaceholders } from './gen-placeholders';
 
-const reg = generatePlaceholders();
+let sprites: Map<string, SpriteDef> = new Map();
 const W = 130;
 const H = 110;
 function put(px: Px, id: string, x: number, y: number, f = 0) {
-  const d = reg.sprites.get(id);
+  const d = sprites.get(id);
   if (!d) throw new Error('missing ' + id);
   const fr = d.frames[f % d.frames.length];
   const [ax, ay] = d.anchor ?? [Math.floor(fr.w / 2), fr.h];
   px.blit(fr, Math.round(x - ax), Math.round(y - ay));
 }
+async function main() {
+sprites = process.argv.includes('--stand-ins') ? generatePlaceholders().sprites : (await resolveSprites()).defs;
 const scenes = BIOME_IDS.map((b) => {
   const P = PALETTES[b];
   const px = new Px(W, H);
@@ -61,4 +68,10 @@ const scenes = BIOME_IDS.map((b) => {
 const sheet = new Px(W * 4 + 12, H * 2 + 4);
 scenes.forEach((s, i) => sheet.blit(s, (i % 4) * (W + 4), Math.floor(i / 4) * (H + 4)));
 const big = sheet.scale(3);
-sharp(big.toRGBA(), { raw: { width: big.w, height: big.h, channels: 4 } }).png().toFile(process.argv[2] ?? 'world-preview.png');
+await sharp(big.toRGBA(), { raw: { width: big.w, height: big.h, channels: 4 } }).png().toFile(process.argv[2] ?? 'world-preview.png');
+}
+Promise.resolve().then(main).catch((e) => {
+  // A missing pack or a refused stand-in is a message, not a crash.
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

@@ -28,6 +28,8 @@ import { PixelButton } from '../../game/ui/PixelButton';
 import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { QUI } from '../../game/ui/theme';
+import { ArtGallery } from './qa/ArtGallery';
+import { QaPanel } from './qa/QaPanel';
 
 const PARTICLES: ParticleKind[] = ['fireflies', 'leaves', 'spores', 'fog', 'bubbles', 'sand', 'heat', 'snow', 'embers', 'stars', 'aurora', 'ash', 'dust', 'sparkle', 'dissolve'];
 const PHASES: DayPhase[] = ['dawn', 'day', 'dusk', 'night'];
@@ -45,6 +47,7 @@ export default function Playground({ onClose }: { onClose(): void }) {
   const [hp, setHp] = useState(25);
   const [count, setCount] = useState(0);
   const [dialog, setDialog] = useState(false);
+  const [tab, setTab] = useState<'kit' | 'qa' | 'art'>('kit');
   const clock = useGameClock(!reduced);
   const cam = useSharedValue(0);
   const shake = useSharedValue(0);
@@ -108,6 +111,15 @@ export default function Playground({ onClose }: { onClose(): void }) {
             <PixelButton small label={reduced ? 'still' : 'motion'} accessibilityLabel="Toggle reduced motion" onPress={() => setReduced(!reduced)} />
           </View>
 
+          <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12 }}>
+            {(['kit', 'qa', 'art'] as const).map((t) => (
+              <PixelButton key={t} small tone={tab === t ? 'gold' : 'night'} label={t === 'kit' ? 'Kit' : t === 'qa' ? 'QA' : 'Art'} accessibilityLabel={t === 'kit' ? 'Render kit demos' : t === 'qa' ? 'QA tools' : 'Art review gallery'} onPress={() => setTab(t)} />
+            ))}
+          </View>
+          {tab === 'qa' && <QaPanel reduced={reduced} />}
+          {tab === 'art' && <ArtGallery reduced={reduced} />}
+          {tab === 'kit' && (
+          <>
           {/* Stage: tilemap, sprites, lighting, particles, camera shake */}
           <Pressable onPress={hit} accessibilityRole="button" accessibilityLabel="Hit the boss">
             <PixelStage width={w} height={h} scale={scale} style={{ alignSelf: 'center', backgroundColor: PALETTES[biome].sky[1] }}>
@@ -156,6 +168,8 @@ export default function Playground({ onClose }: { onClose(): void }) {
               <PixelButton label="Talk to Aqyl" accessibilityLabel="Open a dialog" onPress={() => setDialog(true)} />
             )}
           </View>
+          </>
+          )}
         </ScrollView>
         <IrisWipe progress={iris} scale={scale} />
         <PixelDissolve progress={dissolve} block={scale * 8} />

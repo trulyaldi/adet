@@ -46,3 +46,7 @@ yarn-error.*
 /world-preview.png
 /avatar-preview.png
 /placeholders-preview.png
+
+# Licensed art packs (fetched with npm run game:fetch; licenses are copied to assets/game/licenses/)
+/assets/game/raw/*
+!/assets/game/raw/README.md

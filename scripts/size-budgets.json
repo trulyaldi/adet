@@ -1,0 +1,8 @@
+{
+  "//": "Bytes. JS = the polish pass baseline (Hermes bytecode at 79a9dfc) + 1.2 MB. Raise only with a reason in docs/quest/PLAN.md.",
+  "baselineJsBytes": 5115347,
+  "jsGrowthBytes": 1258291,
+  "gameImagesBytes": 2621440,
+  "maxAtlasBytes": 512000,
+  "gameAudioBytes": 4194304
+}

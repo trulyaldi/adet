@@ -13,7 +13,8 @@ import { gameStateOf } from '../../../domain/game/fromData';
 import { itemsOfType, LogEntryItem } from '../../../domain/items/types';
 import { LOG_BODY_MAX } from '../../../domain/items/ops';
 import { dkey, monday } from '../../../domain/time';
-import { PIXEL_FONT } from '../../../game/assets/fonts';
+import { PACK_CREDITS, STAND_IN_SPRITES } from '../../../game/assets/credits.generated';
+import { PIXEL_FONT, PIXEL_TEXT } from '../../../game/assets/fonts';
 import { greeting, npcName } from '../../../game/content/npcs';
 import { mobId, ROSTER } from '../../../game/content/roster';
 import { openLoot } from '../../../game/state/loot';
@@ -120,7 +121,7 @@ function Chronicle({ model }: { model: QuestModel }) {
                 multiline
                 maxLength={LOG_BODY_MAX}
                 accessibilityLabel="Edit the entry"
-                style={{ minHeight: 60, padding: 8, backgroundColor: QUI.white, color: QUI.ink, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink }}
+                style={{ minHeight: 60, padding: 8, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink }}
               />
               <Row>
                 <PixelButton small label="Save" accessibilityLabel="Save the entry" onPress={() => {
@@ -201,11 +202,11 @@ function Chests({ model, onOpen }: { model: QuestModel; onOpen(sessionId: string
 }
 
 function Credits() {
+  // From the pack registry (scripts/credits.ts): every pack in use, with its author and license.
   const rows = [
-    ['Art', 'Original pixel art drawn in code for Adet.'],
-    ['Packs', 'Licensed packs (e.g. Ninja Adventure, CC0) replace art when installed; see CREDITS.md.'],
+    ...PACK_CREDITS.map((p) => [p.title, `${p.author} · ${p.license} · ${p.uses}`]),
+    ['Original art', STAND_IN_SPRITES ? `${STAND_IN_SPRITES} sprites are Adet's own pixel art, drawn in code.` : "None: every sprite is from a pack above."],
     ['Fonts', 'Pixelify Sans by Stefie Justprince, Silkscreen by Jason Kottke (SIL OFL 1.1).'],
-    ['Sounds', "Adet's own generated sounds."],
     ['Names', 'Aqyl, Saudager and Hatshy nod to Kazakh: wisdom, merchant, scribe.'],
   ];
   return (

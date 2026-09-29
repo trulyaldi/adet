@@ -1,0 +1,18 @@
+{
+  "name": "kenney-rpg-audio",
+  "title": "RPG Audio (1.0)",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+  "url": "https://kenney.nl/assets/rpg-audio",
+  "download": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "sha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+  "downloaded": "2026-09-29",
+  "sounds": {
+    "purchase": {
+      "file": "Audio/handleCoins2.ogg",
+      "gain": -4,
+      "why": "a short handful of coins (0.34 s) for the Merchant"
+    }
+  }
+}
