@@ -36,6 +36,7 @@ import {
   sessionFromTimer,
   subMinuteSessions,
 } from '../domain/sessions';
+import type { QuestSlice } from '../domain/items/ops';
 import { allAsChanges, enqueue, isUntouchedSeed, stampLocalChanges } from '../domain/sync';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -319,6 +320,9 @@ export interface StreakActions {
   setBudgetMin(min: number): void;
   /** Most habits in a day's plan (1..5). */
   setPlanCap(cap: number): void;
+  // Quest Mode (src/data/itemsRepo.ts builds typed writes on this)
+  /** Edit items and links; return the same slice for no change. */
+  editQuest(fn: (q: QuestSlice) => QuestSlice): void;
 }
 
 /**
@@ -379,6 +383,8 @@ function emptyData(now: number): PersistedState {
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
     badges: [],
+    items: [],
+    links: [],
     active: null,
     historyClearedAt: 0,
     plans: {},
@@ -1161,6 +1167,11 @@ export function StreakProvider({ userId, children }: { userId: string; children:
       markWelcomeSeen: () => updateSettings({ welcomeSeen: true }),
       setBudgetMin: (min) => updateSettings({ budgetMin: clampBudgetMin(min) }),
       setPlanCap: (cap) => updateSettings({ planCap: clampPlanCap(cap) }),
+      editQuest: (fn) =>
+        setData((d) => {
+          const q = fn({ items: d.items, links: d.links });
+          return q.items === d.items && q.links === d.links ? d : { ...d, items: q.items, links: q.links };
+        }),
     };
     // Reads go through storeRef (the latest committed data), so actions never
     // change identity and memoized children don't re-render for them.

@@ -1,6 +1,7 @@
 // Pure sync logic: change detection, the outbox, and last-write-wins merging.
 // No React or Supabase here; src/sync/ does the I/O.
 
+import type { Item, Link } from './items/types';
 import { markId } from './marks';
 import { ActiveTimer, Badge, DailyLog, Habit, Mark, PersistedState, Project, Session, UserPrefs } from './types';
 
@@ -12,7 +13,9 @@ export type SyncTable =
   | 'habit_marks'
   | 'daily_logs'
   | 'badges'
-  | 'user_prefs';
+  | 'user_prefs'
+  | 'items'
+  | 'links';
 
 /** The active timer is a per-user singleton; this is its id in the outbox. */
 export const ACTIVE_ID = 'active';
@@ -37,7 +40,9 @@ export type Change =
   | (ChangeBase & { table: 'habit_marks'; record: Mark })
   | (ChangeBase & { table: 'daily_logs'; record: DailyLog })
   | (ChangeBase & { table: 'badges'; record: Badge })
-  | (ChangeBase & { table: 'user_prefs'; record: UserPrefs });
+  | (ChangeBase & { table: 'user_prefs'; record: UserPrefs })
+  | (ChangeBase & { table: 'items'; record: Item })
+  | (ChangeBase & { table: 'links'; record: Link });
 
 /** Pending local changes, keyed by changeKey(); newer changes replace older ones. */
 export type Outbox = Record<string, Change>;
@@ -144,10 +149,14 @@ export function stampLocalChanges(
   const marks = stampList(prev.marks, next.marks, now);
   const logs = stampList(prev.dailyLogs, next.dailyLogs, now);
   const badges = stampList(prev.badges, next.badges, now);
+  const items = stampList(prev.items, next.items, now);
+  const links = stampList(prev.links, next.links, now);
   const simple = [
     ['habit_marks', marks],
     ['daily_logs', logs],
     ['badges', badges],
+    ['items', items],
+    ['links', links],
   ] as const;
   for (const [table, st] of simple) {
     for (const record of st.upserts) changes.push({ table, id: record.id, record, deletedAt: null } as Change);
@@ -171,6 +180,8 @@ export function stampLocalChanges(
       marks: marks.list,
       dailyLogs: logs.list,
       badges: badges.list,
+      items: items.list,
+      links: links.list,
       prefs,
     },
     changes,
@@ -202,6 +213,8 @@ export function allAsChanges(data: PersistedState): Change[] {
   for (const r of data.marks) changes.push({ table: 'habit_marks', id: r.id, record: stamp(r), deletedAt: null });
   for (const r of data.dailyLogs) changes.push({ table: 'daily_logs', id: r.id, record: stamp(r), deletedAt: null });
   for (const r of data.badges) changes.push({ table: 'badges', id: r.id, record: stamp(r), deletedAt: null });
+  for (const r of data.items) changes.push({ table: 'items', id: r.id, record: stamp(r), deletedAt: null });
+  for (const r of data.links) changes.push({ table: 'links', id: r.id, record: stamp(r), deletedAt: null });
   changes.push({ table: 'user_prefs', id: PREFS_ID, record: stamp(data.prefs), deletedAt: null });
   return changes;
 }
@@ -233,6 +246,8 @@ const APPLY_ORDER: Record<SyncTable, number> = {
   daily_logs: 1,
   badges: 1,
   user_prefs: 1,
+  items: 1,
+  links: 1,
   habits: 2,
   projects: 3,
 };
@@ -262,6 +277,8 @@ export function mergeRemote(
   const marks = new Map(data.marks.map((r) => [r.id, r]));
   const logs = new Map(data.dailyLogs.map((r) => [r.id, r]));
   const badges = new Map(data.badges.map((r) => [r.id, r]));
+  const items = new Map(data.items.map((r) => [r.id, r]));
+  const links = new Map(data.links.map((r) => [r.id, r]));
   let prefs = data.prefs;
   let active = data.active;
   const ob: Outbox = { ...outbox };
@@ -286,6 +303,10 @@ export function mergeRemote(
         return badges.get(c.id);
       case 'user_prefs':
         return prefs;
+      case 'items':
+        return items.get(c.id);
+      case 'links':
+        return links.get(c.id);
     }
   };
 
@@ -397,6 +418,14 @@ export function mergeRemote(
         // Preferences are never deleted; a stray delete leaves them as they are.
         if (!remoteDeleted) prefs = rc.record;
         break;
+      case 'items':
+        if (remoteDeleted) items.delete(rc.id);
+        else items.set(rc.id, rc.record);
+        break;
+      case 'links':
+        if (remoteDeleted) links.delete(rc.id);
+        else links.set(rc.id, rc.record);
+        break;
     }
   }
 
@@ -411,6 +440,8 @@ export function mergeRemote(
       marks: [...marks.values()],
       dailyLogs: [...logs.values()],
       badges: [...badges.values()],
+      items: [...items.values()],
+      links: [...links.values()],
       prefs,
     },
     outbox: enqueue(ob, followUps),

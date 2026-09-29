@@ -33,6 +33,8 @@ export function state(habits: Habit[], sessions: Session[] = [], extra: Partial<
     prefs: DEFAULT_PREFS,
     dailyLogs: [],
     badges: [],
+    items: [],
+    links: [],
     active: null,
     historyClearedAt: 0,
     plans: {},

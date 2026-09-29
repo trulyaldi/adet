@@ -9,6 +9,7 @@ const T = Date.UTC(2026, 8, 27, 10, 0, 0, 123);
 // Postgres returns timestamps with microseconds and a +00:00 offset.
 const serverTs = (row: Record<string, unknown>) => ({
   ...row,
+  ...(typeof row.created_at === 'string' ? { created_at: row.created_at.replace('Z', '000+00:00') } : {}),
   updated_at: typeof row.updated_at === 'string' ? row.updated_at.replace('Z', '000+00:00') : row.updated_at,
   deleted_at: typeof row.deleted_at === 'string' ? row.deleted_at.replace('Z', '000+00:00') : row.deleted_at,
 });
@@ -59,6 +60,40 @@ const cases: Change[] = [
   },
   { table: 'badges', id: 'streak-7', deletedAt: null, record: { id: 'streak-7', earnedAt: T - 5, updatedAt: T } },
   { table: 'user_prefs', id: 'prefs', deletedAt: null, record: { capacityMin: [120, 120, 120, 120, 90, 0, 60], weekStart: 0, updatedAt: T } },
+  // Quest Mode's tables (006).
+  {
+    table: 'items',
+    id: 't1',
+    deletedAt: null,
+    record: { id: 't1', type: 'task', title: 'OTP flow', body: '', props: { status: 'done', order: 2, doneAt: '2026-09-27T10:00:00.000Z' }, habitId: 'h1', createdAt: T - 60_000, updatedAt: T },
+  },
+  {
+    table: 'items',
+    id: 'quest_meta',
+    deletedAt: null,
+    record: {
+      id: 'quest_meta',
+      type: 'quest_meta',
+      title: '',
+      body: '',
+      props: {
+        startedAt: '2026-09-01T00:00:00.000Z',
+        avatar: { gear: { cloak: 'cloak.moss' } },
+        companion: 'pet.fox',
+        settings: { sfx: true, music: false, haptics: true, ai: false, aiNoticeSeen: false, battleStrip: true, motion: 'system', npcNames: {} },
+      },
+      habitId: null,
+      createdAt: T - 5,
+      updatedAt: T,
+    },
+  },
+  { table: 'items', id: 'p1', deletedAt: T, record: { id: 'p1', type: 'purchase', title: '', body: '', props: { sku: 'freeze', cost: 60, month: '2026-09' }, habitId: null, createdAt: T - 5, updatedAt: T } },
+  {
+    table: 'links',
+    id: 'completed_in:t1:s1',
+    deletedAt: null,
+    record: { id: 'completed_in:t1:s1', fromType: 'item', fromId: 't1', toType: 'session', toId: 's1', kind: 'completed_in', createdAt: T - 1000, updatedAt: T },
+  },
 ];
 
 for (const c of cases) {
@@ -139,4 +174,15 @@ test('habit rows send frequency and minimum (needs migration 004)', () => {
   const row = changeToRow(cases[1], 'u');
   assert.deepEqual(row.frequency, { kind: 'days', days: [0, 2, 4] });
   assert.equal(row.min_target_min, 10);
+});
+
+test('item rows of an unknown type are skipped, not crashed on', () => {
+  assert.equal(rowToChange('items', { id: 'z', type: 'future_thing', props: {}, updated_at: '2026-09-27T10:00:00+00:00' }), null);
+  assert.equal(rowToChange('links', { id: 'z', kind: 'future', from_type: 'item', from_id: 'a', to_type: 'item', to_id: 'b', updated_at: '2026-09-27T10:00:00+00:00' }), null);
+});
+
+test('item props arrive as JSON text or objects and read back typed', () => {
+  const c = rowToChange('items', { id: 't', type: 'task', title: 'x', body: '', props: '{"status":"done","order":3}', habit_id: null, created_at: '2026-09-27T10:00:00+00:00', updated_at: '2026-09-27T10:00:00+00:00' });
+  assert.ok(c && c.table === 'items');
+  assert.deepEqual(c.record.props, { status: 'done', order: 3 });
 });

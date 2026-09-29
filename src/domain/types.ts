@@ -2,6 +2,7 @@
 
 import type { Frequency } from './frequency';
 import type { ProjectColor } from './look';
+import type { Item, Link } from './items/types';
 
 export type { Frequency } from './frequency';
 
@@ -9,9 +10,10 @@ export type { Frequency } from './frequency';
  * v1: legacy goals/goalId shape; v2: projects/projectId without required targets;
  * v3: habits have daily and weekly targets;
  * v4: habits have a frequency and a minimum; days have a plan (local-only);
- * v5: the redesign — habit kinds, done marks, capacity, daily logs, badges.
+ * v5: the redesign — habit kinds, done marks, capacity, daily logs, badges;
+ * v6: Quest Mode's generic items and links (migration 006_quest).
  */
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 /** `timed`: a count-up timer toward a target. `check`: tap to complete, no timer. */
 export type HabitKind = 'timed' | 'check';
@@ -207,6 +209,10 @@ export interface PersistedState {
   dailyLogs: DailyLog[];
   /** v5: earned milestones (synced). */
   badges: Badge[];
+  /** v6: Quest Mode items — tasks, chronicle entries, chests, purchases, achievements, quest_meta (synced). */
+  items: Item[];
+  /** v6: typed edges between items, sessions and habits (synced). */
+  links: Link[];
   active: ActiveTimer | null;
   historyClearedAt: number;
   // Local-only (not synced), like historyClearedAt:

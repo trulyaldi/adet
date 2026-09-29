@@ -95,6 +95,11 @@ test('already-current data passes through unchanged', () => {
     prefs: { capacityMin: [120, 120, 120, 120, 120, 60, 0], weekStart: 0 },
     dailyLogs: [{ id: '2026-07-09', capacityMin: 120, plannedMin: 30, actualMin: 45, items: [{ habitId: 'h1', projectId: 'p1', shareMin: 30 }], doneCount: 1 }],
     badges: [{ id: 'streak-3', earnedAt: 5 }],
+    items: [
+      { id: 't1', type: 'task', title: 'Fix login', body: '', props: { status: 'open', order: 0 }, habitId: 'h1', createdAt: 7 },
+      { id: 'log:s1', type: 'log', title: '', body: 'shipped', props: { sessionId: 's1' }, habitId: 'h1', createdAt: 8, updatedAt: 9 },
+    ],
+    links: [{ id: 'chronicles:log:s1:s1', fromType: 'item', fromId: 'log:s1', toType: 'session', toId: 's1', kind: 'chronicles', createdAt: 8 }],
     active: null,
     historyClearedAt: 123,
     plans: { '2026-07-10': ['h1'] },
@@ -163,6 +168,8 @@ test('a stamped empty state stays empty instead of re-seeding', () => {
     rebalancePending: false,
     days: {},
     badges: [],
+    items: [],
+    links: [],
     badgesPrimed: true,
   };
   assert.deepEqual(hydrate({ v3: JSON.stringify(empty), v2: null }, NOW), empty);
@@ -246,4 +253,34 @@ test('malformed local plan state is dropped, not fatal', () => {
   const r = hydrate({ v3: JSON.stringify(saved), v2: null }, NOW);
   assert.deepEqual(r.plans, { '2026-07-10': ['h1'] });
   assert.equal(r.streakCarry, null);
+});
+
+// ---------- v6: Quest Mode items and links ----------
+
+test('v5 data gains empty items and links', () => {
+  const v5 = { schemaVersion: 5, projects: [{ id: 'p1', name: 'P', weeklyTarget: 8, started: 1 }], habits: [], sessions: [] };
+  const r = hydrate({ v3: JSON.stringify(v5), v2: null }, NOW);
+  assert.equal(r.schemaVersion, 6);
+  assert.deepEqual(r.items, []);
+  assert.deepEqual(r.links, []);
+});
+
+test('malformed saved items and links are dropped, good ones kept with safe props', () => {
+  const saved = {
+    schemaVersion: 6,
+    projects: [{ id: 'p1', name: 'P', weeklyTarget: 8, started: 1 }],
+    habits: [],
+    sessions: [],
+    items: [
+      null,
+      { id: 'x', type: 'mystery' },
+      { id: 't1', type: 'task', props: { status: 'weird', order: 'x' }, habitId: 'h1', createdAt: 3 },
+    ],
+    links: [{ id: 'l', kind: 'nope' }, { id: 'l2', kind: 'planned_for', fromType: 'item', fromId: 't1', toType: 'session', toId: 's1', createdAt: 4 }],
+  };
+  const r = hydrate({ v3: JSON.stringify(saved), v2: null }, NOW);
+  assert.equal(r.items.length, 1);
+  assert.deepEqual(r.items[0], { id: 't1', type: 'task', title: '', body: '', props: { status: 'open', order: 0 }, habitId: 'h1', createdAt: 3 });
+  assert.equal(r.links.length, 1);
+  assert.equal(r.links[0].id, 'l2');
 });
