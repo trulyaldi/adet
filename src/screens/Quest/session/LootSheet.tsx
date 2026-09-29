@@ -1,8 +1,8 @@
 // Loot: after a session of 10+ minutes a chest bounces in. Tick the weak
 // points done and/or write one line (the quill field), then Open: the chest
-// bursts, crits strike the enemy, XP and credits count up, and a level-up or
-// a boss defeat chains straight into its ceremony, all in this one modal.
-// Later sends the chest to the camp pile. No guilt either way.
+// bursts, crits strike the enemy, XP and credits count up. Later sends the
+// chest to the camp pile. No guilt either way. Whatever it earned (a level,
+// a boss) plays once the sheet closes: the ceremony host evaluates then.
 
 import { Canvas, Group } from '@shopify/react-native-skia';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,7 +17,6 @@ import { ClaimPreview, gameStateOf, previewClaim } from '../../../domain/game/fr
 import { LOG_BODY_MAX, openTasksFor } from '../../../domain/items/ops';
 import { itemsOfType } from '../../../domain/items/types';
 import { PIXEL_FONT } from '../../../game/assets/fonts';
-import { pendingCeremonies } from '../../../game/ceremonies';
 import { bossId, mobId, ROSTER } from '../../../game/content/roster';
 import { questHaptic, questSound } from '../../../game/feedback';
 import { useGameClock } from '../../../game/render/clock';
@@ -25,7 +24,6 @@ import { Particles } from '../../../game/render/Particles';
 import { AnimatedSprite } from '../../../game/render/Sprite';
 import { SpriteBatch } from '../../../game/render/SpriteBatch';
 import { SpriteView } from '../../../game/render/SpriteView';
-import { getQuestLocal } from '../../../game/state/local';
 import { useQuestReduced } from '../../../game/state/settings';
 import { CountUp } from '../../../game/ui/CountUp';
 import { PixelButton } from '../../../game/ui/PixelButton';
@@ -33,9 +31,8 @@ import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI, useUiUnit } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
-import { CeremonyPlayer } from '../ceremonies';
 
-type Phase = { kind: 'offer' } | { kind: 'opening'; preview: ClaimPreview; crits: number } | { kind: 'rewards'; preview: ClaimPreview } | { kind: 'ceremony'; preview: ClaimPreview };
+type Phase = { kind: 'offer' } | { kind: 'opening'; preview: ClaimPreview; crits: number } | { kind: 'rewards'; preview: ClaimPreview };
 
 export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: string; fresh: boolean; onClose(): void }) {
   const data = useData();
@@ -110,13 +107,6 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
     timers.current.push(setTimeout(() => setPhase({ kind: 'rewards', preview }), 500 + crits * 320 + 250));
   };
 
-  const afterRewards = (preview: ClaimPreview) => {
-    const local = getQuestLocal();
-    const pending = pendingCeremonies(preview.after, local.played, local.shownLevel);
-    // Let the rewards sit a moment, then chain straight into the ceremony.
-    if (pending.length) timers.current.push(setTimeout(() => setPhase({ kind: 'ceremony', preview }), reduced ? 300 : 1200));
-  };
-
   const pre = phase.kind === 'offer' ? null : phase.preview;
   const enemyPos = (pre?.before ?? null)?.journey.position;
   const gameEnemy = gameStateOf(data).journey.position;
@@ -126,10 +116,6 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
   const scale = bossStage ? 2 : 3;
   const worldW = Math.floor(stageW / scale);
   const worldH = bossStage ? 68 : 40;
-
-  if (phase.kind === 'ceremony') {
-    return <CeremonyPlayer game={phase.preview.after} before={phase.preview.before} onDone={onClose} reduced={reduced} />;
-  }
 
   return (
     <View style={{ gap: 3 * u }}>
@@ -207,7 +193,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
             <View style={{ flexDirection: 'row', gap: 6 * u, alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: u }}>
                 <SpriteView id="icon.xp" scale={2} />
-                <CountUp from={0} to={phase.preview.xpGained} prefix="+" color={QUI.blue} reduced={reduced} onTick={() => questHaptic('light')} onDone={() => afterRewards(phase.preview)} accessibilityLabel={`${phase.preview.xpGained} XP`} />
+                <CountUp from={0} to={phase.preview.xpGained} prefix="+" color={QUI.blue} reduced={reduced} onTick={() => questHaptic('light')} accessibilityLabel={`${phase.preview.xpGained} XP`} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: u }}>
                 <SpriteView id="icon.coin" scale={2} />

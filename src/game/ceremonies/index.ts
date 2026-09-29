@@ -3,9 +3,9 @@
 // reached when a device first sees the journey are recorded quietly
 // ("primed"), so history never replays as a pile of cutscenes.
 
-import { RANKS } from '../domain/game/balance';
-import { biomeRef } from '../domain/game/biomes';
-import type { GameState } from '../domain/game/derive';
+import { RANKS } from '../../domain/game/balance';
+import { biomeRef } from '../../domain/game/biomes';
+import type { GameState } from '../../domain/game/derive';
 
 export type CeremonyKind = 'level' | 'rank' | 'boss' | 'intro';
 

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { deriveGameState } from '../domain/game/derive';
-import * as ops from '../domain/items/ops';
-import { bossRun, ceremonyEvents, pendingCeremonies, primeIds } from './ceremonies';
+import { deriveGameState } from '../../domain/game/derive';
+import * as ops from '../../domain/items/ops';
+import { bossRun, ceremonyEvents, pendingCeremonies, primeIds } from '.';
 
 const D0 = Date.UTC(2026, 8, 1);
 const sess = (i: number, min: number) => ({ id: `s${i}`, habitId: 'h1', start: D0 + i * 86_400_000, end: D0 + i * 86_400_000 + min * 60_000, duration: min * 60 });
