@@ -9,7 +9,8 @@ import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, wit
 
 import { NODE_MOBS } from '../../domain/game/balance';
 import { nodeAt } from '../../domain/game/derive';
-import { bossId, mobId, NPCS, ROSTER } from '../../game/content/roster';
+import { npcName, npcTitle } from '../../game/content/npcs';
+import { bossId, mobId, NpcId, ROSTER } from '../../game/content/roster';
 import { useQuestWrites } from '../../data/itemsRepo';
 import { useQuestFonts } from '../../game/assets/fonts';
 import { useGameClock } from '../../game/render/clock';
@@ -35,7 +36,7 @@ function Begin() {
   return (
     <View style={{ position: 'absolute', left: 16, right: 16, bottom: 24 }}>
       <PixelPanel tone="parchment" style={{ gap: 8 }}>
-        <PixelText>{NPCS.sage.name}: Focus is your blade. Shall we begin?</PixelText>
+        <PixelText>Aqyl: Focus is your blade. Shall we begin?</PixelText>
         <PixelButton label="Begin" accessibilityLabel="Begin the journey" onPress={writes.startQuest} />
       </PixelPanel>
     </View>
@@ -271,7 +272,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       {newcomer && !panel && (
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, pointerEvents: 'none' }}>
           <PixelPanel tone="parchment" padding={2}>
-            <PixelText size="sm">{NPCS.sage.name}: Start a session to strike your first foe.</PixelText>
+            <PixelText size="sm">{npcName('sage', m.meta?.props.settings)}: Start a session to strike your first foe.</PixelText>
           </PixelPanel>
         </View>
       )}
@@ -279,7 +280,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       {screenReader && Platform.OS !== 'web' && (
         <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {(['sage', 'board', 'merchant', 'scribe'] as SheetId[]).map((id) => (
-            <PixelButton key={id} small tone="parchment" label={id === 'board' ? 'Quest Board' : NPCS[id as keyof typeof NPCS].name} accessibilityLabel={id === 'board' ? 'Quest Board' : `${NPCS[id as keyof typeof NPCS].name} ${NPCS[id as keyof typeof NPCS].title}`} onPress={() => setSheet(id)} />
+            <PixelButton key={id} small tone="parchment" label={id === 'board' ? 'Quest Board' : npcName(id as NpcId, m.meta?.props.settings)} accessibilityLabel={id === 'board' ? 'Quest Board' : npcTitle(id as NpcId, m.meta?.props.settings)} onPress={() => setSheet(id)} />
           ))}
           {m.chests > 0 && <PixelButton small tone="gold" label={`${m.chests}`} accessibilityLabel={`${m.chests} unopened chests`} onPress={() => setSheet('chests')} />}
           <PixelButton small tone="night" label="Enemy" accessibilityLabel={`Current enemy, ${Math.ceil(hp)} of ${m.game.journey.maxHp} health`} onPress={() => {
