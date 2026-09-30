@@ -36,6 +36,8 @@ import { useQuestModel } from './useQuestModel';
 import { useActions } from '../../store/StreakStore';
 import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
+import { SpriteView } from '../../game/render/SpriteView';
+import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
 
 const POPS = 12;
 
@@ -50,6 +52,15 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
+  // A sheet asked for from elsewhere (the Almanac's Trail link).
+  useEffect(() => {
+    const take = () => {
+      const id = takeQuestSheet();
+      if (id) setSheet(id as SheetId);
+    };
+    take();
+    return onQuestSheetRequest(take);
+  }, []);
   const [replayIntro, setReplayIntro] = useState(false);
   // Android back during onboarding: step out of the Quest tab (nothing is written).
   const actions = useActions();
@@ -292,6 +303,11 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           <PixelPanel tone="parchment" padding={2}>
             <PixelText size="sm">{npcName('sage', m.meta?.props.settings)}: Start a session to strike your first foe.</PixelText>
           </PixelPanel>
+        </View>
+      )}
+      {!newcomer && !panel && (
+        <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
+          <PixelButton small tone="parchment" icon={<SpriteView id="icon.quill" scale={2} />} accessibilityLabel="Quick log: record something you did" onPress={() => setSheet('quicklog')} />
         </View>
       )}
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}

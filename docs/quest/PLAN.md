@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N7.5 (N7 done). Next: N8 (the Trail, quick log, measures in the Scribe). Nothing half-done.
+**Resume here (v2):** last finished N8. Next: N9 (raw-look pass: stand-ins, consistency, motion, empty states). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -202,6 +202,14 @@ repo; their text was recovered from Codex's session log into
     reward. The chip host watches the derived totals and stays quiet for session changes (the Loot sheet counts
     those up), open sheets and the focus view. No numbers are duplicated and no panels were added. A habit
     created simply appears as a skill in the character sheet (derived).
+80. **The Trail lives in the Scribe (N8).** A "Trail" tab beside the Chronicle: the trail line (rising / steady /
+    resting counts, neutral pixel marks: stairs, a level line, a moon; never red), then a row per habit (icon,
+    verdict, four weekly bars, reason chips). Tap a row: this week against last week, and "Add measure" (label
+    and unit). The quick log is a panel at the top of the Scribe (not a second modal: iOS shows one at a time);
+    the camp's quill button (bottom right of the map) opens the Scribe with it showing. With a measure, the
+    Loot sheet and the quick log show − / amount / +; an amount alone may open a chest (it earns nothing extra).
+    The Almanac (Stats) links to the Trail from its header; its week hero stays as it was (per project), the
+    Trail is per habit, so nothing is shown twice. Aqyl's local insight names a rising skill first.
 
 | Ticket | Status | Evidence |
 |---|---|---|

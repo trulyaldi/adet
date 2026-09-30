@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 
-import { fallbackInsight, fallbackRecap, fallbackSuggestions, SageAdvice } from '../domain/game/sageFallback';
+import { fallbackInsight, fallbackRecap, fallbackSuggestions, SageAdvice, trailInsight } from '../domain/game/sageFallback';
+import { trailOf } from '../domain/progress';
 import { activeHabits } from '../domain/projects';
 import { itemsOfType, QuestSettings } from '../domain/items/types';
 import type { PersistedState } from '../domain/types';
@@ -59,7 +60,10 @@ export function useSageAdvice(data: PersistedState, now: number): { advice: Sage
   const enabled = !!meta?.props.settings.ai;
   const advice = useMemo(() => {
     const habits = activeHabits(data).filter((h) => h.kind !== 'check').map((h) => h.id);
-    return { suggestions: fallbackSuggestions(data.sessions, data.items, habits, now), insight: fallbackInsight(data.sessions) };
+    // The Trail first ("Reading is rising this week"), else the day-part pattern.
+    const trail = trailOf({ sessions: data.sessions, habits: habits.map((id) => ({ id })), items: data.items, now });
+    const names = new Map(data.habits.map((h) => [h.id, h.name]));
+    return { suggestions: fallbackSuggestions(data.sessions, data.items, habits, now), insight: trailInsight(trail, (id) => names.get(id)) ?? fallbackInsight(data.sessions) };
   }, [data.sessions, data.items, data.habits, day]);
   const payload = useMemo<SuggestPayload>(() => ({
     habits: activeHabits(data).filter((h) => h.kind !== 'check').map((h) => ({

@@ -8,6 +8,7 @@ import type { Item } from '../items/types';
 import { setWeekStartDay } from '../time';
 import type { Session } from '../types';
 import { trailOf, verdictOf, WindowStats } from './index';
+import { habitLabel, trailLine } from './labels';
 
 process.env.TZ = 'UTC';
 
@@ -132,4 +133,21 @@ test('deleted habits are left out; the trail line counts the rest', () => {
   // h1: more time and a level gained; h2: time only last week.
   assert.deepEqual(t.habits.map((h) => [h.habitId, h.verdict]), [['h1', 'rising'], ['h2', 'resting']]);
   assert.deepEqual([t.rising, t.steady, t.resting, t.empty], [1, 0, 1, false]);
+});
+
+test('what VoiceOver hears: the verdict and its reasons in words', () => {
+  assert.equal(habitLabel('Reading', { empty: false, verdict: 'rising', reasons: ['time', 'level'] }), 'Reading: rising, more time, a level');
+  assert.equal(habitLabel('Piano', { empty: false, verdict: 'resting', reasons: [] }), 'Piano: resting');
+  assert.equal(habitLabel('New', { empty: true, verdict: 'steady', reasons: [] }), 'New: nothing on the trail yet');
+  assert.equal(trailLine({ rising: 2, steady: 1, resting: 0 }), '2 rising, 1 steady, 0 resting');
+});
+
+test('one habit without a measure and one with: only the second has a total and per hour', () => {
+  let q: ops.QuestSlice = { items: [], links: [] };
+  q = ops.setMetric(q, 'h2', 'Pages', 'p', MON);
+  q = ops.addQuickLog(q, { habitId: 'h2', text: '', amount: { value: 12, metricId: 'metric:h2' }, now: MON + HOUR });
+  const t = trailOf({ sessions: [s(MON + HOUR, 60, 'h1'), s(MON + 2 * HOUR, 60, 'h2')], habits: [{ id: 'h1' }, { id: 'h2' }], items: q.items, now: NOW });
+  const [a, b] = t.habits;
+  assert.deepEqual([a.metric, a.thisWeek.measure, a.thisWeek.perHour], [null, null, null]);
+  assert.deepEqual([b.metric?.label, b.thisWeek.measure, b.thisWeek.perHour], ['Pages', 12, 12]);
 });

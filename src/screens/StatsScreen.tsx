@@ -19,6 +19,9 @@ import { useActions, useData, useStoreNow } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
 import { spoken, WORDS } from '../domain/words';
+import { useQuestStarted } from '../data/itemsRepo';
+import { QUEST_ENABLED } from '../game/enabled';
+import { requestQuestSheet } from '../game/state/questOpen';
 
 /** Fewer days with time than this: the chart shows what exists with your character, and focus time and records wait. */
 const LOW_DATA_DAYS = 3;
@@ -59,11 +62,22 @@ export function StatsScreen() {
   }, []);
   const toChart = useCallback(() => scroll.current?.scrollTo({ y: Math.max(0, chartY.current - 8), animated: true }), []);
 
+  const questStarted = useQuestStarted();
   const header = (
     <ScreenHeader
       title={WORDS.stats.game}
       titleLabel={spoken(WORDS.stats)}
-      right={<IconButton label="Log time" name="logTime" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => actions.openLogSheet()} tipBelow />}
+      right={
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {questStarted && QUEST_ENABLED && (
+            <IconButton label="Your trail: which skills are rising" name="bars" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => {
+              requestQuestSheet('trail');
+              actions.setScreen('quest');
+            }} tipBelow />
+          )}
+          <IconButton label="Log time" name="logTime" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => actions.openLogSheet()} tipBelow />
+        </View>
+      }
     />
   );
 

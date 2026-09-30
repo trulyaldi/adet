@@ -1,6 +1,7 @@
 // Hatshy the Tortoise, the Scribe: the chronicle (every entry by week, with
-// its habit and the enemy it helped defeat; tap to edit), the chests still
-// waiting at camp, the credits, and Quest settings.
+// its habit and the enemy it helped defeat; tap to edit), the trail (is each
+// skill rising?), a quick log, the chests still waiting at camp, the credits,
+// and Quest settings.
 
 import React, { useMemo, useState } from 'react';
 import { Pressable, SectionList, View } from 'react-native';
@@ -26,20 +27,31 @@ import { useData } from '../../../store/StreakStore';
 import { MODAL_GAP_MS } from '../../../theme/motion';
 import type { QuestModel } from '../useQuestModel';
 import { QuestSheet, Row } from './common';
+import { QuickLog } from './QuickLog';
 import { QuestSettingsPanel } from './SettingsPanel';
+import { Trail } from './Trail';
+import { SpriteView } from '../../../game/render/SpriteView';
 import { TextInput } from '../../../components/Text';
 
-type Tab = 'chronicle' | 'chests' | 'credits' | 'settings';
+export type ScribeTab = 'chronicle' | 'trail' | 'chests' | 'credits' | 'settings';
+type Tab = ScribeTab;
 
-export function ScribeSheet({ model, onClose, onReplayIntro, reduced, initialTab = 'chronicle' }: { model: QuestModel; onClose(): void; onReplayIntro(): void; reduced: boolean; initialTab?: Tab }) {
+export function ScribeSheet({ model, onClose, onReplayIntro, reduced, initialTab = 'chronicle', quickLog = false }: { model: QuestModel; onClose(): void; onReplayIntro(): void; reduced: boolean; initialTab?: Tab; /** Open with the quick log showing (the camp's quill). */ quickLog?: boolean }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [logging, setLogging] = useState(quickLog);
   const settings = model.meta?.props.settings;
   return (
-    <QuestSheet visible title={npcName('scribe', settings)} portrait="npc.scribe" greeting={initialTab === 'chronicle' ? greeting('scribe', model.now >> 20) : undefined} onClose={onClose} reduced={reduced} scroll={tab !== 'chronicle'}>
+    <QuestSheet visible title={npcName('scribe', settings)} portrait="npc.scribe" greeting={initialTab === 'chronicle' && !quickLog ? greeting('scribe', model.now >> 20) : undefined} onClose={onClose} reduced={reduced} scroll={tab !== 'chronicle'}>
+      {logging ? (
+        <QuickLog onDone={() => setLogging(false)} />
+      ) : (
+        <PixelButton small tone="parchment" icon={<SpriteView id="icon.quill" scale={2} />} label="Quick log" accessibilityLabel="Quick log: record something you did" onPress={() => setLogging(true)} style={{ alignSelf: 'flex-start' }} />
+      )}
       <Row style={{ flexWrap: 'wrap', gap: 4 }}>
         {(
           [
             ['chronicle', 'Chronicle'],
+            ['trail', 'Trail'],
             ['chests', `Chests${model.chests ? ` ${model.chests}` : ''}`],
             ['credits', 'Credits'],
             ['settings', 'Settings'],
@@ -49,6 +61,7 @@ export function ScribeSheet({ model, onClose, onReplayIntro, reduced, initialTab
         ))}
       </Row>
       {tab === 'chronicle' && <Chronicle model={model} />}
+      {tab === 'trail' && <Trail model={model} />}
       {tab === 'chests' && <Chests model={model} onOpen={(id) => {
         onClose();
         // After this sheet has gone: iOS shows one modal at a time.
