@@ -3,7 +3,7 @@
 // waiting at camp, the credits, and Quest settings.
 
 import React, { useMemo, useState } from 'react';
-import { Pressable, SectionList, TextInput, View } from 'react-native';
+import { Pressable, SectionList, View } from 'react-native';
 
 import { Icon } from '../../../components/Icon';
 import { useQuestWrites } from '../../../data/itemsRepo';
@@ -27,6 +27,7 @@ import { MODAL_GAP_MS } from '../../../theme/motion';
 import type { QuestModel } from '../useQuestModel';
 import { QuestSheet, Row } from './common';
 import { QuestSettingsPanel } from './SettingsPanel';
+import { TextInput } from '../../../components/Text';
 
 type Tab = 'chronicle' | 'chests' | 'credits' | 'settings';
 

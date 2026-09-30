@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Animated, {
   cancelAnimation,
   Easing,
@@ -18,6 +19,7 @@ import { springs } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAppActive, useReducedMotion } from '../../theme/useMotion';
 import { Glyph, GlyphName } from '../Glyph';
+import { Text } from '../Text';
 
 /** A scalloped medal outline (12 bumps) in a 100×100 box. */
 function scallop(): string {

@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
@@ -14,6 +15,7 @@ import { Icon } from '../Icon';
 import { usePressMotion } from '../motion/Press';
 import { ProgressRing } from '../motion/ProgressRing';
 import { SessionClock } from '../SessionClock';
+import { Text } from '../Text';
 
 /**
  * The running session, standing out on Today: project-colored, a live

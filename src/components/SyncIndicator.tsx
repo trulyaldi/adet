@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useSyncStatus } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { Glyph, useTip } from './Glyph';
+import { Text } from './Text';
 
 /** A cloud glyph: ticked when synced, dotted while syncing, struck through offline (with the pending count). */
 export function SyncIndicator() {

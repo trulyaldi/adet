@@ -3,13 +3,14 @@
 // friendly note instead, and nothing is written.
 
 import React, { useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph';
 import { loadPlayground, loadQuestScreen } from '../../game/render/screens';
 import { SkiaGate } from '../../game/render/SkiaGate';
 import { questTabView, useQuestTables } from '../../sync/questTables';
 import { useTheme } from '../../theme/ThemeProvider';
+import { Text } from '../../components/Text';
 
 function Note({ title, body, busy }: { title: string; body: string; busy?: boolean }) {
   const { colors } = useTheme();
@@ -21,7 +22,6 @@ function Note({ title, body, busy }: { title: string; body: string; busy?: boole
     </View>
   );
 }
-
 
 export function QuestTab() {
   const tables = useQuestTables();

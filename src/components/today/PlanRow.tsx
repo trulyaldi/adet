@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import { Gesture, GestureDetector, GestureType } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -14,6 +15,7 @@ import { Icon } from '../Icon';
 import { Press } from '../motion/Press';
 import { ProgressRing } from '../motion/ProgressRing';
 import { WeekDotsRow } from './WeekDotsRow';
+import { Text } from '../Text';
 
 /** Height of a pending row (the sortable list's slot is this plus the gap). */
 export const ROW_H = 78;

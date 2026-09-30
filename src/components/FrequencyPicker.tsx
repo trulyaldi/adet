@@ -1,10 +1,11 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Frequency, frequencyLabel, normalizeFrequency, WEEKDAY_LETTERS, weeklyTargetOf } from '../domain/frequency';
 import { useTheme } from '../theme/ThemeProvider';
 import { Glyph, IconButton } from './Glyph';
 import { Press } from './motion/Press';
+import { Text } from './Text';
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

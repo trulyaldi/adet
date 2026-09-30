@@ -4,7 +4,7 @@
 
 import { Canvas, Group } from '@shopify/react-native-skia';
 import React, { useMemo, useState } from 'react';
-import { Text, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { BIOME_IDS } from '../../../domain/game/biomes';
 import { biomeIds, REQUIRED_IDS, sprite, TIERS } from '../../../game/assets/manifest';
@@ -16,6 +16,7 @@ import { PixelButton } from '../../../game/ui/PixelButton';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { QUI } from '../../../game/ui/theme';
 import { packShelves } from './packShelves';
+import { Text } from '../../../components/Text';
 
 const LABEL_H = 22;
 const TIERS_OPEN = 1000;

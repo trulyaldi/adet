@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
@@ -15,6 +15,7 @@ import { SceneKind } from '../domain/types';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text, TextInput } from '../components/Text';
 
 const SCENE_NAMES: Record<SceneKind, string> = { plant: 'Growing plant', orbit: 'Orbit', fill: 'Fill', constellation: 'Constellation' };
 const MAX_TARGET_H = 60;

@@ -24,12 +24,14 @@ export const springs = {
 export const press = {
   in: { duration: 90, easing: Easing.out(Easing.quad) } satisfies WithTimingConfig,
   out: { damping: 26, stiffness: 380, mass: 0.8, overshootClamping: true } satisfies WithSpringConfig,
-  /** Pressed scale per element size. `hero` doesn't scale, it only dims. */
-  scale: { icon: 0.92, button: 0.96, card: 0.98, hero: 1 },
+  /** Pressed scale per element size: none (the pixel look presses down a pixel instead). */
+  scale: { icon: 1, button: 1, card: 1, hero: 1 },
+  /** Everything but chunky buttons moves down this many px when pressed. */
+  nudgePx: 1,
   /** Pressed opacity: cards and hero elements dim slightly as a highlight. */
   dim: { icon: 1, button: 1, card: 0.9, hero: 0.9 },
   /** Chunky buttons: the face sinks into its darker edge by this many px (no scale). */
-  edgePx: 3,
+  edgePx: 2,
   /** Pressed opacity with Reduce Motion (no movement). */
   reducedOpacity: 0.85,
 };

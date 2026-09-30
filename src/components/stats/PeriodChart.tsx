@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeIn, SharedValue, useAnimatedProps, useSharedValue, withSpring } from 'react-native-reanimated';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
@@ -17,6 +18,7 @@ import { Icon } from '../Icon';
 import { Character } from '../character/Character';
 import { Press } from '../motion/Press';
 import { ProjectInfo, StatsCard, TextNum } from './common';
+import { Text } from '../Text';
 
 const ARect = Animated.createAnimatedComponent(Rect);
 

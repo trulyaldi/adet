@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 
 import { CapacityIndicator } from '../components/CapacityIndicator';
@@ -19,6 +20,7 @@ import { feedback } from '../feedback/feedback';
 import { useActions, useData, useSettings, useStoreNow } from '../store/StreakStore';
 import { shadow } from '../theme/theme';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 export function ProjectsScreen() {
   const { colors } = useTheme();

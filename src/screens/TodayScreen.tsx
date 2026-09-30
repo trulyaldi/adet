@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 
@@ -22,6 +23,7 @@ import { fmtDur } from '../domain/time';
 import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 const GAP = 10;
 

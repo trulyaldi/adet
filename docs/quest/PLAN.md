@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N7.2 (pixel icons). Next: N7.1 theme tokens, then N7.3 vocabulary, N7.5 light game touches + RewardChip. Nothing half-done.
+**Resume here (v2):** last finished N7.1 (theme layer). Next: N7.3 vocabulary, then N7.5 light game touches + RewardChip. Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -180,6 +180,16 @@ repo; their text was recovered from Codex's session log into
     without loading Skia at start. 34 of 65 glyphs have one (the tab bar, timer controls, check, clock,
     calendar, flame, gear, chevrons…); the rest keep their stroke glyph, listed in INVENTORY. The icons are
     original art drawn for the app: the licensed packs here have no UI icons.
+76. **The pixel look comes through shared layers, not screen rewrites (N7.1).** `src/components/Text.tsx`
+    wraps React Native's `Text`/`TextInput` with Tiny5 set first; 44 files changed only their import line.
+    Weight and letter-spacing are normalised (faux bold and tight tracking blur a pixel font); size and
+    colour carry the hierarchy. Tokens: radii 2–6 (were 10–28), a hard 2 px drop shadow instead of a soft
+    8 px blur, a 2 px button edge, presses nudge 1 px (chunky buttons sink 2) instead of scaling; the timer's
+    gradient wash became four flat bands. Screens that hard-code `borderRadius` numbers keep them (111 uses
+    across screens; changing each is the per-screen rewrite the spec rules out). Colours are unchanged:
+    Adet's blue stays the accent, light and dark both follow the system.
+77. **The pixel font loads before sign-in** (in `App`); on web the stack falls back to the system face, not the
+    browser's serif, for the moment before it arrives.
 
 | Ticket | Status | Evidence |
 |---|---|---|

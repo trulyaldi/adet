@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Text } from 'react-native';
+
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 
 import { feedback } from '../../feedback/feedback';
@@ -7,6 +7,7 @@ import { springs } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { Flame } from '../Flame';
+import { Text } from '../Text';
 
 /** Flame and day count; bounces (with the streak sound) when the streak grows on screen. */
 export function StreakPill({ days }: { days: number }) {

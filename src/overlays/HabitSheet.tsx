@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { FrequencyPicker } from '../components/FrequencyPicker';
@@ -14,6 +14,7 @@ import { fmtDur, stepFor } from '../domain/time';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text, TextInput } from '../components/Text';
 
 /** Longest usual session the stepper offers, in minutes. */
 const MAX_TARGET_MIN = 240;

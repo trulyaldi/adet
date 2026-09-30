@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
@@ -13,6 +13,7 @@ import { activeProjects, projectWeekSec } from '../domain/projects';
 import { useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 /**
  * Start anything, planned or not: every project with its habits. Tap a

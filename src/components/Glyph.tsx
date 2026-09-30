@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
@@ -10,6 +11,7 @@ import { GLYPH_STROKE, GLYPHS, GlyphName, GlyphPart } from './glyphs';
 import { PixelGlyph } from './PixelGlyph';
 import { PIXEL_GLYPHS } from './pixelGlyphs';
 import { usePressMotion } from './motion/Press';
+import { Text } from './Text';
 
 export type { GlyphName } from './glyphs';
 

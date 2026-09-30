@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
@@ -10,6 +11,7 @@ import { Flame } from '../Flame';
 import { Glyph, GlyphName } from '../Glyph';
 import { Press } from '../motion/Press';
 import { DoneRow } from './PlanRow';
+import { Text } from '../Text';
 
 /**
  * The finished day in one card: habits done, time today and the streak, each

@@ -1,7 +1,7 @@
 // Device audio and motion live here; journey settings that should sync stay
 // in quest_meta. The one-line AI privacy notice appears before first enable.
 import React, { useState } from 'react';
-import { Switch, TextInput, View } from 'react-native';
+import { Switch, View } from 'react-native';
 
 import { useQuestWrites } from '../../../data/itemsRepo';
 import { feedback } from '../../../game/feedback';
@@ -15,6 +15,7 @@ import { enableSage } from '../../../services/sage';
 import type { QuestSettings } from '../../../domain/items/types';
 import type { QuestModel } from '../useQuestModel';
 import { Row } from './common';
+import { TextInput } from '../../../components/Text';
 
 export function QuestSettingsPanel({ model, onCredits, onReplayIntro }: { model: QuestModel; onCredits(): void; onReplayIntro(): void }) {
   const { prefs, setPrefs } = useDevicePrefs();

@@ -1,5 +1,6 @@
 import React, { memo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 
@@ -8,6 +9,7 @@ import { sayDur } from '../../domain/time';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Press } from '../motion/Press';
 import { StatsCard, TextNum } from './common';
+import { Text } from '../Text';
 
 const MARKS = [0, 6, 12, 18];
 

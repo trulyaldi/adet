@@ -1,7 +1,8 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from './Text';
 
 /**
  * The one header style every tab uses: a title (or the Adet lockup on

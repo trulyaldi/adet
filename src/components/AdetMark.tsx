@@ -1,8 +1,10 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Svg, { Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from './Text';
 
 // The Adet checkmark (the #adet path from adet-logo.html, 100x100 space).
 const MARK =

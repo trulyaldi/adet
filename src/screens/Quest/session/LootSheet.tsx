@@ -6,7 +6,8 @@
 
 import { Canvas, Group } from '@shopify/react-native-skia';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
+
 import { useDerivedValue, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Icon } from '../../../components/Icon';
@@ -33,6 +34,7 @@ import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI, useUiUnit } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
+import { TextInput } from '../../../components/Text';
 
 type Phase = { kind: 'offer' } | { kind: 'opening'; preview: ClaimPreview; crits: number } | { kind: 'rewards'; preview: ClaimPreview };
 

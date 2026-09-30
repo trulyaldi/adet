@@ -3,7 +3,7 @@
 // with a quick add. Starting a timer never waits on it.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Glyph } from '../../../components/Glyph';
 import { useQuestStarted, useQuestWrites } from '../../../data/itemsRepo';
@@ -12,6 +12,7 @@ import { pickWeakPoints, useQuestLocal } from '../../../game/state/local';
 import { useData } from '../../../store/StreakStore';
 import { useQuestTables } from '../../../sync/questTables';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { Text, TextInput } from '../../../components/Text';
 
 const MAX = 3;
 

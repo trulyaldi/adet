@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, Modal, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, ScrollView, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph, GlyphName, IconButton } from '../components/Glyph';
@@ -13,6 +14,7 @@ import { Appearance, MotionPref, useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useClearLocalData, useData, useSettings, useSyncStatus, useUi } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

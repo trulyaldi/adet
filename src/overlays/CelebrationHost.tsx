@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Text, View } from 'react-native';
+import { Modal, View } from 'react-native';
+
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { Button } from '../components/Button';
@@ -13,6 +14,7 @@ import { anyModalOpen, useActions, useData, useSettings, useUi } from '../store/
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
+import { Text } from '../components/Text';
 
 /**
  * Full-screen milestone cards, one at a time from the queue: a big animated

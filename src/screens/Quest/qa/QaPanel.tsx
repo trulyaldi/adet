@@ -4,7 +4,8 @@
 // written to any synced table (qa.test.ts checks the imports).
 
 import React, { useMemo, useState } from 'react';
-import { Modal, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
+
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useQuestMeta } from '../../../data/itemsRepo';
@@ -31,6 +32,7 @@ import { Onboarding } from '../ceremonies/Onboarding';
 import { cameraFor, JourneyMap } from '../map/JourneyMap';
 import Stage from '../session/Stage';
 import { spotFor } from '../model';
+import { Text } from '../../../components/Text';
 
 const PHASES: DayPhase[] = ['dawn', 'day', 'dusk', 'night'];
 const MINUTES = [10, 25, 60, 240];

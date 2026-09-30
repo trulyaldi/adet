@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, useWindowDimensions, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../components/Button';
@@ -17,6 +18,7 @@ import { activeProjects } from '../domain/projects';
 import { fmtDur } from '../domain/time';
 import { useActions, useData, useReady, useSettings, useUi } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 /**
  * Once, after the update: three swipeable pictures (flexible time, colorful

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Swatch } from '../theme/palette';
 import { useTheme } from '../theme/ThemeProvider';
 import { Glyph, IconButton } from './Glyph';
+import { Text } from './Text';
 
 const CHIPS = [15, 30, 60];
 

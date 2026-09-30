@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { TargetCheck } from '../domain/capacity';
@@ -7,6 +7,7 @@ import { fmtDur } from '../domain/time';
 import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
 import { Glyph, IconButton } from './Glyph';
+import { Text } from './Text';
 
 /**
  * A calm amber pill when weekly targets ask for more than the week's

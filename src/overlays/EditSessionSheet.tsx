@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
@@ -11,6 +11,7 @@ import { fmtHM } from '../domain/time';
 import { useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text, TextInput } from '../components/Text';
 
 export function EditSessionSheet() {
   const { colors, radius, shadow } = useTheme();
