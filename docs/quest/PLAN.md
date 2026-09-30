@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N3. Next: N4 (progress engine, quick log, measures). Nothing half-done.
+**Resume here (v2):** last finished N4. Next: N5 (the pixel character replaces Ilmek). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -96,6 +96,17 @@ credits are unaffected: stored achievements floor the journey).
     stars on an ellipse, drawn in the stand-in pipeline); `icon.calendar` is new stand-in art for the Days seal.
 61. **Seal counts are shown in the boss panel.** The tap on the gate that opens the panel is the reveal; the pips
     themselves aren't buttons (no nested pressables, see PR #19).
+63. **A quick log is a `log` with `sessionId: ''` (N4).** Older builds already parse a missing session id to
+    `''`, so the new records read harmlessly there. A measure is one `metric_def` per habit with the fixed id
+    `metric:<habitId>` ("at most one" by construction; editing overwrites it on every device). No migration:
+    `items.type` is free text.
+64. **Quick-log rewards.** Only a quick log with a line is rewarded (+3 XP), the first 3 each local day; an amount
+    alone is saved but earns nothing. On the journey, a rewarded quick log adds Insight when a boss is the front
+    enemy, and fells a staggered boss whose last seal it fills (the defeat records the log's id).
+65. **The Trail compares this week so far with last week to the same moment**, as the Stats hero does, so a
+    Monday morning is never "resting" against a whole week. Weeks follow the app's week-start setting (local
+    time, `time.ts`). Focused minutes count every session by its start; skill levels use the game's effective
+    minutes when given. A session's measure counts on the session's day; a quick log's on its own.
 62. **The crash-repro script is gone.** `scripts/quest-crash-repro.ts` came with the cherry-pick and assumed the
     old HP rules; `game:balance` and the derive tests cover the same ground.
 

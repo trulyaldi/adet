@@ -80,6 +80,10 @@ export const XP_PER_MIN = 1;
 /** Of the session's XP, when its chest is claimed with a chronicle entry. */
 export const REFLECTION_XP_SHARE = 0.2;
 export const TASK_XP = 15;
+/** A quick log with a line (no session): small XP, and Insight against a boss. */
+export const QUICK_LOG_XP = 3;
+/** Quick logs rewarded per local day; more are still saved, without reward. */
+export const QUICK_LOG_DAILY_CAP = 3;
 export const BOSS_XP = 100;
 /** Cumulative XP for level L is LEVEL_XP_BASE × (L−1)². */
 export const LEVEL_XP_BASE = 100;

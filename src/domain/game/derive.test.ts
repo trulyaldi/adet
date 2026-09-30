@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import * as ops from '../items/ops';
-import { Item, Link } from '../items/types';
+import { Item, itemsOfType, Link } from '../items/types';
 import { Session } from '../types';
 import * as B from './balance';
 import { BIOME_IDS, BiomeId, biomeRef } from './biomes';
@@ -618,4 +618,49 @@ test('benchmark: 5,000 sessions derive in under 50 ms', () => {
   }
   assert.ok(qa < 50, `what-if took ${qa.toFixed(1)} ms`);
   console.log(`  with a what-if overlay: ${qa.toFixed(1)} ms`);
+});
+
+// ---------------------------------------------------------------------------
+// Quick logs (v2 N4)
+// ---------------------------------------------------------------------------
+
+function quickLogs(base: ops.QuestSlice, list: { at: number; text?: string; amount?: number }[]) {
+  let q = base;
+  list.forEach((l, i) => {
+    q = ops.addQuickLog(q, { habitId: 'h1', text: l.text ?? 'did a thing', amount: l.amount === undefined ? undefined : { value: l.amount, metricId: 'metric:h1' }, now: l.at }, `ql${i}`);
+  });
+  return q;
+}
+
+test('quick logs: +3 XP each, rewarded at most 3 a local day; extra ones are still saved', () => {
+  const q = quickLogs({ items: [meta()], links: [] }, [0, 1, 2, 3, 4].map((i) => ({ at: at(2, 9 + i) })));
+  const g = run([], { items: q.items });
+  assert.equal(itemsOfType(q.items, 'log').length, 5, 'all five saved');
+  assert.equal(g.xp.total, 3 * B.QUICK_LOG_XP);
+  // The next local day starts again; UTC+5 moves 21:00 UTC into tomorrow.
+  const late = quickLogs({ items: [meta()], links: [] }, [9, 10, 11, 21].map((h) => ({ at: at(2, h) })));
+  assert.equal(run([], { items: late.items }).xp.total, 3 * B.QUICK_LOG_XP);
+  assert.equal(run([], { items: late.items, tz: fixedTz(300) }).xp.total, 4 * B.QUICK_LOG_XP);
+});
+
+test('quick logs: an amount alone (no line) earns nothing; amounts never add reward', () => {
+  const bare = quickLogs({ items: [meta()], links: [] }, [{ at: at(2, 9), text: '', amount: 30 }]);
+  assert.equal(itemsOfType(bare.items, 'log')[0].props.amount, 30);
+  assert.equal(run([], { items: bare.items }).xp.total, 0);
+  const lined = quickLogs({ items: [meta()], links: [] }, [{ at: at(2, 9), text: 'read', amount: 500 }]);
+  assert.equal(run([], { items: lined.items }).xp.total, B.QUICK_LOG_XP, 'a huge amount is worth the same as none');
+});
+
+test('quick logs count toward Insight only while a boss is the front enemy, and can fell a staggered one', () => {
+  const f = forestCleared({ claims: false }); // staggered: Insight 0 of 2
+  // One quick log while fighting mobs (day 2), two after the Wisp is staggered (day 9).
+  const q = quickLogs({ items: f.items, links: f.links }, [{ at: at(2, 20) }, { at: at(9, 9) }, { at: at(9, 10) }]);
+  const g = run(f.sessions, { items: q.items, links: q.links });
+  assert.equal(g.journey.defeated.length, 1);
+  assert.equal(g.journey.defeated[0].sessionId, 'ql2', 'the second quick log at the boss fills the last seal');
+  assert.deepEqual(g.newAchievements.map((a) => a.ref), ['forest:0']);
+  const one = quickLogs({ items: f.items, links: f.links }, [{ at: at(2, 20) }, { at: at(9, 9) }]);
+  const still = run(f.sessions, { items: one.items, links: one.links });
+  assert.equal(still.journey.staggered, true);
+  assert.equal(still.journey.seals.find((x) => x.kind === 'insight')?.have, 1);
 });

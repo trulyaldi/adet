@@ -2,7 +2,7 @@
 // Pure and deterministic; nothing here is stored except what the watcher
 // writes back from `newAchievements` (append-only).
 
-import { achievementId, AchievementProps, Item, itemsOfType, Link } from '../items/types';
+import { achievementId, AchievementProps, isQuickLog, Item, itemsOfType, Link } from '../items/types';
 import type { Habit, Session } from '../types';
 import * as B from './balance';
 import {
@@ -74,7 +74,10 @@ export interface BossDefeat {
   loop: number;
   /** Epoch ms. */
   at: number;
-  /** The session that landed the blow, or null when only an achievement records it. */
+  /**
+   * The session that landed the blow (or the quick log that filled a staggered
+   * boss's last seal), or null when only an achievement records it.
+   */
   sessionId: string | null;
 }
 
@@ -240,7 +243,21 @@ export function deriveGameState(input: DeriveInput): GameState {
   const claims = new Set<string>();
   for (const c of itemsOfType(input.items, 'chest_claim')) claims.add(c.props.sessionId);
   const logs = new Map<string, string>();
-  for (const l of itemsOfType(input.items, 'log')) logs.set(l.props.sessionId, l.body);
+  // Quick logs (no session), oldest first; the first few with a line each day are rewarded.
+  const quick: { id: string; at: number; rewarded: boolean }[] = [];
+  const quickPerDay = new Map<string, number>();
+  for (const l of itemsOfType(input.items, 'log')) {
+    if (!isQuickLog(l)) logs.set(l.props.sessionId, l.body);
+    else quick.push({ id: l.id, at: l.createdAt, rewarded: !!l.body.trim() });
+  }
+  quick.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  for (const q of quick) {
+    if (!q.rewarded) continue;
+    const d = tz.dayKey(q.at);
+    const n = quickPerDay.get(d) ?? 0;
+    q.rewarded = n < B.QUICK_LOG_DAILY_CAP;
+    quickPerDay.set(d, n + 1);
+  }
   const completed = new Map<string, number>();
   for (const l of input.links) if (l.kind === 'completed_in' && l.toType === 'session') completed.set(l.toId, (completed.get(l.toId) ?? 0) + 1);
   const spent = itemsOfType(input.items, 'purchase').reduce((a, p) => a + (p.props.cost || 0), 0);
@@ -343,8 +360,27 @@ export function deriveGameState(input: DeriveInput): GameState {
   const results: SessionResult[] = [];
   let xpTotal = 0;
   let earned = 0;
+  let quickXp = 0;
+  let qi = 0;
+  /** Rewarded quick logs up to `until`: XP always; Insight against a boss on the journey. */
+  const flushQuick = (until: number) => {
+    for (; qi < quick.length && quick[qi].at < until; qi++) {
+      const l = quick[qi];
+      if (!l.rewarded) continue;
+      quickXp += B.QUICK_LOG_XP;
+      if (startedAt === null || l.at < startedAt) continue;
+      snapTo(l.at);
+      if (pos.kind !== 'boss') continue;
+      sealOf(pos).insight++;
+      if (hp <= 0 && sealsMet(pos)) {
+        defeatBoss(pos, l.at, l.id);
+        advance(pos.global + 1);
+      }
+    }
+  };
 
   for (const s of byEnd) {
+    flushQuick(s.end);
     const eff = effOf.get(s.id)!;
     const day = dayOf.get(s.id)!;
     const onJourney = startedAt !== null && s.end >= startedAt;
@@ -471,7 +507,9 @@ export function deriveGameState(input: DeriveInput): GameState {
       credits,
     });
   }
+  flushQuick(Infinity);
   snapTo(Infinity);
+  xpTotal += quickXp;
 
   // Bosses: XP and credits, whichever way they were beaten.
   const defeated = [...defeats.values()].sort((a, b) => a.at - b.at || a.loop - b.loop);

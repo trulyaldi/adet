@@ -14,6 +14,8 @@ import {
   LinkKind,
   linkId,
   logId,
+  METRIC_LABEL_MAX,
+  metricDefId,
   QUEST_META_ID,
   QuestMetaItem,
   QuestMetaProps,
@@ -143,8 +145,13 @@ export interface ChestClaim {
   doneTaskIds: string[];
   /** The one line about what was done (may be empty when boxes were ticked). */
   text: string;
+  /** How much of the habit's measure was done (optional; never rewarded). */
+  amount?: { value: number; metricId: string };
   now: number;
 }
+
+const cleanAmount = (a: { value: number; metricId: string } | undefined) =>
+  a && Number.isFinite(a.value) && a.value >= 0 && a.metricId ? { amount: Math.round(a.value * 100) / 100, metricId: a.metricId } : {};
 
 /**
  * Open a session's chest: a chest_claim, the chronicle entry (even with no
@@ -160,8 +167,9 @@ export function claimChest(q: QuestSlice, c: ChestClaim): QuestSlice {
     { id: cid, type: 'chest_claim', title: '', body: '', props: { sessionId: c.sessionId, claimedAt: iso(c.now) }, habitId: c.habitId, createdAt: c.now },
   ];
   const lid = logId(c.sessionId);
-  if ((body || c.doneTaskIds.length) && !items.some((i) => i.id === lid)) {
-    items.push({ id: lid, type: 'log', title: '', body, props: { sessionId: c.sessionId }, habitId: c.habitId, createdAt: c.now });
+  const amount = cleanAmount(c.amount);
+  if ((body || c.doneTaskIds.length || 'amount' in amount) && !items.some((i) => i.id === lid)) {
+    items.push({ id: lid, type: 'log', title: '', body, props: { sessionId: c.sessionId, ...amount }, habitId: c.habitId, createdAt: c.now });
   }
   let next: QuestSlice = { items, links: q.links };
   let links = next.links;
@@ -174,6 +182,28 @@ export function claimChest(q: QuestSlice, c: ChestClaim): QuestSlice {
     next = setTaskStatus(next, t, 'done', c.now);
   }
   return { ...next, links };
+}
+
+/**
+ * A quick log: an activity recorded at any time, without a session. Always
+ * saved; rewards are capped per day in the derived game, not here.
+ */
+export function addQuickLog(q: QuestSlice, l: { habitId: string; text: string; amount?: { value: number; metricId: string }; now: number }, id = newId('q', l.now)): QuestSlice {
+  const body = l.text.trim().slice(0, LOG_BODY_MAX);
+  const amount = cleanAmount(l.amount);
+  if (!body && !('amount' in amount)) return q;
+  return { ...q, items: [...q.items, { id, type: 'log', title: '', body, props: { sessionId: '', ...amount }, habitId: l.habitId, createdAt: l.now }] };
+}
+
+/** Set a habit's one measure (label and unit). Empty label: nothing changes. */
+export function setMetric(q: QuestSlice, habitId: string, label: string, unit: string, now: number): QuestSlice {
+  const l = label.replace(/\s+/g, ' ').trim().slice(0, METRIC_LABEL_MAX);
+  const u = unit.replace(/\s+/g, ' ').trim().slice(0, METRIC_LABEL_MAX);
+  if (!l) return q;
+  const id = metricDefId(habitId);
+  const existing = q.items.find((i) => i.id === id);
+  if (!existing) return { ...q, items: [...q.items, { id, type: 'metric_def', title: '', body: '', props: { label: l, unit: u }, habitId, createdAt: now }] };
+  return replaceItem(q, id, (i) => (i.type === 'metric_def' && (i.props.label !== l || i.props.unit !== u) ? { ...i, props: { label: l, unit: u } } : i));
 }
 
 export function editLog(q: QuestSlice, id: string, body: string): QuestSlice {
