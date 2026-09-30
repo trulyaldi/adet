@@ -103,6 +103,50 @@ Scribe → Settings → Sound effects on. With the ringer on:
 - [ ] Scribe → Settings → AI Sage asks with a browser dialog ("Chronicle entries are
       sent to generate suggestions."); Cancel leaves it off.
 
+## 14. Dev-server drops (v2 N1)
+The red screen "Cannot read property 'reload' of undefined" came from Metro's HMR client
+when a lazily loaded Quest screen was first fetched after the dev connection had dropped.
+- [ ] Start a timer, lock the phone for 10+ minutes, unlock, finish the session: no red
+      screen, the Loot sheet opens.
+- [ ] Start a timer, stop Metro (Ctrl-C) mid-session, finish the session: the Loot sheet
+      still opens and the chest can be opened or sent to camp. Restart Metro afterwards.
+
+## 15. The timer Stage (v2 N6)
+- [ ] Start a timer after onboarding: under the ring, a small warm scene: your character on
+      the left, the current enemy on the right, its HP bar (and seal icons for a boss) below.
+      The timer digits stay fully visible; nothing jumps when the scene changes.
+- [ ] Every 4–6 s your character swings gently; the enemy recoils a pixel with a warm tint.
+      No white flash, no sound, no vibration.
+- [ ] Pause: your character sits down and naps (slow breathing, floating "z"s); the light
+      dims slightly. Resume: it wakes, gets up and fights again.
+- [ ] Once a mob's HP runs out in the preview: it dissolves into warm petals, a coin
+      sparkles, your character cheers, and the next enemy walks in from the right.
+- [ ] Against a boss whose seals aren't filled, at 0 HP it kneels with dazed stars instead.
+- [ ] Tap the scene: the enemy's name (and a boss's seal counts) for a moment.
+- [ ] iPhone SE or another short screen: a slim 72 pt strip instead.
+- [ ] Quest settings → "Scene on the timer" off: your character alone in the corner.
+- [ ] Reduce Motion on: a still scene (a sleeping character when paused).
+- [ ] QA panel → Timer Stage: fight, defeat, walkIn, stagger, nap and wake all draw.
+
+## 16. v2: seals, the Trail, the pixel look
+- [ ] Against a boss: its seal icons (calendar, sword, quill) sit under its HP bar on the map,
+      in the boss panel (tap the gate: counts like `2/3`) and on the Stage. A boss at 0 HP with
+      a seal missing kneels with dazed stars; it doesn't heal; the ceremony plays only once the
+      seals fill.
+- [ ] Scribe → Trail: a row per skill with a neutral mark (stairs, a level line, a moon), four
+      small bars and reasons. Tap a row: this week against last week; add a measure (Pages).
+- [ ] The quill (bottom right of the map, and at the top of the Scribe): pick a skill, a line
+      and/or an amount, Save. A small "+3 XP" chip floats up.
+- [ ] With a measure, the Loot sheet shows − / amount / +. Skipping it changes nothing.
+- [ ] Almanac (the Stats tab): the title reads Almanac; the bars button opens the Trail.
+- [ ] Every screen, light and dark, at the phone's size: the pixel font everywhere, small square
+      corners, hard 2 px shadows, pixel icons in the tab bar and on buttons. Nothing clipped or
+      blurry; long habit names still fit.
+- [ ] Legibility at the smallest sizes: `50`, `5`, `S`, `0`, `O`, `C` are never confused (the
+      welcome credits read 50).
+- [ ] Reduce Motion on: the Stage is still, loading dots don't step, chips only fade.
+- [ ] During a running or paused timer: no Quest sound and no Quest vibration at all.
+
 ## If something's wrong, send back
 - a screenshot or screen recording;
 - the iPhone model and iOS version;

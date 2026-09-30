@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { resolveAvatarLayers } from '../src/domain/game/avatar';
 import { SHOP_BY_SKU } from '../src/game/content/shop';
 import { hex, Px } from './pixel/px';
+import { POSES } from './art/characters';
 import { generatePlaceholders } from './gen-placeholders';
 
 const reg = generatePlaceholders();
@@ -23,7 +24,7 @@ function compose(tier: number, pose: number, extra: string[] = []): Px {
   return px;
 }
 const cells: Px[] = [];
-for (let t = 0; t < 7; t++) for (let p = 0; p < 5; p++) cells.push(compose(t, p));
+for (let t = 0; t < 7; t++) for (let p = 0; p < POSES.length; p++) cells.push(compose(t, p));
 for (const e of ['avatar.cloak.moss', 'avatar.cloak.dusk', 'avatar.cloak.aurora', 'avatar.helmet.leaf', 'avatar.helmet.horned', 'avatar.helmet.star', 'avatar.banner.ember', 'avatar.banner.tide', 'avatar.weapon.oak', 'avatar.weapon.frost', 'avatar.weapon.sun'])
   cells.push(compose(2, 0, [e]));
 const cols = 11;

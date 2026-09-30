@@ -1,15 +1,16 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, useWindowDimensions, View } from 'react-native';
+
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '../components/Button';
 import { Burst } from '../components/celebrate/Burst';
-import { Ilmek } from '../components/ilmek/Ilmek';
+import { Character } from '../components/character/Character';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { ProgressRing } from '../components/motion/ProgressRing';
@@ -19,25 +20,29 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
-import { QuestFocusRow, QuestFocusStrip } from '../screens/Quest/session/QuestFocus';
+import { QuestFocusRow, QuestFocusStage } from '../screens/Quest/session/QuestFocus';
 import { useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { TIMER_FRAME_MS, useActiveProgress } from '../store/useActiveProgress';
 import { useStopTimer } from '../store/useStopTimer';
 import { springs } from '../theme/motion';
-import { Swatch } from '../theme/palette';
+import { mix, Swatch } from '../theme/palette';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAppActive, useReducedMotion } from '../theme/useMotion';
+import { Text } from '../components/Text';
 
 /** After this long in focus, a dim button appears. */
 const DIM_OFFER_MS = 2 * 60_000;
 
 /**
  * Full-screen focus: the count-up inside a ring in the project's color,
- * the project's scene growing behind it, Ilmek in a corner, and
+ * the project's scene growing behind it, your character in a corner, and
  * pause / done. Swipe down to minimize back to Today; the session keeps
  * running. The screen stays awake while it's open.
  */
+/** The wash's bands, top to bottom: share of the way from the project tint to the background. */
+const WASH_STEPS = [0, 0.34, 0.67, 1];
+
 export function FocusView() {
   const data = useData();
   const timerOpen = useUi((u) => u.timerOpen);
@@ -114,20 +119,16 @@ function FocusContent() {
   const ringSize = Math.min(290, width - 70);
   const cy = insets.top + 70 + (height - insets.top - insets.bottom - 250) / 2;
   const cheering = cheerUntil > Date.now();
-  const mascot = p.paused ? 'sleepy' : cheering ? 'cheering' : 'focused';
+  const mood = p.paused ? 'sleepy' : cheering ? 'cheering' : 'focused';
 
   return (
     <GestureDetector gesture={swipe}>
       <Animated.View style={[{ flex: 1, backgroundColor: colors.bg }, sheetStyle]}>
-        {/* Background wash in the project's color family */}
+        {/* Background wash in the project's color family: flat stepped bands (the pixel look has no gradients). */}
         <Svg width={width} height={height} style={{ position: 'absolute' }}>
-          <Defs>
-            <LinearGradient id="wash" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={sw.light} stopOpacity={1} />
-              <Stop offset="1" stopColor={colors.bg} stopOpacity={1} />
-            </LinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width={width} height={height} fill="url(#wash)" />
+          {WASH_STEPS.map((k, i) => (
+            <Rect key={i} x={0} y={Math.floor((i * height) / WASH_STEPS.length)} width={width} height={Math.ceil(height / WASH_STEPS.length) + 1} fill={mix(sw.light, colors.bg, k)} />
+          ))}
         </Svg>
         <Scene
           kind={look.scene}
@@ -189,13 +190,17 @@ function FocusContent() {
           </ProgressRing>
         </View>
 
-        {/* Ilmek, bottom corner */}
-        <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
-          <Ilmek state={mascot} size={78} tint={look.color} />
-        </View>
-
-        {/* Quest Mode: the battle strip beside Ilmek. */}
-        <QuestFocusStrip bottom={insets.bottom + 114} left={104} paused={p.paused} dimmed={dimmed} />
+        {/* Quest Mode: the Stage between the ring and the controls; else your character in a corner. */}
+        <QuestFocusStage
+          band={{ top: cy + ringSize / 2 + 12, bottom: height - insets.bottom - 108, screenHeight: height, width }}
+          paused={p.paused}
+          dimmed={dimmed}
+          portrait={
+            <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
+              <Character mood={mood} size={78} />
+            </View>
+          }
+        />
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>
           <MessageToast />

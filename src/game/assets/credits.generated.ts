@@ -48,4 +48,4 @@ export const PACK_CREDITS: PackCredit[] = [
 ];
 
 /** Sprites still drawn from Adet's original stand-in art. */
-export const STAND_IN_SPRITES = 327;
+export const STAND_IN_SPRITES = 330;

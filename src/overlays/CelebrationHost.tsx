@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Text, View } from 'react-native';
+import { Modal, View } from 'react-native';
+
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { Button } from '../components/Button';
 import { BadgeArt } from '../components/celebrate/BadgeArt';
-import { Ilmek } from '../components/ilmek/Ilmek';
-import { projectLook } from '../domain/look';
+import { Character } from '../components/character/Character';
 import { badgeInfo } from '../domain/milestones';
 import { feedback } from '../feedback/feedback';
 import { useLootRequest } from '../game/state/loot';
@@ -14,6 +14,7 @@ import { anyModalOpen, useActions, useData, useSettings, useUi } from '../store/
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 import { useReducedMotion } from '../theme/useMotion';
+import { Text } from '../components/Text';
 
 /**
  * Full-screen milestone cards, one at a time from the queue: a big animated
@@ -77,7 +78,7 @@ export function CelebrationHost() {
               </Text>
             )}
             <View style={{ position: 'absolute', right: 14, top: 14 }}>
-              <Ilmek state={info.kind === 'week' ? 'relaxed' : 'celebrating'} size={56} tint={project ? projectLook(project).color : undefined} decorative />
+              <Character mood={info.kind === 'week' ? 'relaxed' : 'celebrating'} size={56} decorative />
             </View>
             <Button icon="done" label="Continue" onPress={actions.dismissCelebration} quiet style={{ alignSelf: 'stretch', marginTop: 8 }} />
           </Animated.View>

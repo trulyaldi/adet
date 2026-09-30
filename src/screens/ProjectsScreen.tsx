@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 
 import { CapacityIndicator } from '../components/CapacityIndicator';
-import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
+import { Character } from '../components/character/Character';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear, useLayoutMotion } from '../components/motion/Appear';
@@ -19,6 +20,7 @@ import { feedback } from '../feedback/feedback';
 import { useActions, useData, useSettings, useStoreNow } from '../store/StreakStore';
 import { shadow } from '../theme/theme';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 export function ProjectsScreen() {
   const { colors } = useTheme();
@@ -62,7 +64,7 @@ export function ProjectsScreen() {
 
       {model.cards.length === 0 && (
         <View accessible accessibilityLabel="No projects yet" style={{ alignItems: 'center', paddingVertical: 40 }}>
-          <ScreenIlmek state="relaxed" size={120} decorative />
+          <Character mood="relaxed" size={120} decorative />
         </View>
       )}
 

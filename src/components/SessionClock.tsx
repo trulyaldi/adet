@@ -1,8 +1,9 @@
 import React from 'react';
-import { Text, TextProps } from 'react-native';
+import { TextProps } from 'react-native';
 
 import { fmtClock } from '../domain/time';
 import { useActiveProgress } from '../store/useActiveProgress';
+import { Text } from './Text';
 
 /**
  * The running session's count-up. The only part of a timer view that

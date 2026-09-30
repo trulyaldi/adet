@@ -7,6 +7,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { GlyphName, GLYPHS } from '../src/components/glyphs';
+import { PIXEL_GLYPHS } from '../src/components/pixelGlyphs';
 import { REQUIRED_IDS } from '../src/game/assets/manifest';
 import { SPRITE_SOURCES } from '../src/game/assets/sources.generated';
 import type { MappedSprite } from './art-sources';
@@ -80,6 +82,22 @@ function main() {
     for (const [why, group] of reasons) lines.push(`**needs-art (${group.length}):** ${why}`, '', group.map((i) => `\`${i}\``).join(', '), '');
   }
   fs.mkdirSync(path.join(ROOT, 'docs/quest/art'), { recursive: true });
+  // The app's UI icons (v2 N7.2): which glyphs have a pixel version yet.
+  const glyphs = Object.keys(GLYPHS) as GlyphName[];
+  const pixel = glyphs.filter((g) => PIXEL_GLYPHS[g]);
+  const stroke = glyphs.filter((g) => !PIXEL_GLYPHS[g]);
+  lines.push(
+    '',
+    '## UI icons',
+    '',
+    `The app's icons (src/components/glyphs.ts) draw their 16×16 pixel version from`,
+    '`src/components/pixelGlyphs.ts` when one exists (original art, one style); the others keep',
+    'their stroke glyph until one is drawn. Habit icons (domain/constants.ts `ICONS`) are all stroke still.',
+    '',
+    `**Pixel (${pixel.length}):** ${pixel.map((g) => '`' + g + '`').join(', ')}`,
+    '',
+    `**Stroke, no pixel version yet (${stroke.length}):** ${stroke.map((g) => '`' + g + '`').join(', ')}`
+  );
   fs.writeFileSync(path.join(ROOT, 'docs/quest/art/INVENTORY.md'), lines.join('\n') + '\n');
   console.log(`docs/quest/art/INVENTORY.md: ${ids.length} ids (${[...total].map(([k, v]) => `${k} ${v}`).join(', ')})`);
   writeMapping();

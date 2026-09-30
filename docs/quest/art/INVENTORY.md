@@ -10,7 +10,7 @@ listed separately.
 | pack | 2 |
 | recolor | 21 |
 | composed | 15 |
-| needs-art | 322 |
+| needs-art | 325 |
 | generated-placeholder | 0 |
 | missing | 0 |
 
@@ -184,19 +184,29 @@ needs-art 21
 
 `parallax.astral.cloud`, `parallax.astral.far.a`, `parallax.astral.far.b`, `parallax.desert.cloud`, `parallax.desert.far.a`, `parallax.desert.far.b`, `parallax.forest.cloud`, `parallax.forest.far.a`, `parallax.forest.far.b`, `parallax.frost.cloud`, `parallax.frost.far.a`, `parallax.frost.far.b`, `parallax.iron.cloud`, `parallax.iron.far.a`, `parallax.iron.far.b`, `parallax.swamp.cloud`, `parallax.swamp.far.a`, `parallax.swamp.far.b`, `parallax.volcano.cloud`, `parallax.volcano.far.a`, `parallax.volcano.far.b`
 
-## FX (8)
+## FX (10)
 
-needs-art 8
+needs-art 10
 
-**needs-art (8):** Simple generated effects (glows, dust, sparkles, fog, a pixel); the Tiny packs have no FX sprites. Searched: Kenney Tiny Dungeon, Tiny Town, Tiny Farm, Tiny Battle, Roguelike Characters, Roguelike RPG, 1-Bit, Micro Roguelike.
+**needs-art (10):** Simple generated effects (glows, dust, sparkles, fog, a pixel); the Tiny packs have no FX sprites. Searched: Kenney Tiny Dungeon, Tiny Town, Tiny Farm, Tiny Battle, Roguelike Characters, Roguelike RPG, 1-Bit, Micro Roguelike.
 
-`fx.dust`, `fx.fog`, `fx.glow.cool`, `fx.glow.small`, `fx.glow.warm`, `fx.hit`, `fx.pixel`, `fx.sparkle`
+`fx.dazed`, `fx.dust`, `fx.fog`, `fx.glow.cool`, `fx.glow.small`, `fx.glow.warm`, `fx.hit`, `fx.pixel`, `fx.sparkle`, `fx.zzz`
 
-## UI icons (and shop item icons) (22)
+## UI icons (and shop item icons) (23)
 
-needs-art 22
+needs-art 23
 
-**needs-art (22):** UI icons are one set: Kenney has a sword, coin, heart and lock but no XP, quill, freeze, rested, star or gear icons, and half a set would mix styles in one row. Searched: Kenney Tiny Dungeon, Tiny Town, Tiny Farm, Tiny Battle, Roguelike Characters, Roguelike RPG, 1-Bit, Micro Roguelike.
+**needs-art (23):** UI icons are one set: Kenney has a sword, coin, heart and lock but no XP, quill, freeze, rested, star or gear icons, and half a set would mix styles in one row. Searched: Kenney Tiny Dungeon, Tiny Town, Tiny Farm, Tiny Battle, Roguelike Characters, Roguelike RPG, 1-Bit, Micro Roguelike.
 
-`icon.check`, `icon.chest`, `icon.coin`, `icon.freeze`, `icon.gear.banner.ember`, `icon.gear.banner.tide`, `icon.gear.cloak.aurora`, `icon.gear.cloak.dusk`, `icon.gear.cloak.moss`, `icon.gear.helmet.horned`, `icon.gear.helmet.leaf`, `icon.gear.helmet.star`, `icon.gear.weapon.frost`, `icon.gear.weapon.oak`, `icon.gear.weapon.sun`, `icon.heart`, `icon.lock`, `icon.quill`, `icon.rested`, `icon.star`, `icon.sword`, `icon.xp`
+`icon.calendar`, `icon.check`, `icon.chest`, `icon.coin`, `icon.freeze`, `icon.gear.banner.ember`, `icon.gear.banner.tide`, `icon.gear.cloak.aurora`, `icon.gear.cloak.dusk`, `icon.gear.cloak.moss`, `icon.gear.helmet.horned`, `icon.gear.helmet.leaf`, `icon.gear.helmet.star`, `icon.gear.weapon.frost`, `icon.gear.weapon.oak`, `icon.gear.weapon.sun`, `icon.heart`, `icon.lock`, `icon.quill`, `icon.rested`, `icon.star`, `icon.sword`, `icon.xp`
 
+
+## UI icons
+
+The app's icons (src/components/glyphs.ts) draw their 16×16 pixel version from
+`src/components/pixelGlyphs.ts` when one exists (original art, one style); the others keep
+their stroke glyph until one is drawn. Habit icons (domain/constants.ts `ICONS`) are all stroke still.
+
+**Pixel (34):** `done`, `clock`, `calendar`, `dots`, `close`, `gear`, `week`, `flame`, `play`, `pause`, `plus`, `minus`, `pencil`, `trash`, `archive`, `bell`, `undo`, `list`, `bars`, `chevronRight`, `chevronLeft`, `chevronDown`, `chevronUp`, `stop`, `edit`, `stats`, `moon`, `sparkle`, `habits`, `info`, `today`, `target`, `sword`, `quest`
+
+**Stroke, no pixel version yet (31):** `full`, `min`, `doneMin`, `rest`, `bonus`, `logTime`, `swap`, `remove`, `chain`, `unarchive`, `merge`, `signOut`, `cloud`, `cloudSync`, `cloudOff`, `drag`, `soundOn`, `soundOff`, `haptic`, `capLight`, `capNormal`, `capHeavy`, `badge`, `contrast`, `motion`, `scene`, `palette`, `weekStart`, `dim`, `shrink`, `raise`

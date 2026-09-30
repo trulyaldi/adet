@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import { Gesture, GestureDetector, GestureType } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -14,6 +15,8 @@ import { Icon } from '../Icon';
 import { Press } from '../motion/Press';
 import { ProgressRing } from '../motion/ProgressRing';
 import { WeekDotsRow } from './WeekDotsRow';
+import { Text } from '../Text';
+import { SkillBadge } from './SkillBadge';
 
 /** Height of a pending row (the sortable list's slot is this plus the gap). */
 export const ROW_H = 78;
@@ -110,7 +113,10 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
               <Text numberOfLines={2} style={{ fontSize: 16, lineHeight: 19, fontWeight: '800', color: colors.ink }}>
                 {item.name}
               </Text>
-              <WeekDotsRow week={item.week} color={sw.base} size={7} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <WeekDotsRow week={item.week} color={sw.base} size={7} />
+                <SkillBadge habitId={item.habitId} />
+              </View>
             </View>
             {check ? (
               <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 3, borderColor: sw.base, alignItems: 'center', justifyContent: 'center' }} />

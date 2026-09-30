@@ -3,6 +3,7 @@
 
 import { FREEZE_COST, FREEZE_SKU } from '../../domain/game/freezes';
 import type { GearSlot } from '../../domain/items/types';
+import { WORDS } from '../../domain/words';
 
 export type ShopKind = 'freeze' | 'gear' | 'companion' | 'campfire';
 
@@ -20,7 +21,7 @@ export interface ShopItem {
 }
 
 export const SHOP: ShopItem[] = [
-  { sku: FREEZE_SKU, kind: 'freeze', name: 'Streak freeze', cost: FREEZE_COST, icon: 'icon.freeze' },
+  { sku: FREEZE_SKU, kind: 'freeze', name: WORDS.freeze.game, cost: FREEZE_COST, icon: 'icon.freeze' },
 
   { sku: 'cloak.moss', kind: 'gear', slot: 'cloak', name: 'Moss cloak', cost: 40, icon: 'icon.gear.cloak.moss' },
   { sku: 'cloak.dusk', kind: 'gear', slot: 'cloak', name: 'Dusk cloak', cost: 90, rankRequired: 2, icon: 'icon.gear.cloak.dusk' },

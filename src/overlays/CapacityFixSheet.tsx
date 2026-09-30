@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { CloseButton, Glyph } from '../components/Glyph';
@@ -9,6 +9,7 @@ import { targetCheck } from '../domain/capacity';
 import { fmtDur } from '../domain/time';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 /**
  * Targets over capacity: the two side by side as bars, then two ways to

@@ -13,6 +13,7 @@ import { openTasksFor } from '../../../domain/items/ops';
 import { Suggestion } from '../../../domain/game/sageFallback';
 import { greeting, npcName } from '../../../game/content/npcs';
 import { PixelButton } from '../../../game/ui/PixelButton';
+import { PixelCheck } from '../../../game/ui/PixelCheck';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
@@ -80,7 +81,7 @@ export function SageSheet({ model, onClose, reduced }: { model: QuestModel; onCl
                 </PixelText>
                 <PixelText size="md">{s.title}</PixelText>
               </View>
-              <PixelButton small tone={done ? 'parchment' : 'gold'} label={done ? '✓' : 'Pin'} accessibilityLabel={done ? `${s.title}, pinned` : `Pin ${s.title} to the Quest Board`} onPress={() => !done && pin(s)} disabled={done} />
+              <PixelButton small tone={done ? 'parchment' : 'gold'} label={done ? undefined : 'Pin'} icon={done ? <PixelCheck /> : undefined} accessibilityLabel={done ? `${s.title}, pinned` : `Pin ${s.title} to the Quest Board`} onPress={() => !done && pin(s)} disabled={done} />
               {!done && <PixelButton small tone="parchment" label="✕" accessibilityLabel={`Dismiss ${s.title}`} onPress={() => dismiss(k)} />}
             </Row>
           </PixelPanel>

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import * as ops from '../items/ops';
-import { fallbackInsight, fallbackRecap, fallbackSuggestions, habitsByUse } from './sageFallback';
+import { fallbackInsight, fallbackRecap, fallbackSuggestions, habitsByUse, trailInsight } from './sageFallback';
 import { fixedTz } from './tz';
 
 const NOW = Date.UTC(2026, 8, 29, 12);
@@ -41,4 +41,14 @@ test('recap template', () => {
 
 test('recap with no sessions on record still reads well', () => {
   assert.equal(fallbackRecap('The Fog Wisp', 0, 0, 0), 'The Fog Wisp is beaten. Well fought.');
+});
+
+test('the Sage mentions a rising skill from the trail, in 12 words or fewer', () => {
+  const h = (habitId: string, verdict: 'rising' | 'steady' | 'resting', empty = false) => ({ habitId, verdict, empty }) as never;
+  const names = new Map([['a', 'Reading'], ['b', 'A very long habit name that goes on and on and on']]);
+  assert.equal(trailInsight({ habits: [h('a', 'steady'), h('a', 'rising')] }, (id) => names.get(id)), 'Reading is rising this week.');
+  assert.equal(trailInsight({ habits: [h('a', 'resting')] }, (id) => names.get(id)), null);
+  assert.equal(trailInsight({ habits: [h('a', 'rising', true)] }, (id) => names.get(id)), null, 'an empty row is not rising');
+  const long = trailInsight({ habits: [h('b', 'rising')] }, (id) => names.get(id))!;
+  assert.ok(long.split(' ').length <= 12, long);
 });

@@ -3,7 +3,7 @@
 // delete).
 
 import React, { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Icon } from '../../../components/Icon';
 import { useQuestWrites } from '../../../data/itemsRepo';
@@ -14,11 +14,13 @@ import type { Habit } from '../../../domain/types';
 import { greeting } from '../../../game/content/npcs';
 import { PIXEL_FONT, PIXEL_TEXT } from '../../../game/assets/fonts';
 import { PixelButton } from '../../../game/ui/PixelButton';
+import { PixelCheck } from '../../../game/ui/PixelCheck';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
 import type { QuestModel } from '../useQuestModel';
 import { QuestSheet, Row } from './common';
+import { TextInput } from '../../../components/Text';
 
 export function BoardSheet({ model, onClose, reduced, initialHabit }: { model: QuestModel; onClose(): void; reduced: boolean; initialHabit?: string | null }) {
   const habits = activeHabits(model.data).filter((h) => h.kind !== 'check');
@@ -119,9 +121,12 @@ function HabitTasks({ model, habit, onBack }: { model: QuestModel; habit: Habit;
       </Row>
       {done.length > 0 && (
         <Pressable onPress={() => setShowDone(!showDone)} accessibilityRole="button" accessibilityLabel={`${done.length} done. ${showDone ? 'Hide' : 'Show'}`} style={{ minHeight: 44, justifyContent: 'center' }}>
-          <PixelText size="sm" color={QUI.muted}>
-            ✓ {done.length} done {showDone ? '▴' : '▾'}
-          </PixelText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <PixelCheck color={QUI.muted} />
+            <PixelText size="sm" color={QUI.muted}>
+              {done.length} done {showDone ? '▴' : '▾'}
+            </PixelText>
+          </View>
         </Pressable>
       )}
       {showDone &&

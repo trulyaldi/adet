@@ -10,6 +10,7 @@ import { feedback } from '../../../game/feedback';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
+import { QUEST_MS } from '../../../game/ui/motion';
 
 const SHOWN_MS = 1500;
 const BURST = 10;
@@ -23,12 +24,12 @@ export function LevelUp({ level, game, onDone, reduced }: { level: number; game:
   useEffect(() => {
     feedback.sfx('level_up', 'ceremony');
     AccessibilityInfo.announceForAccessibility(`Level ${level}`);
-    if (!reduced) burst.value = withTiming(1, { duration: 700 });
+    if (!reduced) burst.value = withTiming(1, { duration: QUEST_MS.burst });
     const timer = setTimeout(() => done(), SHOWN_MS);
     return () => clearTimeout(timer);
   }, [level, reduced, burst]);
   useEffect(() => {
-    fill.value = reduced ? progress : withTiming(progress, { duration: 900 });
+    fill.value = reduced ? progress : withTiming(progress, { duration: QUEST_MS.fill });
   }, [progress, reduced, fill]);
   const bar = useAnimatedStyle(() => ({ width: Math.round(fill.value * 150) }));
   return (

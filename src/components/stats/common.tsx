@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleProp, Text, TextProps, View, ViewStyle } from 'react-native';
+import { StyleProp, TextProps, View, ViewStyle } from 'react-native';
 
 import { ICONS } from '../../domain/constants';
 import { ProjectLook, projectLook } from '../../domain/look';
@@ -8,6 +8,7 @@ import { fmtDur } from '../../domain/time';
 import { Project } from '../../domain/types';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Glyph, GlyphName } from '../Glyph';
+import { Text } from '../Text';
 
 /** A Stats card: a glyph (with a spoken label) in place of a title, then the content. */
 export function StatsCard({ glyph, label, right, children, style }: { glyph: GlyphName; label: string; right?: React.ReactNode; children: React.ReactNode; style?: StyleProp<ViewStyle> }) {

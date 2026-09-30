@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 
 import { DateTimeField } from '../components/DateTimeField';
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
@@ -11,6 +11,7 @@ import { fmtHM, fmtMin, stepFor } from '../domain/time';
 import { logSheetEnd, useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text, TextInput } from '../components/Text';
 
 const MAX_MIN = SESSION_MAX_SEC / 60;
 

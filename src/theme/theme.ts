@@ -75,10 +75,11 @@ const dark: Colors = {
 
 export const space = { xxs: 4, xs: 6, sm: 10, md: 14, lg: 18, xl: 24, xxl: 32 };
 
-export const radius = { sm: 10, md: 14, lg: 18, xl: 22, xxl: 28, pill: 999 };
+/** Small, stepped corners (the pixel look, v2 N7.1): no large round shapes outside the rings. */
+export const radius = { sm: 2, md: 3, lg: 4, xl: 4, xxl: 6, pill: 6 };
 
 /** Height of a tactile button's bottom edge. */
-export const EDGE = 4;
+export const EDGE = 2;
 
 export const type = {
   display: { fontSize: 34, fontWeight: '800' as const, letterSpacing: -0.6 },
@@ -129,7 +130,8 @@ export function makeTheme(isDark: boolean): Theme {
     type,
     swatch: (k) => swatches[k] ?? swatches.indigo,
     brand,
-    shadow: shadow(colors.shadow, isDark ? 0.3 : 0.06, 8, 2, 2),
+    // A hard 2 px drop, no blur (pixel UI casts no soft shadows).
+    shadow: shadow(colors.shadow, isDark ? 0.55 : 0.16, 0, 2),
   };
 }
 

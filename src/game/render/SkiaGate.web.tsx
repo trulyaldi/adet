@@ -5,30 +5,26 @@
 import { WithSkiaWeb } from '@shopify/react-native-skia/lib/module/web';
 import React from 'react';
 
-const CANVASKIT = 'https://cdn.jsdelivr.net/npm/canvaskit-wasm@0.41.0/bin/full/';
+import { SkiaBoundary } from './SkiaBoundary';
 
-class Boundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
-}
+const CANVASKIT = 'https://cdn.jsdelivr.net/npm/canvaskit-wasm@0.41.0/bin/full/';
 
 export function SkiaGate<P extends object>({
   load,
   props,
   fallback = null,
+  errorFallback,
+  onError,
 }: {
   load: () => Promise<{ default: React.ComponentType<P> }>;
   props: P;
   fallback?: React.ReactNode;
+  errorFallback?: React.ReactNode;
+  onError?(e: unknown): void;
 }) {
   return (
-    <Boundary fallback={fallback}>
+    <SkiaBoundary fallback={errorFallback ?? fallback} onError={onError}>
       <WithSkiaWeb getComponent={load} fallback={fallback} opts={{ locateFile: (file: string) => CANVASKIT + file }} componentProps={props as never} />
-    </Boundary>
+    </SkiaBoundary>
   );
 }

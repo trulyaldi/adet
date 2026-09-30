@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { BIOME_IDS, parseBiomeRef } from '../../../domain/game/biomes';
 import { BOSS_CREDITS, BOSS_XP } from '../../../domain/game/balance';
@@ -27,6 +27,7 @@ import { QUI } from '../../../game/ui/theme';
 import { useSageRecap } from '../../../services/sage';
 import { CeremonyStage, useCeremonySize } from './Stage';
 import { PE } from '../../../game/ui/pointer';
+import { shakeOnce } from '../../../game/ui/motion';
 
 const rgb = (h: string): [number, number, number] => {
   const n = parseInt(h.slice(1), 16);
@@ -62,7 +63,7 @@ export function BossDefeat({ refId, game, onDone, reduced, settings }: { refId: 
       ts.push(
         setTimeout(() => {
           flash.value = clock.value + 70;
-          shake.value = withSequence(withTiming(2, { duration: 40 }), withTiming(-2, { duration: 40 }), withTiming(0, { duration: 60 }));
+          shake.value = shakeOnce();
         }, 200 + d)
       )
     );

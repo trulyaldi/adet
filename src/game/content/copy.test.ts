@@ -94,3 +94,11 @@ test('the banned list matches on word boundaries only', () => {
   assert.deepEqual(bannedIn('Mission complete, a lost-and-found lantern'), ['lost']);
   assert.deepEqual(bannedIn('Behold the dieselpunk tower'), []);
 });
+
+test('game words: one or two words each, and what is spoken includes the plain word', async () => {
+  const { WORDS, spoken } = await import('../../domain/words');
+  for (const w of Object.values(WORDS)) {
+    assert.ok(w.game.split(' ').length <= 2, w.game);
+    assert.ok(spoken(w).toLowerCase().includes(w.plain.toLowerCase()), w.game);
+  }
+});

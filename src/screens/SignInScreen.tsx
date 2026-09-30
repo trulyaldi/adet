@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { AdetMark } from '../components/AdetMark';
 import { Press } from '../components/motion/Press';
 import { supabase } from '../sync/supabase';
 import { inputStyle } from '../theme/styles';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text, TextInput } from '../components/Text';
+import { PixelDots } from '../components/PixelDots';
 
 const CODE_LENGTH = 6;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -157,7 +159,7 @@ export function SignInScreen() {
           }}
         >
           {loading ? (
-            <ActivityIndicator color={colors.onBrand} />
+            <PixelDots color={colors.onBrand} size={6} />
           ) : (
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.onBrand }}>
               {step === 'email' ? 'Send code' : 'Verify'}

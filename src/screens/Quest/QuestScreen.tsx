@@ -5,10 +5,10 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
-import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { cancelAnimation, Easing, makeMutable, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { NODE_MOBS } from '../../domain/game/balance';
-import { nodeAt } from '../../domain/game/derive';
+import { mobHp, nodeAt } from '../../domain/game/derive';
 import { npcName, npcTitle } from '../../game/content/npcs';
 import { bossId, mobId, NpcId, ROSTER } from '../../game/content/roster';
 import { bossLine } from '../../game/content/bossLines';
@@ -36,6 +36,9 @@ import { useQuestModel } from './useQuestModel';
 import { useActions } from '../../store/StreakStore';
 import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
+import { SpriteView } from '../../game/render/SpriteView';
+import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
+import { QUEST_MS, shakeOnce } from '../../game/ui/motion';
 
 const POPS = 12;
 
@@ -50,6 +53,15 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
+  // A sheet asked for from elsewhere (the Almanac's Trail link).
+  useEffect(() => {
+    const take = () => {
+      const id = takeQuestSheet();
+      if (id) setSheet(id as SheetId);
+    };
+    take();
+    return onQuestSheetRequest(take);
+  }, []);
   const [replayIntro, setReplayIntro] = useState(false);
   // Android back during onboarding: step out of the Quest tab (nothing is written).
   const actions = useActions();
@@ -131,7 +143,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         const node = m.maps[n.biomeIndex].nodes[n.node];
         setPopSpots([{ x: node.x, y: node.y }]);
         fx.pops[0].at.set(clock.value);
-        shake.set(withSequence(withTiming(1.5, { duration: 50 }), withTiming(-1.5, { duration: 50 }), withTiming(0, { duration: 60 })));
+        shake.set(shakeOnce(1.5));
       }
       settle();
       return;
@@ -144,7 +156,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
     setPopSpots(plan.pops.slice(0, POPS).map((p) => ({ x: p.x, y: p.y })));
     finish.current = () => {
       settle();
-      camY.set(withTiming(cameraFor(m.at.y, size.h, size.w), { duration: 250 }));
+      camY.set(withTiming(cameraFor(m.at.y, size.h, size.w), { duration: QUEST_MS.camera }));
     };
     const step = plan.stepMs;
     plan.points.slice(1).forEach((pt, i) => {
@@ -210,7 +222,10 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const here = biome * 8 + node;
           const cur = g.position.biomeIndex * 8 + g.position.node;
           const mob = ROSTER[map.id].mobs[Math.max(0, NODE_MOBS[node] as number)];
-          setPanel({ kind: 'mob', sprite: here < cur ? `prop.${map.id}.grave` : `${mobId(map.id, mob.key)}.idle`, name: mob.name, hp: here < cur ? 0 : here === cur ? g.hp : 25, max: 25, x: sx, y: sy });
+          const max = mobHp(biome);
+          // `cur` and `here` count within this loop; `global` counts every node since the first.
+          const ahead = g.softened.find((x) => x.global === g.position.global - cur + here)?.hp ?? max;
+          setPanel({ kind: 'mob', sprite: here < cur ? `prop.${map.id}.grave` : `${mobId(map.id, mob.key)}.idle`, name: mob.name, hp: here < cur ? 0 : here === cur ? g.hp : ahead, max, x: sx, y: sy });
           break;
         }
         case 'gate': {
@@ -220,7 +235,9 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const beaten = biome < g.position.biomeIndex;
           // The boss you face speaks a pre-fight line each tap (the Hollow Echo also quotes you).
           const line = active ? bossLine(m.game, map.id, bossTaps.current++) : undefined;
-          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, x: sx, y: sy });
+          const staggered = active && g.staggered;
+          const here = biome === g.position.biomeIndex;
+          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.${staggered ? 'low' : 'idle'}`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, seals: here ? g.seals : undefined, staggered, x: sx, y: sy });
           break;
         }
         case 'villager':
@@ -287,6 +304,11 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           <PixelPanel tone="parchment" padding={2}>
             <PixelText size="sm">{npcName('sage', m.meta?.props.settings)}: Start a session to strike your first foe.</PixelText>
           </PixelPanel>
+        </View>
+      )}
+      {!newcomer && !panel && (
+        <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
+          <PixelButton small tone="parchment" icon={<SpriteView id="icon.quill" scale={2} />} accessibilityLabel="Quick log: record something you did" onPress={() => setSheet('quicklog')} />
         </View>
       )}
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}

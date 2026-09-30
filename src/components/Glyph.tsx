@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
@@ -7,7 +8,10 @@ import { feedback } from '../feedback/feedback';
 import { useTheme } from '../theme/ThemeProvider';
 import { EDGE } from '../theme/theme';
 import { GLYPH_STROKE, GLYPHS, GlyphName, GlyphPart } from './glyphs';
+import { PixelGlyph } from './PixelGlyph';
+import { PIXEL_GLYPHS } from './pixelGlyphs';
 import { usePressMotion } from './motion/Press';
+import { Text } from './Text';
 
 export type { GlyphName } from './glyphs';
 
@@ -25,12 +29,15 @@ interface GlyphProps {
   label?: string;
 }
 
-/** One glyph from the Adet icon set (see glyphs.ts). */
+/** One glyph from the Adet icon set: its pixel version when there is one (pixelGlyphs.ts), else the stroke glyph (glyphs.ts). */
 export function Glyph({ name, size = 20, color, bg, label }: GlyphProps) {
   const { colors } = useTheme();
   const ink = color ?? colors.ink;
   const back = bg ?? colors.card;
-  const svg = (
+  const pixel = PIXEL_GLYPHS[name];
+  const svg = pixel ? (
+    <PixelGlyph grid={pixel} size={size} color={ink} bg={back} />
+  ) : (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {(GLYPHS[name] as GlyphPart[]).map((p, i) => {
         const c = p.knockout ? back : ink;

@@ -151,9 +151,9 @@ export interface UIState {
   startSheet: boolean;
   /** The targets-over-capacity sheet. */
   capacityFix: boolean;
-  /** Bumped when the running session reaches its target (scene payoff, Ilmek cheers). */
+  /** Bumped when the running session reaches its target (scene payoff, your character cheers). */
   targetHits: number;
-  /** Epoch ms until which Ilmek cheers. */
+  /** Epoch ms until which your character cheers. */
   cheerUntil: number;
   /** Full-screen milestone celebrations waiting (badge ids); only the first shows. */
   celebrations: string[];

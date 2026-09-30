@@ -6,16 +6,18 @@
 
 import { Canvas, Group } from '@shopify/react-native-skia';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, TextInput, useWindowDimensions, View } from 'react-native';
-import { useDerivedValue, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { Pressable, useWindowDimensions, View } from 'react-native';
+
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { Icon } from '../../../components/Icon';
 import { useQuestWrites } from '../../../data/itemsRepo';
 import { ICONS } from '../../../domain/constants';
 import { MAX_CRITS, NODE_MOBS } from '../../../domain/game/balance';
+import type { NodeRef } from '../../../domain/game/derive';
 import { ClaimPreview, gameStateOf, previewClaim } from '../../../domain/game/fromData';
 import { LOG_BODY_MAX, openTasksFor } from '../../../domain/items/ops';
-import { itemsOfType } from '../../../domain/items/types';
+import { itemsOfType, metricDefId } from '../../../domain/items/types';
 import { PIXEL_FONT, PIXEL_TEXT } from '../../../game/assets/fonts';
 import { bossId, mobId, ROSTER } from '../../../game/content/roster';
 import { feedback } from '../../../game/feedback';
@@ -27,10 +29,14 @@ import { SpriteView } from '../../../game/render/SpriteView';
 import { useQuestReduced } from '../../../game/state/settings';
 import { CountUp } from '../../../game/ui/CountUp';
 import { PixelButton } from '../../../game/ui/PixelButton';
+import { PixelCheck } from '../../../game/ui/PixelCheck';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI, useUiUnit } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
+import { AmountField, amountOf } from '../sheets/AmountField';
+import { TextInput } from '../../../components/Text';
+import { shakeOnce } from '../../../game/ui/motion';
 
 type Phase = { kind: 'offer' } | { kind: 'opening'; preview: ClaimPreview; crits: number } | { kind: 'rewards'; preview: ClaimPreview };
 
@@ -56,6 +62,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
   }, [sessionId]);
   const [ticked, setTicked] = useState<string[]>([]);
   const [text, setText] = useState(session?.notes ?? '');
+  const [amount, setAmount] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'offer' });
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -78,10 +85,12 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
   }, [gone, onClose]);
   if (!session || gone) return null;
 
-  const canOpen = ticked.length > 0 || text.trim().length > 0;
+  const metric = itemsOfType(data.items, 'metric_def').find((m) => m.id === metricDefId(session.habitId)) ?? null;
+  const counted = amountOf(amount, metric?.id ?? null);
+  const canOpen = ticked.length > 0 || text.trim().length > 0 || !!counted;
   const open = () => {
     if (!canOpen || phase.kind !== 'offer') return;
-    const claim = { sessionId, habitId: session.habitId, doneTaskIds: ticked, text };
+    const claim = { sessionId, habitId: session.habitId, doneTaskIds: ticked, text, amount: counted };
     const preview = previewClaim(data, Date.now(), claim);
     writes.claimChest(claim);
     const crits = Math.min(MAX_CRITS, ticked.length);
@@ -98,7 +107,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
         setTimeout(() => {
           hitAt.value = clock.value;
           flashUntil.value = clock.value + 70; // one white frame
-          shake.value = withSequence(withTiming(2, { duration: 40 }), withTiming(-2, { duration: 40 }), withTiming(0, { duration: 60 }));
+          shake.value = shakeOnce();
           feedback.haptic('light', 'loot');
           feedback.sfx('crit', 'loot');
         }, 450 + i * 320)
@@ -161,7 +170,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 2 * u, minHeight: 44 }}
                 >
                   <View style={{ width: 24, height: 24, borderWidth: u, borderColor: QUI.ink, backgroundColor: on ? QUI.gold : QUI.white, alignItems: 'center', justifyContent: 'center' }}>
-                    {on && <PixelText size="sm" bold>✓</PixelText>}
+                    {on && <PixelCheck px={2} />}
                   </View>
                   <PixelText size="md" style={{ flex: 1 }}>
                     {t.title}
@@ -181,6 +190,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
                 style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: u, borderColor: QUI.ink }}
               />
             </View>
+            {metric && <AmountField value={amount} onChange={setAmount} label={metric.props.label} unit={metric.props.unit} />}
             <View style={{ flexDirection: 'row', gap: 3 * u }}>
               <PixelButton label="Later" tone="parchment" accessibilityLabel="Later: the chest waits at camp" onPress={onClose} style={{ flex: 1 }} />
               <PixelButton label="Open" accessibilityLabel="Open the chest" onPress={open} disabled={!canOpen} style={{ flex: 2 }} />
@@ -225,7 +235,7 @@ function LootStage(p: {
   flashUntil: ReturnType<typeof useSharedValue<number>>;
   shake: ReturnType<typeof useSharedValue<number>>;
   opened: boolean;
-  enemy: import('../../../domain/game/derive').NodeRef | null;
+  enemy: NodeRef | null;
   reduced: boolean;
 }) {
   const { worldW, worldH, scale, clock } = p;

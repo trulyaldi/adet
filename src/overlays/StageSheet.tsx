@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
@@ -8,6 +8,7 @@ import { Sheet } from '../components/Sheet';
 import { selectStageSheet } from '../domain/engine';
 import { useActions, useConfig, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 const SUN = 'M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8';
 const CHECK = 'M5 12l5 5L20 6';

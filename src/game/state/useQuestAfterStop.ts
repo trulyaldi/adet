@@ -13,7 +13,7 @@ import type { Session } from '../../domain/types';
 import { questTablesReady } from '../../sync/questTables';
 import { MODAL_GAP_MS } from '../../theme/motion';
 import { getQuestLocal, planForSession, setActivePlan } from './local';
-import { openLoot } from './loot';
+import { handOffAfterStop } from './loot';
 
 export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?: boolean }) => void {
   const started = useQuestStarted();
@@ -26,8 +26,8 @@ export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?
       const ids = planForSession(plan, saved);
       if (ids.length) writes.planTasks(saved.id, ids);
       // Editing the times first: the chest waits at camp instead.
-      if (opts?.editAfter || saved.duration / 60 < MIN_SESSION_MIN) return;
-      setTimeout(() => openLoot({ sessionId: saved.id, fresh: true }), MODAL_GAP_MS);
+      const loot = !opts?.editAfter && saved.duration / 60 >= MIN_SESSION_MIN;
+      handOffAfterStop(loot ? saved.id : null, MODAL_GAP_MS);
     },
     [started, writes]
   );

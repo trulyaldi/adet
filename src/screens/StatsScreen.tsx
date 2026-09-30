@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 
 import { Button } from '../components/Button';
 import { IconButton } from '../components/Glyph';
-import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
+import { Character } from '../components/character/Character';
 import { Appear } from '../components/motion/Appear';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { projectInfoMap } from '../components/stats/common';
@@ -18,8 +18,12 @@ import { nextStreakMilestone } from '../domain/stats';
 import { useActions, useData, useStoreNow } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
+import { spoken, WORDS } from '../domain/words';
+import { useQuestStarted } from '../data/itemsRepo';
+import { QUEST_ENABLED } from '../game/enabled';
+import { requestQuestSheet } from '../game/state/questOpen';
 
-/** Fewer days with time than this: the chart shows what exists with Ilmek, and focus time and records wait. */
+/** Fewer days with time than this: the chart shows what exists with your character, and focus time and records wait. */
 const LOW_DATA_DAYS = 3;
 /** Best focus time needs at least this many sessions in its four weeks. */
 const FOCUS_MIN_SESSIONS = 5;
@@ -58,10 +62,22 @@ export function StatsScreen() {
   }, []);
   const toChart = useCallback(() => scroll.current?.scrollTo({ y: Math.max(0, chartY.current - 8), animated: true }), []);
 
+  const questStarted = useQuestStarted();
   const header = (
     <ScreenHeader
-      title="Stats"
-      right={<IconButton label="Log time" name="logTime" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => actions.openLogSheet()} tipBelow />}
+      title={WORDS.stats.game}
+      titleLabel={spoken(WORDS.stats)}
+      right={
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {questStarted && QUEST_ENABLED && (
+            <IconButton label="Your trail: which skills are rising" name="bars" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => {
+              requestQuestSheet('trail');
+              actions.setScreen('quest');
+            }} tipBelow />
+          )}
+          <IconButton label="Log time" name="logTime" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => actions.openLogSheet()} tipBelow />
+        </View>
+      }
     />
   );
 
@@ -72,7 +88,7 @@ export function StatsScreen() {
         <Appear>
           <View style={{ alignItems: 'center', paddingVertical: 40, gap: 24 }}>
             <View accessible accessibilityLabel="Nothing tracked yet">
-              <ScreenIlmek state="relaxed" size={120} decorative />
+              <Character mood="relaxed" size={120} decorative />
             </View>
             <Button icon="play" label="Start on Today" onPress={() => actions.setScreen('today')} />
           </View>

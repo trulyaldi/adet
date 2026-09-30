@@ -54,6 +54,10 @@ export interface QuestWrites {
   editLog(id: string, body: string): void;
   purchase(sku: string, cost: number, month?: string): void;
   addAchievements(list: AchievementProps[]): void;
+  /** A quick log: an activity recorded without a session (a line and/or an amount of the habit's measure). */
+  addQuickLog(habitId: string, text: string, amount?: { value: number; metricId: string }): void;
+  /** Set a habit's one measure (label and unit). */
+  setMetric(habitId: string, label: string, unit: string): void;
   startQuest(): void;
   updateQuestMeta(fn: (p: QuestMetaProps) => QuestMetaProps): void;
 }
@@ -77,6 +81,8 @@ export function useQuestWrites(): QuestWrites {
       editLog: (id, body) => edit((q) => ops.editLog(q, id, body)),
       purchase: (sku, cost, month) => edit((q, now) => ops.addPurchase(q, sku, cost, now, month)),
       addAchievements: (list) => edit((q, now) => ops.addAchievements(q, list, now)),
+      addQuickLog: (habitId, text, amount) => edit((q, now) => ops.addQuickLog(q, { habitId, text, amount, now })),
+      setMetric: (habitId, label, unit) => edit((q, now) => ops.setMetric(q, habitId, label, unit, now)),
       startQuest: () => edit((q, now) => ops.startQuest(q, now)),
       updateQuestMeta: (fn) => edit((q, now) => ops.updateQuestMeta(q, fn, now)),
     };

@@ -2,7 +2,11 @@
 // NPCs, villagers and critters. Layers share one 20×26 frame and one set of
 // poses, so gear composes without clipping.
 //
-// Poses: idle0/idle1 (breath), walk0/walk1 (a foot lifts), kneel (rank-up).
+// Poses: idle0/idle1 (breath), walk0/walk1 (a foot lifts), kneel (rank-up),
+// attack0/attack1 (a gentle swing: lean back, then forward as the hand swings),
+// nap0/nap1 (sitting, eyes closed, breathing), wake0 (half up, eyes still
+// closed), sit (sitting, eyes open). Every layer takes the same pose, so gear
+// never detaches; new poses only sink or lean (helmets use the top row).
 
 import { BIOME_IDS, BiomeId } from '../../src/domain/game/biomes';
 import { PALETTES, SHARED } from '../../src/game/content/palettes';
@@ -13,11 +17,20 @@ import { Registry } from './registry';
 type Grid = string[];
 export const AVATAR_W = 20;
 export const AVATAR_H = 26;
-export const POSES = ['idle0', 'idle1', 'walk0', 'walk1', 'kneel'] as const;
+export const POSES = ['idle0', 'idle1', 'walk0', 'walk1', 'kneel', 'attack0', 'attack1', 'nap0', 'nap1', 'wake0', 'sit'] as const;
 export type Pose = (typeof POSES)[number];
 
 /** How far the upper body sinks in each pose. */
-const SINK: Record<Pose, number> = { idle0: 0, idle1: 1, walk0: 0, walk1: 1, kneel: 3 };
+const SINK: Record<Pose, number> = { idle0: 0, idle1: 1, walk0: 0, walk1: 1, kneel: 3, attack0: 0, attack1: 1, nap0: 4, nap1: 5, wake0: 2, sit: 4 };
+/** How far the upper body leans (+ is forward, to the right). */
+const LEAN: Partial<Record<Pose, number>> = { attack0: -1, attack1: 1 };
+/**
+ * The weapon's swing in a pose: rows above the grip shear by 1 px per `n` rows
+ * (+ forward), so the blade tilts while the grip stays in the hand.
+ */
+const SWING: Partial<Record<Pose, number>> = { attack0: -4, attack1: 2 };
+/** Eyes closed (the body layer's face). */
+const EYES_CLOSED = new Set<Pose>(['nap0', 'nap1', 'wake0']);
 /** Rows at and below this are legs (they don't sink). */
 const LEGS_FROM = 20;
 const INK = hex(SHARED.outline);
@@ -56,7 +69,16 @@ const LEGS: Record<Pose, Grid> = {
   walk0: ['.......pp..pp.......', '.......pp..pp.......', '......bbb..pp.......', '...........bbb......'],
   walk1: ['.......pp..pp.......', '.......pp..pp.......', '.......pp..bbb......', '......bbb...........'],
   kneel: ['....................', '....................', '......pppppppp......', '.....bbbb....bbb....'],
+  attack0: ['.......pp..pp.......', '.......pp..pp.......', '.......pp..pp.......', '......bbb..bbb......'],
+  attack1: ['.......pp..pp.......', '.......pp..pp.......', '......bbb..pp.......', '...........bbb......'],
+  nap0: ['....................', '....................', '.....pppppppppp.....', '.....bbb....bbb.....'],
+  nap1: ['....................', '....................', '.....pppppppppp.....', '.....bbb....bbb.....'],
+  wake0: ['....................', '.......pp..pp.......', '......pppppppp......', '.....bbbb....bbb....'],
+  sit: ['....................', '....................', '.....pppppppppp.....', '.....bbb....bbb.....'],
 };
+
+/** The body grid for a pose: closed eyes are a line of shaded skin. */
+const bodyFor = (pose: Pose): Grid => (EYES_CLOSED.has(pose) ? BODY.map((r, i) => (i === 8 ? r.replace(/k/g, 'S') : r)) : BODY);
 
 function bodyMap(skin = SHARED.skin, hair = SHARED.hair, shirt = SHARED.cloth): Record<string, Color> {
   return {
@@ -73,11 +95,21 @@ function bodyMap(skin = SHARED.skin, hair = SHARED.hair, shirt = SHARED.cloth): 
   };
 }
 
-/** A layer grid in a pose: rows above the legs sink; `legs` replaces the leg rows. */
-function posed(grid: Grid, pose: Pose, map: Record<string, Color>, legs?: Grid): Px {
+/** A layer grid in a pose: rows above the legs sink (and lean); `legs` replaces the leg rows; the hand swings. */
+function posed(grid: Grid, pose: Pose, map: Record<string, Color>, legs?: Grid, hand = false): Px {
   const px = new Px(AVATAR_W, AVATAR_H);
   const upper = grid.slice(0, LEGS_FROM);
-  px.stamp(upper, map, 0, SINK[pose]);
+  const lean = LEAN[pose] ?? 0;
+  const swing = hand ? SWING[pose] : undefined;
+  if (swing) {
+    // The grip: the lowest drawn row of the weapon.
+    let grip = upper.length - 1;
+    while (grip > 0 && !/[^.]/.test(upper[grip])) grip--;
+    upper.forEach((row, r) => {
+      const dx = r < grip ? Math.sign(swing) * Math.ceil((grip - r) / Math.abs(swing)) : 0;
+      px.stamp([row], map, lean + dx, SINK[pose] + r);
+    });
+  } else px.stamp(upper, map, lean, SINK[pose]);
   const lower = grid.slice(LEGS_FROM);
   if (legs) px.stamp(legs, map, 0, LEGS_FROM + (pose === 'kneel' ? 0 : 0));
   else if (lower.length) px.stamp(lower, map, 0, LEGS_FROM);
@@ -335,7 +367,7 @@ const WEAPONS: Record<string, [string, string, string]> = {
 export function addAvatar(reg: Registry): void {
   const bmap = bodyMap();
   const byPose = (fn: (pose: Pose) => Px) => POSES.map(fn);
-  reg.add({ id: 'avatar.body', atlas: 'shared', frames: byPose((p) => posed([...BODY, ...LEGS[p]], p, bmap, LEGS[p])), anchor: [10, 24] });
+  reg.add({ id: 'avatar.body', atlas: 'shared', frames: byPose((p) => posed([...bodyFor(p), ...LEGS[p]], p, bmap, LEGS[p])), anchor: [10, 24] });
 
   OUTFITS.forEach((o, tier) => {
     reg.add({ id: `avatar.outfit.${tier}`, atlas: 'shared', frames: byPose((p) => posed(o.front, p, o.map)), anchor: [10, 24] });
@@ -357,11 +389,11 @@ export function addAvatar(reg: Registry): void {
   }
   for (const [sku, [b, c, h]] of Object.entries(WEAPONS)) {
     const map = { b: hex(b), c: hex(c), g: hex(SHARED.gold[1]), h: hex(h) };
-    reg.add({ id: `avatar.${sku}`, atlas: 'shared', frames: byPose((p) => posed(WEAPON, p, map)), anchor: [10, 24] });
+    reg.add({ id: `avatar.${sku}`, atlas: 'shared', frames: byPose((p) => posed(WEAPON, p, map, undefined, true)), anchor: [10, 24] });
     if (sku !== 'weapon.basic') reg.add({ id: `icon.gear.${sku}`, atlas: 'shared', frames: [iconOf(posed(WEAPON, 'idle0', map))] });
   }
   const staffMap = { d: hex(SHARED.wood[1]), e: hex(SHARED.wood[2]) };
-  reg.add({ id: 'avatar.weapon.staff', atlas: 'shared', frames: byPose((p) => posed(STAFF, p, staffMap)), anchor: [10, 24] });
+  reg.add({ id: 'avatar.weapon.staff', atlas: 'shared', frames: byPose((p) => posed(STAFF, p, staffMap, undefined, true)), anchor: [10, 24] });
   // A wave: the free (left) arm raised over the idle0 pose, two frames.
   const waveMap = { s: bmap.s, c: bmap.c };
   const up = pad20([...Array(7).fill(''), '...ss', '...ss', '...cc', '...cc', '....cc', '....cc', '.....c']);

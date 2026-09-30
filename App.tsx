@@ -32,6 +32,8 @@ import { RootCeremonyHost } from './src/game/ceremonies/host';
 import { LootHost } from './src/screens/Quest/session/LootHost';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
 import { WelcomeFlow } from './src/overlays/WelcomeFlow';
+import { RewardChipHost } from './src/components/RewardChipHost';
+import { useQuestFonts } from './src/game/assets/fonts';
 import { BurstHost } from './src/components/celebrate/Burst';
 import { ConfettiHost } from './src/components/celebrate/Confetti';
 import { AuthProvider, useAuth } from './src/sync/AuthProvider';
@@ -92,6 +94,7 @@ const Root = memo(function Root() {
           <RootCeremonyHost />
         </>
       )}
+      <RewardChipHost />
       <ConfettiHost />
       <BurstHost />
       <HabitSheet />
@@ -131,6 +134,8 @@ function ThemedStatusBar() {
 }
 
 export default function App() {
+  // The pixel font for every screen, sign-in included (text shows in the system font until it loads).
+  useQuestFonts();
   useEffect(() => {
     const t = setTimeout(preloadSounds, SOUND_PRELOAD_DELAY_MS);
     return () => clearTimeout(t);

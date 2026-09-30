@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -17,6 +18,7 @@ import { springs, timings } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { ADET_MARK, ADET_MARK_STROKE } from '../glyphs';
+import { Text } from '../Text';
 
 const APath = Animated.createAnimatedComponent(Path);
 const ACircle = Animated.createAnimatedComponent(Circle);

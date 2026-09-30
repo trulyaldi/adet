@@ -12,13 +12,14 @@ import { Glyph, GlyphName } from './Glyph';
 import { usePressMotion } from './motion/Press';
 import { QuestBadge, useFreshChest, useQuestInvite } from './QuestBadge';
 import { QUEST_ENABLED } from '../game/enabled';
+import { spoken, WORDS } from '../domain/words';
 
 const TAB_FADE = { duration: 180, easing: Easing.out(Easing.quad) };
 
 const ALL_TABS: { key: Screen; label: string; glyph: GlyphName }[] = [
   { key: 'today', label: 'Today', glyph: 'today' },
   { key: 'projects', label: 'Projects', glyph: 'target' },
-  { key: 'stats', label: 'Stats', glyph: 'stats' },
+  { key: 'stats', label: spoken(WORDS.stats), glyph: 'stats' },
   { key: 'quest', label: 'Quest', glyph: 'quest' },
 ];
 /** The Quest tab disappears with the kill switch. */

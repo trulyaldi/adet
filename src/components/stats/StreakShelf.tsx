@@ -1,5 +1,6 @@
 import React, { memo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -11,6 +12,7 @@ import { Flame } from '../Flame';
 import { Glyph } from '../Glyph';
 import { Press } from '../motion/Press';
 import { ProjectInfo, StatsCard, TextNum } from './common';
+import { Text } from '../Text';
 
 const BADGE = 56;
 

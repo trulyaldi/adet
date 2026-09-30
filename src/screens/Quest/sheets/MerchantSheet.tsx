@@ -22,6 +22,7 @@ import { QUI } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
 import type { QuestModel } from '../useQuestModel';
 import { IconGrid, QuestSheet, Row } from './common';
+import { spoken, WORDS } from '../../../domain/words';
 
 const monthKey = (ms: number) => {
   const d = new Date(ms);
@@ -77,7 +78,7 @@ export function MerchantSheet({ model, onClose, reduced }: { model: QuestModel; 
   const cells = SHOP.map((s) => ({
     key: s.sku,
     icon: s.icon,
-    label: `${s.name}, ${s.cost} credits${locked(s) ? `, unlocks at ${RANKS[s.rankRequired!].title}` : owned.has(s.sku) && s.kind !== 'freeze' ? ', owned' : ''}`,
+    label: `${s.kind === 'freeze' ? spoken(WORDS.freeze) : s.name}, ${s.cost} credits${locked(s) ? `, unlocks at ${RANKS[s.rankRequired!].title}` : owned.has(s.sku) && s.kind !== 'freeze' ? ', owned' : ''}`,
     dim: locked(s) || (!owned.has(s.sku) && !canBuy(s) && s.kind !== 'freeze') || (s.kind === 'freeze' && !canBuy(s)),
     badge: locked(s) ? ('lock' as const) : owned.has(s.sku) && s.kind !== 'freeze' ? ('check' as const) : null,
   }));

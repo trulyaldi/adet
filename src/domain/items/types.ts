@@ -3,7 +3,9 @@
 //
 //   type          purpose                          props
 //   task          a weak point                     { status, order, doneAt? }
-//   log           a chronicle entry (body = text)  { sessionId }
+//   log           a chronicle entry (body = text)  { sessionId, amount?, metricId? }
+//                 sessionId '' is a quick log: an activity recorded without a session
+//   metric_def    a habit's one measure            { label, unit }   (id `metric:<habitId>`)
 //   chest_claim   a session's chest was opened     { sessionId, claimedAt }
 //   purchase      a shop purchase                  { sku, cost, month? }
 //   achievement   an append-only milestone         { kind, ref, at }
@@ -11,8 +13,8 @@
 //
 // Link kinds: task → session `planned_for` / `completed_in`; log → session `chronicles`.
 
-export type ItemType = 'task' | 'log' | 'chest_claim' | 'purchase' | 'achievement' | 'quest_meta';
-export const ITEM_TYPES: readonly ItemType[] = ['task', 'log', 'chest_claim', 'purchase', 'achievement', 'quest_meta'];
+export type ItemType = 'task' | 'log' | 'chest_claim' | 'purchase' | 'achievement' | 'quest_meta' | 'metric_def';
+export const ITEM_TYPES: readonly ItemType[] = ['task', 'log', 'chest_claim', 'purchase', 'achievement', 'quest_meta', 'metric_def'];
 
 export interface TaskProps {
   status: 'open' | 'done';
@@ -23,7 +25,18 @@ export interface TaskProps {
 }
 
 export interface LogProps {
+  /** The session it chronicles; '' for a quick log (no session). */
   sessionId: string;
+  /** How much of the habit's measure was done (e.g. 12 pages). Never rewarded. */
+  amount?: number;
+  /** The measure `amount` is in (a metric_def id). */
+  metricId?: string;
+}
+
+/** A habit's measure: what "how much" means for it (pages, problems, words). */
+export interface MetricDefProps {
+  label: string;
+  unit: string;
 }
 
 export interface ChestClaimProps {
@@ -72,7 +85,7 @@ export interface QuestSettings {
   ai: boolean;
   /** The privacy line was shown the first time AI was turned on. */
   aiNoticeSeen: boolean;
-  /** The battle strip on the timer screen. */
+  /** The scene (the Stage) on the timer screen. The key keeps its shipped name. */
   battleStrip: boolean;
   motion: QuestMotion;
   /** Custom NPC names by NPC id; empty = the defaults. */
@@ -106,6 +119,7 @@ export interface PropsByType {
   purchase: PurchaseProps;
   achievement: AchievementProps;
   quest_meta: QuestMetaProps;
+  metric_def: MetricDefProps;
 }
 
 interface ItemBase<T extends ItemType> {
@@ -128,8 +142,9 @@ export type ChestClaimItem = ItemBase<'chest_claim'>;
 export type PurchaseItem = ItemBase<'purchase'>;
 export type AchievementItem = ItemBase<'achievement'>;
 export type QuestMetaItem = ItemBase<'quest_meta'>;
+export type MetricDefItem = ItemBase<'metric_def'>;
 
-export type Item = TaskItem | LogEntryItem | ChestClaimItem | PurchaseItem | AchievementItem | QuestMetaItem;
+export type Item = TaskItem | LogEntryItem | ChestClaimItem | PurchaseItem | AchievementItem | QuestMetaItem | MetricDefItem;
 export type ItemOf<T extends ItemType> = Extract<Item, { type: T }>;
 
 export type LinkEnd = 'item' | 'session' | 'habit';
@@ -156,6 +171,10 @@ export interface Link {
 export const QUEST_META_ID = 'quest_meta';
 export const chestClaimId = (sessionId: string) => `chest:${sessionId}`;
 export const logId = (sessionId: string) => `log:${sessionId}`;
+/** One measure per habit: editing it overwrites the same record on every device. */
+export const metricDefId = (habitId: string) => `metric:${habitId}`;
+/** A log recorded without a session (a quick log). */
+export const isQuickLog = (l: { props: LogProps }) => !l.props.sessionId;
 export const achievementId = (kind: AchievementKind, ref: string) => `ach:${kind}:${ref}`;
 export const linkId = (kind: LinkKind, fromId: string, toId: string) => `${kind}:${fromId}:${toId}`;
 
@@ -163,6 +182,9 @@ export const linkId = (kind: LinkKind, fromId: string, toId: string) => `${kind}
 // Parsing (rows from the server, saved state): anything malformed gets a safe
 // default instead of crashing a screen.
 // ---------------------------------------------------------------------------
+
+/** Longest measure label or unit. */
+export const METRIC_LABEL_MAX = 24;
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const num = (v: unknown, d = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : d);
@@ -217,8 +239,16 @@ export function parseProps<T extends ItemType>(type: T, raw: unknown): PropsByTy
       if (doneAt) out.doneAt = doneAt;
       return out as PropsByType[T];
     }
-    case 'log':
-      return { sessionId: str(p.sessionId) ?? '' } as PropsByType[T];
+    case 'log': {
+      const out: LogProps = { sessionId: str(p.sessionId) ?? '' };
+      const amount = num(p.amount, NaN);
+      if (Number.isFinite(amount) && amount >= 0) out.amount = amount;
+      const metricId = str(p.metricId);
+      if (metricId) out.metricId = metricId;
+      return out as PropsByType[T];
+    }
+    case 'metric_def':
+      return { label: (str(p.label) ?? '').trim().slice(0, METRIC_LABEL_MAX), unit: (str(p.unit) ?? '').trim().slice(0, METRIC_LABEL_MAX) } as PropsByType[T];
     case 'chest_claim':
       return { sessionId: str(p.sessionId) ?? '', claimedAt: str(p.claimedAt) ?? new Date(0).toISOString() } as PropsByType[T];
     case 'purchase': {

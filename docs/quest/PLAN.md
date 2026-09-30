@@ -1,15 +1,259 @@
 # Quest Mode — implementation plan
 
-## Audit after Codex handoff — 2026-09-29
+**Resume here (v2):** all tickets N0–N10 done; PR open for feat/quest-v2. Remaining: device QA on the owner's iPhone (DEVICE_QA §14–16), and the Ninja Adventure download (OWNER_ACTIONS) for real art.
 
+## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
+
+Worktree `../adet-v2`, branch `feat/quest-v2` from `origin/main` (`024dcb3`, PR #23 merged), with the
+tested stop → Loot hand-off fix cherry-picked from `fix/quest-crash` (`bf378fe`; its diagnostic commit was
+not taken). Dependencies are a real `npm ci` (the owner's `node_modules` predates #22's lockfile). Packs
+copied read-only from `../adet-polish/assets/game/raw/` (Kenney: impact, interface, music jingles, rpg audio,
+tiny dungeon, tiny town).
+
+### N0 baseline
+
+| Check | Result |
+|---|---|
+| Typecheck | pass |
+| Tests | 447 pass, 0 fail |
+| iOS export | one Hermes bundle, 5,125,659 B; assets 669,624 B |
+| Web export | `index` 2,690,049 B + async chunks (BattleStrip 2.3 KB, LootSheet 7.6 KB, QuestScreen 64 KB, Scene 12 KB, common 555 KB) |
+
+### N0 mascot references, for N5
+
+The old mascot lived in its own component folder (`Mascot`, `ScreenMascot`, art and motion files), in
+`src/theme/mascot.ts` (+ its test) and in `assets/mascot/` (a spec and eight SVGs). It was used by
+`src/components/ErrorBoundary.tsx`, `src/components/stats/{PeriodChart,WeekHero}.tsx`,
+`src/overlays/{CelebrationHost,FocusView,WelcomeFlow}.tsx`, `src/screens/{ProjectsScreen,StatsScreen,TodayScreen}.tsx`,
+and named in comments in `src/screens/Quest/session/QuestFocus.tsx` and `src/store/{StreakStore.tsx,Watchers.tsx}`.
+All of it is gone after N5.
+
+### N0 stand-in inventory, for N9
+
+`generated-placeholder`: 0. `needs-art` (Adet's own code-drawn stand-ins, allowlisted in
+`assets/game/needs-art.json`): 327 ids — avatar 28, boss 21, trophy 14, mob 42, npc 6, villager 7, critter 18,
+pet 4, decor 63, parallax 21, prop 38, tile 35, fx 8, icon 22. Only 38 ids come from a pack or a recolour/composite
+of one (see `docs/quest/art/INVENTORY.md`).
+
+### N1 result
+
+Confirmed in code: every Skia screen (map, Loot sheet, battle strip, ceremonies, playground) was a
+`() => import(...)` passed to `SkiaGate`, so Expo Go fetched each one as an async bundle through the dev
+server on first use. Now `src/game/render/screens.ts` (native: `require` inside each loader, still lazy)
+and `screens.web.ts` (web: `import()` for CanvasKit) hold every loader; `SkiaGate` renders the synchronous
+module inside a `SkiaBoundary`. Error paths: a ceremony that fails finishes (`onError={done}`), the Loot
+sheet falls back to a plain "Later" panel (the chest waits at camp), a Quest sheet closes, the map shows
+a calm note, the timer strip shows nothing. Guard: `render/noDynamicImport.test.ts`. iOS export: one
+Hermes file, 5,124,989 B (−670 B); web export starts (headless Chromium: sign-in screen, no console errors;
+needs `.env` and `expo export --clear`).
+
+### N3 result
+
+`npm run game:balance` (5 seeds; days per biome, first loop):
+
+| Profile | forest | swamp | desert | frost | iron | volcano | astral | total |
+|---|---|---|---|---|---|---|---|---|
+| 1 h/day | 17.6 | 16.6 | 23.4 | 23.2 | 22.6 | 28.4 | 36.0 | 168 |
+| 2 h/day | 9.0 | 11.4 | 16.6 | 17.4 | 18.8 | 19.0 | 25.6 | 118 |
+| 3 h/day | 6.4 | 11.0 | 13.8 | 15.6 | 15.8 | 16.2 | 21.0 | 100 |
+| 4 h/day | 6.2 | 9.6 | 12.8 | 15.6 | 13.8 | 14.2 | 16.2 | 88 |
+
+2 h/day lands in every band (8–10, 16–20, 24–30). 4 h/day finishes the loop 1.9× faster than 1 h/day. Seals
+rarely hold a 2 h/day player back (the boss's HP takes longer than its Days seal); they bite for very heavy
+days (the 4 h/day forest boss waits ~2 days for its Days seal) and for 1 h/day late bosses (Insight).
+**The current biome's node position may move back after this rebalance** (boss defeats, XP, levels and
+credits are unaffected: stored achievements floor the journey).
+
+### N5 result
+
+Every mascot appearance is now `<Character mood>` (`src/components/character/Character.tsx`): the player's
+own layered avatar in their rank and gear, loaded through `SkiaGate` so app start still loads no Skia, with an
+empty same-size box until it draws. Moods map to avatar animations: idle → idle, focused → attack, sleepy →
+nap (breathing, drifting "z"), cheering/celebrating → cheer, relaxed → sit, waving → wave. New poses for every
+layer (all 7 tiers and all gear): attack ×2 (lean and a sheared blade swing, grip stays in hand), nap ×2 (eyes
+closed), wake, sit; `fx.zzz`. Removed: the mascot's components, colours, test, SVGs and spec (no dependency
+became unused: `react-native-svg` is still used by icons and charts). Bundle, N0 → N5 (cumulative, N2's font
+swap included): iOS Hermes 5,125,659 → 5,110,167 B (−15.5 KB); iOS assets 669,624 → 539,424 B (−130 KB);
+web index 2,690,049 → 2,671,082 B (−19 KB).
+
+### N6 result
+
+`Stage` (`src/screens/Quest/session/Stage.tsx`) replaces the battle strip and the timer's corner character:
+one canvas (sky, slow far parallax and clouds, ground, 6 ambient particles, your layered character, the enemy),
+then the HP bar and a seal row at fixed heights. Scene logic is pure (`domain/game/stage.ts`: `stageStep`,
+`STAGE_TIMING`, `stageSize`, `previewGame` = the running session through `deriveGameState`, re-derived once a
+focused minute). A hit is a 1 px recoil plus a warm colour-matrix tint (no white); a defeat is warm petals
+(`dissolve` tinted with the biome accent), a coin and a cheer, then the next enemy walks in; a staggered boss
+kneels (`.low` + `fx.dazed`); a nap sits with closed eyes, breathing, "z"s and a 13% dusk overlay. The clock
+stops with reduced motion, a dimmed screen or the app in the background. QA panel: "Timer Stage" forces each
+scene, full size and slim.
+
+### N7.4 result (activity rewards, domain)
+
+`deriveGameState` takes `goalDays` and `bountyWeeks` (from `fromData`: days whose plan was all done, by their
+once-a-day log and today's live plan; weeks where every active project met its weekly target, by session start)
+and adds `GameState.activity`. Constants in `balance.ts`: outside weak point +5 XP (5/day), quick log +3 XP
+(3/day), completed day +5 credits (once a day), bounty +40 credits +60 XP (once a week). Non-session XP (quick
+logs + outside weak points together) is held to 30 a day = 10% of a full day of sessions (300 XP). The memo now
+keys on marks, per-day edits, daily logs, prefs and the local day, so a check-off moves the game at once.
+
+### N9 result
+
+- **Stand-ins:** `needs-art` 322 → 325 ids (+ `icon.calendar`, `fx.dazed`, `fx.zzz`, all drawn in the stand-in
+  pipeline); `generated-placeholder` 0 → 0. No stand-in could be replaced: the only packs here are Kenney Tiny
+  Dungeon and Tiny Town (already mapped where they fit), and the spec's primary pack (Ninja Adventure, CC0)
+  needs a browser click-through on itch.io (`docs/quest/OWNER_ACTIONS.md`). All eight contact sheets were
+  regenerated and inspected: every avatar layer has its 11 poses aligned, new effects match the outline style.
+- **Motion:** `src/game/ui/motion.ts` (`QUEST_MS`, `shakeOnce`) replaces scattered durations and three copies
+  of the same hit shake.
+- **Loading:** `PixelDots` (three squares stepping) replaces the breathing logo and the system spinners (app
+  loading, sign-in, the Quest tab's "Finding the path").
+- **Not done here:** the 3×/4× light/dark check of every screen needs the phone (DEVICE_QA §16).
+
+### N10 result
+
+| Check | Result |
+|---|---|
+| Tests | 505 pass, 0 fail |
+| Typecheck | pass (the Sage is a Supabase Edge Function, unchanged in v2; no `worker/` on this branch) |
+| Lint (Quest scope) | 0 errors, the same 8 warnings as the baseline |
+| `npm run game:balance` | 2 h/day: 9.0 / 17.4 / 25.6 days for biomes 1 / 4 / 7 |
+| `npm run check:size` | within budget |
+| iOS export, Quest on / off | one Hermes file each, 5,172,642 B (N0: 5,125,659, +47 KB); assets 539,424 B (N0: 669,624, −130 KB) |
+| Web export, Quest on / off | index 2,692,128 B (N0: 2,690,049, +2 KB); starts (headless Chromium: sign-in in the pixel font) |
+| `npx expo start` | serves the iOS bundle (200, 12.4 MB dev) |
+| Stand-ins | needs-art 322 → 325; generated-placeholder 0 → 0 |
+
+QA panel (dev only, in memory): force each Stage scene (full and slim), "+2 weeks" of sessions and
+"+3 logs" for the Trail, fill or empty each seal, and a Trail preview of the what-if data.
+
+### v2 assumptions
+
+(Numbered from 51, continuing the list below.)
+
+51. **Branch base.** Quest Mode is on `origin/main`; v2 branches from it. The stop → Loot hand-off hold from
+    the crash investigation (`bf378fe`) is kept: it is tested and independent of N1's cause.
+52. **Error fallbacks are silent.** A failed Skia screen shows the calmest thing that keeps the flow going
+    (see N1 result), never an error message.
+53. **One pixel font (N2).** Tiny5 replaces Pixelify Sans and Silkscreen everywhere; `tiny` text is 12 pt,
+    bold uses the same face, check marks are drawn (`PixelCheck`). See `docs/quest/art/FONT_DECISION.md`.
+54. **A flaky run.** The 5,000-session benchmark (best of 12 runs, < 50 ms) is the one timing test; it failed
+    twice under heavy parallel load (N1, and during N5 before 67's speed-up). See 67.
+55. **Surplus follows the path, always (R1).** Damage over the one allowed defeat walks forward, stopping each
+    enemy at 1 HP, past a staggered boss (0 HP), past the Burnout Drake once its daily third is taken, and into
+    the next biome if it gets that far. Nothing is dropped: a test checks that every journey session's hits add
+    up to its base + crit damage.
+56. **Seals count sessions fought against the boss (R3).** A session belongs to the encounter that is the front
+    enemy *before* its damage lands; sessions while a mob is in front count toward no seal. Days are local days
+    (the device time zone); Depth counts focused minutes ≥ 45; Insight counts completed weak points plus a
+    chronicle entry with text, once the chest is claimed.
+57. **When a boss falls (R4).** Either a session's damage empties it with its seals already met, or a session
+    against a staggered boss fills the last seal (its own day, depth or claimed insight). Both use the
+    session's one defeat.
+58. **Pacing constants were retuned (R2).** The spec's starting values (mobs ×1.12 per biome, bosses 1.5 × weekly,
+    flat) put biome 7 at ~18 days for 2 h/day. Shipped: mobs `90 × 1.15^biome`; bosses
+    `clamp(1.1 × weekly × 1.15^biome, 480, 2400)`, tutorial 420; ×1.2 per loop after the clamp. Result below.
+59. **Simulator profiles.** 6 active days a week (rest days rotate), ±25% daily variation, 1–3 sessions a day,
+    40% of chests claimed with a line and 30% with one weak point; each profile's weekly target equals its real
+    weekly minutes. Seeded (mulberry32), so the test and `npm run game:balance` agree.
+60. **Staggered look without new art.** A staggered boss uses its existing `.low` pose plus `fx.dazed` (three
+    stars on an ellipse, drawn in the stand-in pipeline); `icon.calendar` is new stand-in art for the Days seal.
+61. **Seal counts are shown in the boss panel.** The tap on the gate that opens the panel is the reveal; the pips
+    themselves aren't buttons (no nested pressables, see PR #19).
+62. **The crash-repro script is gone.** `scripts/quest-crash-repro.ts` came with the cherry-pick and assumed the
+    old HP rules; `game:balance` and the derive tests cover the same ground.
+63. **A quick log is a `log` with `sessionId: ''` (N4).** Older builds already parse a missing session id to
+    `''`, so the new records read harmlessly there. A measure is one `metric_def` per habit with the fixed id
+    `metric:<habitId>` ("at most one" by construction; editing overwrites it on every device). No migration:
+    `items.type` is free text.
+64. **Quick-log rewards.** Only a quick log with a line is rewarded (+3 XP), the first 3 each local day; an amount
+    alone is saved but earns nothing. On the journey, a rewarded quick log adds Insight when a boss is the front
+    enemy, and fells a staggered boss whose last seal it fills (the defeat records the log's id).
+65. **The Trail compares this week so far with last week to the same moment**, as the Stats hero does, so a
+    Monday morning is never "resting" against a whole week. Weeks follow the app's week-start setting (local
+    time, `time.ts`). Focused minutes count every session by its start; skill levels use the game's effective
+    minutes when given. A session's measure counts on the session's day; a quick log's on its own.
+## Audit after Codex handoff — 2026-09-29
+66. **Mascot moods keep their meaning.** "Focused" became a gentle attack, "sleepy" a nap, "relaxed" sitting.
+    Project tints no longer apply (the character wears its own gear). Accessibility labels read "Your
+    character, napping" and so on.
+67. **Derive stays fast.** N3/N4 made a 5,000-session derive ~40% slower in Node (module getters in tsx's
+    output); caching mob HP per biome, computing max HP without building node objects and skipping enemies
+    already at 1 HP brought it back to ~13 ms alone (~35–40 ms when the whole suite runs in parallel).
 Claude resumed after Codex. Codex's commits are `d7aeff8` (R), `59f7576` (Q10
 previews), `9aeb50b` (Q11) and `daee7e7` (Q12); it ran out of credits in the
 middle of the Q9 rewrite, which was left uncommitted (`be5ae32` commits it as
 it stood). `226e664` (Q10) predates Codex. The spec files were never in the
 repo; their text was recovered from Codex's session log into
 `docs/quest/spec/`.
-
+68. **The Stage's size.** Between the ring (+12 pt) and the controls; at most 28% of the screen; a slim 72 pt
+    strip under 700 pt tall or when there's under 120 pt of room; below 48 pt it isn't shown (your
+    character stays in the corner). Its pixel scale fits a mob (36 px) or a boss (70 px) tall.
+69. **The setting keeps its key.** Quest settings now say "Scene on the timer"; the synced key is still
+    `battleStrip` so older builds read the same choice.
+70. **The benchmark takes the best of 30.** Under the suite's parallel load, best-of-12 still caught
+    contended runs now and then; 30 runs measure the same minimum more reliably.
 ### Status (after the fixes below)
+71. **Which activities are "non-session".** Quick logs and weak points done outside a session share the 30 XP
+    day cap. A completed day and a met week reward session time already tracked, so they sit outside it (a
+    day's bonus is 5 credits and no XP; a week's 60 XP comes once a week).
+72. **Activity rewards count from the journey's start**, for XP as well as credits (unlike session XP, which
+    counts all history): a veteran doesn't receive years of bounties at once. A week counts if any of its days
+    is on or after the start day.
+73. **Deleting a weak point done outside a session removes its +5 XP**, as deleting a session removes its XP:
+    the reward follows the record (re-ticking the same task is still one record, so nothing can be farmed).
+74. **"Daily goal met" is the day's plan completed** (the Today ring full, when the confetti plays), not any
+    logged time (that lights the streak). A past day the app never logged earns nothing, as elsewhere.
+75. **Pixel icons are SVG, not Skia.** `Glyph` draws a 16×16 grid from `pixelGlyphs.ts` as merged `<Rect>`
+    runs, sized to a whole number of device pixels and centred on whole pixels (react-native-svg has no
+    `shape-rendering`; aligned edges are crisp without it). So the tab bar and every screen get pixel icons
+    without loading Skia at start. 34 of 65 glyphs have one (the tab bar, timer controls, check, clock,
+    calendar, flame, gear, chevrons…); the rest keep their stroke glyph, listed in INVENTORY. The icons are
+    original art drawn for the app: the licensed packs here have no UI icons.
+76. **The pixel look comes through shared layers, not screen rewrites (N7.1).** `src/components/Text.tsx`
+    wraps React Native's `Text`/`TextInput` with Tiny5 set first; 44 files changed only their import line.
+    Weight and letter-spacing are normalised (faux bold and tight tracking blur a pixel font); size and
+    colour carry the hierarchy. Tokens: radii 2–6 (were 10–28), a hard 2 px drop shadow instead of a soft
+    8 px blur, a 2 px button edge, presses nudge 1 px (chunky buttons sink 2) instead of scaling; the timer's
+    gradient wash became four flat bands. Screens that hard-code `borderRadius` numbers keep them (111 uses
+    across screens; changing each is the per-screen rewrite the spec rules out). Colours are unchanged:
+    Adet's blue stays the accent, light and dark both follow the system.
+77. **The pixel font loads before sign-in** (in `App`); on web the stack falls back to the system face, not the
+    browser's serif, for the moment before it arrives.
+78. **Vocabulary, sparingly (N7.3).** There is no central strings file, and an i18n layer would be a rewrite, so
+    `src/domain/words.ts` holds the table (game word + plain word, `spoken()` says both). Applied where it stays
+    instantly clear: Stats → **Almanac** (screen title; the tab says "Almanac, stats"), Streak freeze → **Ember
+    shield** (the Merchant, with its icon). Weak point and Chronicle already name those things in Quest Mode.
+    Kept plain, because a game word would make you stop and think: habit (forms), weekly target (a stepper),
+    session note (a placeholder), focus session, streak (the flame and its number already read as one).
+79. **The game on other screens, lightly (N7.5).** Today's plan rows show a small `LV n` beside each habit (once
+    the journey has started); the streak pill shows a small ember shield when a freeze covered yesterday;
+    a `+5 XP` / `+5 credits` chip floats up for about a second when something outside a session earns a
+    reward. The chip host watches the derived totals and stays quiet for session changes (the Loot sheet counts
+    those up), open sheets and the focus view. No numbers are duplicated and no panels were added. A habit
+    created simply appears as a skill in the character sheet (derived).
+80. **The Trail lives in the Scribe (N8).** A "Trail" tab beside the Chronicle: the trail line (rising / steady /
+    resting counts, neutral pixel marks: stairs, a level line, a moon; never red), then a row per habit (icon,
+    verdict, four weekly bars, reason chips). Tap a row: this week against last week, and "Add measure" (label
+    and unit). The quick log is a panel at the top of the Scribe (not a second modal: iOS shows one at a time);
+    the camp's quill button (bottom right of the map) opens the Scribe with it showing. With a measure, the
+    Loot sheet and the quick log show − / amount / +; an amount alone may open a chest (it earns nothing extra).
+    The Almanac (Stats) links to the Trail from its header; its week hero stays as it was (per project), the
+    Trail is per habit, so nothing is shown twice. Aqyl's local insight names a rising skill first.
+81. **Known: a completed day's +5 credits can be taken back.** The reward is derived from today's live plan, so
+    setting a habit aside or changing today's capacity after the ring fills un-completes the day and its 5
+    credits disappear (the chip had already shown them). Around midnight the same can happen briefly until
+    yesterday's once-a-day log is written. Kept derived (nothing stored), noted for the owner.
+82. **Known: web now fetches CanvasKit at launch.** Your character on Today is drawn with Skia (N5), so on web
+    the Skia runtime downloads when Today first renders (native loads Skia there too, lazily through
+    `require`); offline, the character's box stays empty. This supersedes assumption 50's "only when the
+    Quest tab opens". Drawing the non-Quest portrait with the SVG pixel renderer would remove it.
+83. **N1 evidence.** Expo Go's lazy iOS dev bundle (`index.bundle?platform=ios&dev=true&lazy=true`): on
+    `origin/main` none of QuestScreen, BattleStrip, LootSheet or Scene is in it and it carries 15 async-require
+    calls (each fetched through the dev server on first use: the red screen's path); on this branch all the
+    Quest screens are in the main bundle and it has no async-require call.
+84. **The kill switch hides, it doesn't strip.** The off build inlines `EXPO_PUBLIC_QUEST_ENABLED=false`
+    (checked in the web bundle) and hides Quest at runtime; its code still ships (same size).
 
 | Ticket | Status | Evidence |
 |---|---|---|

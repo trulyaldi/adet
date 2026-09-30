@@ -2,7 +2,7 @@
 // Pure and deterministic; nothing here is stored except what the watcher
 // writes back from `newAchievements` (append-only).
 
-import { achievementId, AchievementProps, Item, itemsOfType, Link } from '../items/types';
+import { achievementId, AchievementProps, isQuickLog, Item, itemsOfType, Link } from '../items/types';
 import type { Habit, Session } from '../types';
 import * as B from './balance';
 import {
@@ -37,6 +37,26 @@ export interface DeriveInput {
   tz?: GameTz;
   /** Σ weekly target minutes across active habits (boss HP). Default: Σ over `habits`. */
   weeklyTargetMin?: number;
+  /** Local days ('YYYY-MM-DD') whose plan was completed (the Today ring full). */
+  goalDays?: readonly string[];
+  /** Weeks (their first day, 'YYYY-MM-DD') in which every weekly target was met. */
+  bountyWeeks?: readonly string[];
+}
+
+/** The most XP a day of sessions can earn (the burnout guard's bands). */
+export const DAY_SESSION_XP_MAX = (DAY_FULL_MIN + (DAY_HALF_MIN - DAY_FULL_MIN) * HALF_RATE) * XP_PER_MIN;
+/** Non-session XP allowed per local day. */
+export const DAY_ACTIVITY_XP_MAX = Math.round(DAY_SESSION_XP_MAX * B.ACTIVITY_XP_SHARE);
+
+export interface ActivityRewards {
+  /** Quick logs with a line that earned XP (after both caps). */
+  quickLogXp: number;
+  /** Weak points done outside a session. */
+  outsideTaskXp: number;
+  goalDays: number;
+  bounties: number;
+  xp: number;
+  credits: number;
 }
 
 export type NodeKind = (typeof B.NODE_KINDS)[number];
@@ -58,6 +78,15 @@ export interface NodeHit {
   node: NodeRef;
   damage: number;
   defeated: boolean;
+  /** A boss brought to 0 HP whose seals aren't all filled yet. */
+  staggered?: boolean;
+}
+
+export type SealKind = 'days' | 'depth' | 'insight';
+export interface SealState {
+  kind: SealKind;
+  have: number;
+  need: number;
 }
 
 export interface BossDefeat {
@@ -65,7 +94,10 @@ export interface BossDefeat {
   loop: number;
   /** Epoch ms. */
   at: number;
-  /** The session that landed the blow, or null when only an achievement records it. */
+  /**
+   * The session that landed the blow (or the quick log that filled a staggered
+   * boss's last seal), or null when only an achievement records it.
+   */
   sessionId: string | null;
 }
 
@@ -132,6 +164,12 @@ export interface JourneyState {
   totalDamage: number;
   /** Every boss beaten (derived or recorded), oldest first. */
   defeated: BossDefeat[];
+  /** The front enemy is a boss at 0 HP waiting for its seals (it never heals). */
+  staggered: boolean;
+  /** Seals of the current biome's boss (enabled ones only), filled by sessions fought against it. */
+  seals: SealState[];
+  /** Enemies ahead in this biome that surplus damage has already softened. */
+  softened: { global: number; hp: number; maxHp: number }[];
 }
 
 export interface GameState {
@@ -149,6 +187,8 @@ export interface GameState {
   newAchievements: AchievementProps[];
   /** Boss-defeat achievements already recorded in items, for ceremonies. */
   bossAchievements: string[];
+  /** What activity outside sessions earned (v2 N7.4). */
+  activity: ActivityRewards;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,19 +210,38 @@ export function bossGlobal(biomeIndex: number, loop: number): number {
   return loop * PER_LOOP + biomeIndex * B.NODES_PER_BIOME + (B.NODES_PER_BIOME - 1);
 }
 
+const MOB_HP_BY_BIOME = Array.from({ length: BIOME_COUNT }, (_, i) => Math.round(B.MOB_HP_BASE * B.MOB_HP_GROWTH ** i));
+
+/** Mob HP for a biome (effective minutes). */
+export function mobHp(biomeIndex: number): number {
+  return MOB_HP_BY_BIOME[biomeIndex] ?? Math.round(B.MOB_HP_BASE * B.MOB_HP_GROWTH ** biomeIndex);
+}
+
+// Hot-loop copies (a module namespace read is a getter call in some bundlers).
+const NODES = B.NODES_PER_BIOME;
+const KINDS = B.NODE_KINDS;
+const DEPTH_MIN = B.DEPTH_MIN;
+
+const SEAL_TARGETS: Record<SealKind, number>[] = B.SEAL_DAYS.map((days, i) => ({ days, depth: B.SEAL_DEPTH[i], insight: B.SEAL_INSIGHT[i] }));
+
+/** The seals a biome's boss needs (0 disables one). */
+export function sealTargets(biomeIndex: number): Record<SealKind, number> {
+  return { ...SEAL_TARGETS[Math.max(0, Math.min(SEAL_TARGETS.length - 1, biomeIndex))] };
+}
+
 /** Boss HP for a biome run, from the weekly target minutes. */
 export function bossHp(biomeIndex: number, loop: number, weeklyTargetMin: number): number {
   const base =
     biomeIndex === 0 && loop === 0
       ? B.FIRST_BOSS_HP
-      : Math.min(B.BOSS_HP_MAX, Math.max(B.BOSS_HP_MIN, Math.round(B.BOSS_HP_FACTOR * Math.max(0, weeklyTargetMin))));
+      : Math.min(B.BOSS_HP_MAX, Math.max(B.BOSS_HP_MIN, Math.round(B.BOSS_HP_FACTOR * Math.max(0, weeklyTargetMin) * B.BOSS_HP_GROWTH ** biomeIndex)));
   return Math.round(base * B.ASCENSION_HP_MULT ** loop);
 }
 
 export function nodeMaxHp(n: NodeRef, weeklyTargetMin: number): number {
   if (n.kind === 'camp') return 0;
   if (n.kind === 'boss') return bossHp(n.biomeIndex, n.loop, weeklyTargetMin);
-  return B.MOB_HP;
+  return mobHp(n.biomeIndex);
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +273,21 @@ export function deriveGameState(input: DeriveInput): GameState {
   const claims = new Set<string>();
   for (const c of itemsOfType(input.items, 'chest_claim')) claims.add(c.props.sessionId);
   const logs = new Map<string, string>();
-  for (const l of itemsOfType(input.items, 'log')) logs.set(l.props.sessionId, l.body);
+  // Quick logs (no session), oldest first; the first few with a line each day are rewarded.
+  const quick: { id: string; at: number; rewarded: boolean }[] = [];
+  const quickPerDay = new Map<string, number>();
+  for (const l of itemsOfType(input.items, 'log')) {
+    if (!isQuickLog(l)) logs.set(l.props.sessionId, l.body);
+    else quick.push({ id: l.id, at: l.createdAt, rewarded: !!l.body.trim() });
+  }
+  quick.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  for (const q of quick) {
+    if (!q.rewarded) continue;
+    const d = tz.dayKey(q.at);
+    const n = quickPerDay.get(d) ?? 0;
+    q.rewarded = n < B.QUICK_LOG_DAILY_CAP;
+    quickPerDay.set(d, n + 1);
+  }
   const completed = new Map<string, number>();
   for (const l of input.links) if (l.kind === 'completed_in' && l.toType === 'session') completed.set(l.toId, (completed.get(l.toId) ?? 0) + 1);
   const spent = itemsOfType(input.items, 'purchase').reduce((a, p) => a + (p.props.cost || 0), 0);
@@ -257,17 +330,63 @@ export function deriveGameState(input: DeriveInput): GameState {
   }
 
   // ---- the journey, in end order ----
+  // One enemy falls per session at most (R1). Surplus damage carries down the
+  // path, never taking an enemy below 1 HP, until it is absorbed: nothing is
+  // discarded. A boss also needs its seals (R3); at 0 HP without them it is
+  // staggered (R4): it doesn't heal, and later sessions fill the seals.
   let pos = nodeAt(0);
-  let hp = nodeMaxHp(pos, target);
-  const settle = () => {
-    // Nodes with no HP left (the camp, a beaten node) are walked past.
-    while (hp <= 0) {
-      pos = nodeAt(pos.global + 1);
-      hp = nodeMaxHp(pos, target);
+  const soft = new Map<number, number>(); // damage already dealt to enemies ahead of the front
+  /** Max HP of node `g`, without building its NodeRef (the walk calls this a lot). */
+  const maxAt = (g: number) => {
+    const inLoop = g % PER_LOOP;
+    const node = inLoop % NODES;
+    const kind = KINDS[node];
+    if (kind === 'mob') return MOB_HP_BY_BIOME[Math.floor(inLoop / NODES)];
+    if (kind === 'camp') return 0;
+    return bossHp(Math.floor(inLoop / NODES), Math.floor(g / PER_LOOP), target);
+  };
+  const hpAt = (g: number) => maxAt(g) - (soft.get(g) ?? 0);
+  let hp = hpAt(0);
+  // Every enemy after the front and before `frontier` is down to 1 HP (or is a
+  // camp): surplus skips straight past them. Enemies only lose HP, so it only
+  // moves forward (the burnout guard keeps the walk short, but a long run of
+  // softened enemies would otherwise be re-walked by every session).
+  let frontier = 1;
+  const settleFrontier = () => {
+    if (frontier <= pos.global) frontier = pos.global + 1;
+    for (;;) {
+      const max = maxAt(frontier);
+      if (max > 0 && max - (soft.get(frontier) ?? 0) > 1) break;
+      frontier++;
     }
   };
-  settle();
+  const advance = (to: number) => {
+    // Walk past nodes with no HP (the camp); a softened node keeps its damage.
+    pos = nodeAt(to);
+    while (nodeMaxHp(pos, target) <= 0) pos = nodeAt(pos.global + 1);
+    hp = hpAt(pos.global);
+    soft.delete(pos.global);
+    settleFrontier();
+  };
+  advance(0);
+  // Seals per boss encounter (its biome run), from sessions fought against it.
+  const seals = new Map<string, { days: Set<string>; depth: number; insight: number }>();
+  const sealOf = (n: NodeRef) => {
+    const k = biomeRef(n.biome, n.loop);
+    let v = seals.get(k);
+    if (!v) seals.set(k, (v = { days: new Set(), depth: 0, insight: 0 }));
+    return v;
+  };
+  const sealsMet = (n: NodeRef) => {
+    const t = SEAL_TARGETS[Math.max(0, Math.min(SEAL_TARGETS.length - 1, n.biomeIndex))];
+    const v = sealOf(n);
+    return v.days.size >= t.days && v.depth >= t.depth && v.insight >= t.insight;
+  };
   const defeats = new Map<string, BossDefeat>();
+  const defeatBoss = (n: NodeRef, at: number, sessionId: string | null) => {
+    const ref = biomeRef(n.biome, n.loop);
+    if (!defeats.has(ref)) defeats.set(ref, { biome: n.biome, loop: n.loop, at, sessionId });
+  };
   let snapIdx = 0;
   const snapTo = (until: number) => {
     // Recorded bosses keep progress from ever going back (a balance change can't un-defeat one).
@@ -276,9 +395,8 @@ export function deriveGameState(input: DeriveInput): GameState {
       const ref = biomeRef(sb.biome, sb.loop);
       if (!defeats.has(ref)) defeats.set(ref, { biome: sb.biome, loop: sb.loop, at: sb.at, sessionId: null });
       if (pos.global <= sb.global) {
-        pos = nodeAt(sb.global + 1);
-        hp = nodeMaxHp(pos, target);
-        settle();
+        for (const g of [...soft.keys()]) if (g <= sb.global) soft.delete(g);
+        advance(sb.global + 1);
       }
     }
   };
@@ -295,8 +413,24 @@ export function deriveGameState(input: DeriveInput): GameState {
   const results: SessionResult[] = [];
   let xpTotal = 0;
   let earned = 0;
+  let qi = 0;
+  /** Rewarded quick logs up to `until`: XP always; Insight against a boss on the journey. */
+  const flushQuick = (until: number) => {
+    for (; qi < quick.length && quick[qi].at < until; qi++) {
+      const l = quick[qi];
+      if (!l.rewarded || startedAt === null || l.at < startedAt) continue;
+      snapTo(l.at);
+      if (pos.kind !== 'boss') continue;
+      sealOf(pos).insight++;
+      if (hp <= 0 && sealsMet(pos)) {
+        defeatBoss(pos, l.at, l.id);
+        advance(pos.global + 1);
+      }
+    }
+  };
 
   for (const s of byEnd) {
+    flushQuick(s.end);
     const eff = effOf.get(s.id)!;
     const day = dayOf.get(s.id)!;
     const onJourney = startedAt !== null && s.end >= startedAt;
@@ -314,6 +448,21 @@ export function deriveGameState(input: DeriveInput): GameState {
       snapTo(s.end);
       biome = pos.biome;
       loop = pos.loop;
+      let felled = false;
+      // Seals: a session fought against the boss (the front enemy before its damage).
+      if (pos.kind === 'boss') {
+        const v = sealOf(pos);
+        v.days.add(day);
+        if (s.duration / 60 >= DEPTH_MIN) v.depth++;
+        v.insight += c.completed + (hasChronicle ? 1 : 0);
+        // A staggered boss whose seals are now filled falls to this session.
+        if (hp <= 0 && sealsMet(pos)) {
+          hits.push({ node: pos, damage: 0, defeated: true });
+          defeatBoss(pos, s.end, s.id);
+          felled = true;
+          advance(pos.global + 1);
+        }
+      }
       baseDamage = Math.round(
         twistDamage(pos.biome, {
           effMin: eff,
@@ -329,28 +478,55 @@ export function deriveGameState(input: DeriveInput): GameState {
       );
       critDamage = c.claimed ? Math.min(MAX_CRITS, c.completed) * CRIT_DAMAGE : 0;
       let left = baseDamage + critDamage;
+      let g = pos.global;
       while (left > 0) {
-        let take = Math.min(left, hp);
-        const isDrake = pos.kind === 'boss' && pos.biome === 'volcano';
-        if (isDrake) {
-          const cap = Math.ceil(nodeMaxHp(pos, target) * VOLCANO_BOSS_DAILY_SHARE);
-          const used = drakeDay.get(day) ?? 0;
+        const front = g === pos.global;
+        if (!front && g < frontier) {
+          g = frontier;
+          continue;
+        }
+        const max = maxAt(g);
+        if (max <= 0) {
+          g++;
+          continue;
+        }
+        const n = front ? pos : nodeAt(g);
+        const cur = front ? hp : hpAt(g);
+        // Only the front enemy can fall, and only once per session; the rest stop at 1 HP.
+        const floor = front && !felled ? 0 : 1;
+        let take = Math.min(left, Math.max(0, cur - floor));
+        if (n.kind === 'boss' && n.biome === 'volcano') {
+          const cap = Math.ceil(max * VOLCANO_BOSS_DAILY_SHARE);
+          const key = `${n.global}:${day}`;
+          const used = drakeDay.get(key) ?? 0;
           take = Math.min(take, Math.max(0, cap - used));
-          drakeDay.set(day, used + take);
+          drakeDay.set(key, used + take);
         }
-        if (take <= 0) break; // the Drake has had enough for today
-        hp -= take;
-        left -= take;
-        damage += take;
-        const defeated = hp <= 0;
-        hits.push({ node: pos, damage: take, defeated });
-        if (defeated) {
-          if (pos.kind === 'boss') {
-            const ref = biomeRef(pos.biome, pos.loop);
-            if (!defeats.has(ref)) defeats.set(ref, { biome: pos.biome, loop: pos.loop, at: s.end, sessionId: s.id });
+        if (take > 0) {
+          left -= take;
+          damage += take;
+          if (front) hp -= take;
+          else {
+            soft.set(g, (soft.get(g) ?? 0) + take);
+            if (g === frontier && cur - take <= 1) settleFrontier();
           }
-          settle();
         }
+        if (front && hp <= 0 && !felled) {
+          if (n.kind === 'boss' && !sealsMet(n)) {
+            // Staggered: it stays the front enemy; the surplus walks on past it.
+            if (take > 0) hits.push({ node: n, damage: take, defeated: false, staggered: true });
+            g++;
+            continue;
+          }
+          hits.push({ node: n, damage: take, defeated: true });
+          if (n.kind === 'boss') defeatBoss(n, s.end, s.id);
+          felled = true;
+          advance(g + 1);
+          g = pos.global;
+          continue;
+        }
+        if (take > 0) hits.push({ node: n, damage: take, defeated: false });
+        g++;
       }
       totalDamage += damage;
     }
@@ -388,7 +564,13 @@ export function deriveGameState(input: DeriveInput): GameState {
       credits,
     });
   }
+  flushQuick(Infinity);
   snapTo(Infinity);
+
+  // ---- activity outside sessions ----
+  const activity = activityRewards(input, tz, startedAt, quick, completed);
+  xpTotal += activity.xp;
+  earned += activity.credits;
 
   // Bosses: XP and credits, whichever way they were beaten.
   const defeated = [...defeats.values()].sort((a, b) => a.at - b.at || a.loop - b.loop);
@@ -430,6 +612,15 @@ export function deriveGameState(input: DeriveInput): GameState {
 
   const welcome = startedAt !== null ? B.WELCOME_CREDITS : 0;
   const bossPos = nodeAt(bossGlobal(pos.biomeIndex, pos.loop));
+  const targets = sealTargets(pos.biomeIndex);
+  const have = sealOf(bossPos);
+  const sealList: SealState[] = (['days', 'depth', 'insight'] as const)
+    .filter((k) => targets[k] > 0)
+    .map((k) => ({ kind: k, need: targets[k], have: k === 'days' ? have.days.size : have[k] }));
+  const softened = [...soft.entries()]
+    .filter(([gl]) => gl > pos.global && gl <= bossPos.global)
+    .sort((a, b) => a[0] - b[0])
+    .map(([gl]) => ({ global: gl, hp: hpAt(gl), maxHp: nodeMaxHp(nodeAt(gl), target) }));
   return {
     balanceVersion: B.BALANCE_VERSION,
     xp: { total: xpTotal, ...lv },
@@ -445,10 +636,76 @@ export function deriveGameState(input: DeriveInput): GameState {
       bossMaxHp: nodeMaxHp(bossPos, target),
       totalDamage,
       defeated,
+      staggered: pos.kind === 'boss' && hp <= 0,
+      seals: sealList,
+      softened,
     },
     chests: { unopened, hasFreshChest: unopened.some((c) => c.fresh) },
     sessions: results,
     newAchievements,
     bossAchievements: [...new Set(storedBosses.map((d) => biomeRef(d.biome, d.loop)))],
+    activity,
   };
+}
+
+/**
+ * Rewards for what happens outside sessions (v2 N7.4), derived from current
+ * data: quick logs with a line, weak points completed outside any session,
+ * completed day plans and weeks with every target met. On the journey only
+ * (from startedAt). Per-kind caps first, then the day's non-session XP is held
+ * to DAY_ACTIVITY_XP_MAX. Deleting a completed weak point removes its XP, the
+ * way deleting a session does.
+ */
+function activityRewards(
+  input: DeriveInput,
+  tz: GameTz,
+  startedAt: number | null,
+  quick: readonly { id: string; at: number; rewarded: boolean }[],
+  completedIn: ReadonlyMap<string, number>
+): ActivityRewards {
+  const none: ActivityRewards = { quickLogXp: 0, outsideTaskXp: 0, goalDays: 0, bounties: 0, xp: 0, credits: 0 };
+  if (startedAt === null) return none;
+  const startDay = tz.dayKey(startedAt);
+  // Events in time order, per local day.
+  const inSession = new Set<string>();
+  for (const l of input.links) if (l.kind === 'completed_in' && l.toType === 'session' && completedIn.has(l.toId)) inSession.add(l.fromId);
+  const events: { at: number; kind: 'quick' | 'task' }[] = [];
+  for (const q of quick) if (q.rewarded && q.at >= startedAt) events.push({ at: q.at, kind: 'quick' });
+  for (const t of itemsOfType(input.items, 'task')) {
+    if (t.props.status !== 'done' || !t.props.doneAt || inSession.has(t.id)) continue;
+    const at = parseIso(t.props.doneAt);
+    if (at !== null && at >= startedAt) events.push({ at, kind: 'task' });
+  }
+  events.sort((a, b) => a.at - b.at);
+  const tasksPerDay = new Map<string, number>();
+  const xpPerDay = new Map<string, number>();
+  let quickLogXp = 0;
+  let outsideTaskXp = 0;
+  for (const e of events) {
+    const day = tz.dayKey(e.at);
+    let gain = B.QUICK_LOG_XP;
+    if (e.kind === 'task') {
+      const n = tasksPerDay.get(day) ?? 0;
+      tasksPerDay.set(day, n + 1);
+      if (n >= B.OUTSIDE_TASK_DAILY_CAP) continue;
+      gain = B.OUTSIDE_TASK_XP;
+    }
+    const used = xpPerDay.get(day) ?? 0;
+    const take = Math.max(0, Math.min(gain, DAY_ACTIVITY_XP_MAX - used));
+    if (!take) continue;
+    xpPerDay.set(day, used + take);
+    if (e.kind === 'quick') quickLogXp += take;
+    else outsideTaskXp += take;
+  }
+  const goalDays = new Set((input.goalDays ?? []).filter((d) => d >= startDay)).size;
+  // A week counts once its first day is on or after the journey's start week.
+  const bounties = new Set((input.bountyWeeks ?? []).filter((w) => addDaysKey(w, 6) >= startDay)).size;
+  const xp = quickLogXp + outsideTaskXp + bounties * B.BOUNTY_XP;
+  return { quickLogXp, outsideTaskXp, goalDays, bounties, xp, credits: goalDays * B.GOAL_DAY_CREDITS + bounties * B.BOUNTY_CREDITS };
+}
+
+/** 'YYYY-MM-DD' plus n days (calendar arithmetic, no time zone). */
+function addDaysKey(k: string, n: number): string {
+  const [y, m, d] = k.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }

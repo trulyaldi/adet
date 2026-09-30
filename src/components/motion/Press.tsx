@@ -27,7 +27,7 @@ export function usePressMotion(
     if (reduced) return { opacity: opacity * (1 - p.value * (1 - press.reducedOpacity)), transform: [{ translateY: 0 }, { scale: 1 }] };
     return {
       opacity: opacity * (1 - p.value * (1 - (edge ? 1 : dim))),
-      transform: [{ translateY: edge ? p.value * press.edgePx : 0 }, { scale: edge ? 1 : 1 - p.value * (1 - scale) }],
+      transform: [{ translateY: Math.round(p.value * (edge ? press.edgePx : press.nudgePx)) }, { scale: edge ? 1 : 1 - p.value * (1 - scale) }],
     };
   });
 

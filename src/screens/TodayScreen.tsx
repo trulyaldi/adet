@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 
 import { AdetLockup } from '../components/AdetMark';
-import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
+import { Character } from '../components/character/Character';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Appear } from '../components/motion/Appear';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -18,10 +19,11 @@ import { StreakPill } from '../components/today/StreakPill';
 import { SummaryCard } from '../components/today/SummaryCard';
 import { TodayItem } from '../domain/day';
 import { todayListsOf, todayOf } from '../domain/selectors';
-import { fmtDur } from '../domain/time';
+import { addDays, dkey, fmtDur } from '../domain/time';
 import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 const GAP = 10;
 
@@ -35,7 +37,10 @@ export function TodayScreen() {
   const actions = useActions();
   const model = todayOf(data, now);
   const { pending, done, bonus, summary } = todayListsOf(model);
-  const streak = useDayStreak().current;
+  const dayStreak = useDayStreak();
+  const streak = dayStreak.current;
+  // A freeze covered yesterday: the campfire shows its ember shield.
+  const shielded = dayStreak.marks.get(dkey(addDays(new Date(now), -1))) === 'freeze';
   // Only a day that finishes on screen animates into the check.
   const opened = useRef({ day: model.day, complete: model.complete });
   const animateIn = !(opened.current.complete && opened.current.day === model.day);
@@ -59,7 +64,7 @@ export function TodayScreen() {
         left={<AdetLockup height={26} />}
         right={
           <>
-            <StreakPill days={streak} />
+            <StreakPill days={streak} shielded={shielded} />
             <SyncIndicator />
             <IconButton label="Week" name="week" size={20} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.openWeek} tipBelow />
             <IconButton label="Settings" name="gear" size={20} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.openSettings} tipBelow />
@@ -69,7 +74,7 @@ export function TodayScreen() {
 
       {model.noHabits ? (
         <View style={{ alignItems: 'center', paddingVertical: 48, gap: 20 }}>
-          <ScreenIlmek state="idle" size={120} />
+          <Character mood="idle" size={120} />
           <IconButton
             label="Add a project and habits"
             name="plus"
@@ -177,7 +182,7 @@ export function TodayScreen() {
   );
 }
 
-/** Ilmek hops up beside the ring for a moment when the day completes. */
+/** Your character hops up beside the ring for a moment when the day completes. */
 function DayCheer() {
   const confetti = useUi((u) => u.confetti);
   const [on, setOn] = useState(false);
@@ -190,7 +195,7 @@ function DayCheer() {
   if (!on) return null;
   return (
     <Animated.View entering={ZoomIn.springify().damping(12)} exiting={FadeOut} style={{ position: 'absolute', right: 0, bottom: -6, pointerEvents: 'none' }}>
-      <ScreenIlmek state="celebrating" size={76} />
+      <Character mood="celebrating" size={76} />
     </Animated.View>
   );
 }
@@ -220,7 +225,7 @@ function FreeDay({ trackedSec, onBonus }: { trackedSec: number; onBonus(): void 
   return (
     <View style={{ alignItems: 'center', paddingTop: 36, gap: 12 }}>
       <View accessible accessibilityLabel="Nothing planned today, rest easy">
-        <ScreenIlmek state="sleepy" size={130} decorative />
+        <Character mood="sleepy" size={130} decorative />
       </View>
       <Glyph name="moon" size={22} color={colors.muted} />
       {trackedSec > 0 && <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>{fmtDur(trackedSec)}</Text>}

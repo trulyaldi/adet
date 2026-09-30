@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 
 import { feedback } from '../feedback/feedback';
@@ -8,6 +9,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { EDGE } from '../theme/theme';
 import { Glyph, GlyphName } from './Glyph';
 import { usePressMotion } from './motion/Press';
+import { Text } from './Text';
 
 interface ButtonProps {
   onPress(): void;

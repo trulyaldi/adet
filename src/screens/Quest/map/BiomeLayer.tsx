@@ -11,7 +11,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import { NODE_MOBS } from '../../../domain/game/balance';
 import type { DayPhase } from '../../../domain/game/daylight';
 import { nightLight } from '../../../domain/game/daylight';
-import type { NodeRef } from '../../../domain/game/derive';
+import type { NodeRef, SealState } from '../../../domain/game/derive';
 import { BIOMES } from '../../../game/content/biomes';
 import { BAND_W, BAND_X, BIOME_H, BiomeMap } from '../../../game/content/biomes/layout';
 import { bossId, mobId, ROSTER } from '../../../game/content/roster';
@@ -19,6 +19,7 @@ import { Graded, Lights, worldMatrix } from '../../../game/render/Lighting';
 import { Particles } from '../../../game/render/Particles';
 import { BatchItem, SpriteBatch } from '../../../game/render/SpriteBatch';
 import { tileItems } from '../../../game/render/Tilemap';
+import { SEAL_ICON } from '../../../game/ui/SealPips';
 import { BiomeStatus, nodeState } from '../model';
 
 export interface BiomeLayerProps {
@@ -29,6 +30,9 @@ export interface BiomeLayerProps {
   hp: number;
   maxHp: number;
   bossMaxHp: number;
+  /** The boss is at 0 HP, waiting for its seals. */
+  staggered: boolean;
+  seals: SealState[];
   phase: DayPhase;
   ascension: boolean;
   clock?: SharedValue<number>;
@@ -56,7 +60,8 @@ export const BiomeLayer = memo(function BiomeLayer(p: BiomeLayerProps) {
   }, [map, b]);
 
   const bossActive = status === 'current' && position.node === 7;
-  const bossLow = bossActive && p.maxHp > 0 && p.hp / p.maxHp < 0.3;
+  const staggered = bossActive && p.staggered;
+  const bossLow = staggered || (bossActive && p.maxHp > 0 && p.hp / p.maxHp < 0.3);
 
   // Everything standing on the island, sorted by feet.
   const things = useMemo(() => {
@@ -107,10 +112,29 @@ export const BiomeLayer = memo(function BiomeLayer(p: BiomeLayerProps) {
           <SpriteBatch atlas="shared" items={fogItems} />
         </Group>
       )}
+      {staggered && <SpriteBatch atlas="shared" items={[{ id: 'fx.dazed', x: map.gate.x, y: map.gate.y - 66 }]} clock={p.reduced ? undefined : clock} />}
       {bossActive && <WorldHP x={map.gate.x - 20} y={map.gate.y - 84} w={40} hp={p.hp} max={p.maxHp} />}
+      {bossActive && <WorldSeals x={map.gate.x} y={map.gate.y - 94} seals={p.seals} />}
     </Group>
   );
 });
+
+/** Seal icons above a boss's HP bar: filled ones bright, the rest dim. */
+function WorldSeals({ x, y, seals }: { x: number; y: number; seals: SealState[] }) {
+  const items = seals.map((s, i) => ({ id: SEAL_ICON[s.kind], x: x + (i - (seals.length - 1) / 2) * 14, y, full: s.have >= s.need }));
+  const full = items.filter((i) => i.full);
+  const empty = items.filter((i) => !i.full);
+  return (
+    <Group>
+      {full.length > 0 && <SpriteBatch atlas="shared" items={full} />}
+      {empty.length > 0 && (
+        <Group opacity={0.35}>
+          <SpriteBatch atlas="shared" items={empty} />
+        </Group>
+      )}
+    </Group>
+  );
+}
 
 /** A chunky HP bar drawn in the world (whole segments, ink border). */
 export function WorldHP({ x, y, w, hp, max, segments = 10 }: { x: number; y: number; w: number; hp: number; max: number; segments?: number }) {

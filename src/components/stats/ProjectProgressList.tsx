@@ -1,5 +1,6 @@
 import React, { memo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 
 import { ProjectProgress } from '../../domain/stats';
@@ -12,6 +13,7 @@ import { AnimatedBar } from '../motion/AnimatedBar';
 import { useLayoutMotion } from '../motion/Appear';
 import { Press } from '../motion/Press';
 import { StatsCard, TextNum, TrendMark } from './common';
+import { Text } from '../Text';
 
 /** Each active project's week toward its target; tap a row for its last four weeks and all-time total. */
 export const ProjectProgressList = memo(function ProjectProgressList({ rows }: { rows: ProjectProgress[] }) {

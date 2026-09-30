@@ -4,6 +4,7 @@
 import { itemsOfType, Item, TaskItem } from '../items/types';
 import type { Session } from '../types';
 import { MIN_SESSION_MIN } from './balance';
+import type { Trail } from '../progress';
 import type { GameTz } from './tz';
 import { DEVICE_TZ } from './tz';
 
@@ -79,6 +80,16 @@ export function fallbackInsight(sessions: readonly Session[], tz: GameTz = DEVIC
   }
   const di = days.indexOf(Math.max(...days));
   return `${WEEKDAYS[di]} are your strongest days.`;
+}
+
+/** A one-line trail note ("Reading is rising this week."), or null when nothing is rising. */
+export function trailInsight(trail: Pick<Trail, 'habits'>, nameOf: (habitId: string) => string | undefined): string | null {
+  const rising = trail.habits.find((h) => !h.empty && h.verdict === 'rising' && nameOf(h.habitId));
+  if (!rising) return null;
+  const name = nameOf(rising.habitId)!.trim();
+  // Twelve words at most: a long habit name is shortened.
+  const short = name.split(/\s+/).slice(0, 6).join(' ');
+  return `${short} is rising this week.`;
 }
 
 /** The battle report when no AI is used: counts, warmly. */

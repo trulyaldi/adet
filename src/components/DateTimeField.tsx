@@ -1,11 +1,12 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import React from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { DOWFULL, MONTHS } from '../domain/constants';
 import { pad } from '../domain/time';
 import { useTheme } from '../theme/ThemeProvider';
 import { Press } from './motion/Press';
+import { Text } from './Text';
 
 interface DateTimeFieldProps {
   label: string;

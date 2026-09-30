@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
@@ -12,6 +13,7 @@ import { selectWeekView, WeekDayState } from '../domain/weekView';
 import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
+import { Text } from '../components/Text';
 
 const LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

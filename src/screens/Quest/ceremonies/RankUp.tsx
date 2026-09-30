@@ -15,6 +15,7 @@ import { PixelText } from '../../../game/ui/PixelText';
 import { QUI } from '../../../game/ui/theme';
 import { IconGrid } from '../sheets/common';
 import { CeremonyStage, useCeremonySize } from './Stage';
+import { QUEST_MS } from '../../../game/ui/motion';
 
 const REVEAL: AvatarLayer[] = ['back', 'outfit', 'head', 'hand', 'pip'];
 
@@ -27,9 +28,9 @@ export function RankUp({ tier, level = RANKS[tier].fromLevel, look, onDone, redu
   useEffect(() => {
     if (reduced) return;
     feedback.sfx('rank_up', 'ceremony');
-    iris.value = withTiming(1, { duration: 500 });
+    iris.value = withTiming(1, { duration: QUEST_MS.open });
     const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => { banner.value = withTiming(1, { duration: 650 }); setShown(0); }, 500));
+    timers.push(setTimeout(() => { banner.value = withTiming(1, { duration: QUEST_MS.banner }); setShown(0); }, 500));
     REVEAL.forEach((_, i) => timers.push(setTimeout(() => {
       setShown(i + 1);
       feedback.haptic('light', 'ceremony');
