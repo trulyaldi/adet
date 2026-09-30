@@ -254,6 +254,10 @@ repo; their text was recovered from Codex's session log into
     Quest screens are in the main bundle and it has no async-require call.
 84. **The kill switch hides, it doesn't strip.** The off build inlines `EXPO_PUBLIC_QUEST_ENABLED=false`
     (checked in the web bundle) and hides Quest at runtime; its code still ships (same size).
+85. **The interface font is the system font again (owner's call, after v2).** `src/components/Text.tsx`
+    re-exports React Native's Text/TextInput unchanged, so everyday screens (Today, Stats, Projects, sheets)
+    read as before v2, bold weights included. Quest Mode's pixel text (`PixelText`) keeps Tiny5 (the N2
+    legibility fix). The one-import wrapper stays, so the interface font can change in one place.
 
 | Ticket | Status | Evidence |
 |---|---|---|
