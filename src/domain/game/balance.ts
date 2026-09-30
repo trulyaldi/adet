@@ -1,7 +1,7 @@
 // Every tunable number in Quest Mode. Bump BALANCE_VERSION when a change
 // alters derived results; stored achievements keep progress from going back.
 
-export const BALANCE_VERSION = 1;
+export const BALANCE_VERSION = 2;
 
 // ---- Sessions ---------------------------------------------------------------
 /** Shorter sessions deal no damage, grant nothing and spawn no chest. */
@@ -20,17 +20,34 @@ export const CRIT_DAMAGE = 10;
 export const MAX_CRITS = 3;
 
 // ---- Journey ----------------------------------------------------------------
-export const MOB_HP = 25;
+/** Mob HP (effective minutes) = round(MOB_HP_BASE × MOB_HP_GROWTH^biomeIndex). */
+export const MOB_HP_BASE = 90;
+export const MOB_HP_GROWTH = 1.15;
 /** Node kinds of every biome, in order: 3 mobs, the camp, 3 mobs, the boss. */
 export const NODE_KINDS = ['mob', 'mob', 'mob', 'camp', 'mob', 'mob', 'mob', 'boss'] as const;
 export const NODES_PER_BIOME = NODE_KINDS.length;
 /** Which of the biome's 3 mobs stands on each node (camp and boss: -1). */
 export const NODE_MOBS = [0, 1, 2, -1, 1, 0, 2, -1] as const;
-export const BOSS_HP_FACTOR = 0.8;
-export const BOSS_HP_MIN = 150;
-export const BOSS_HP_MAX = 900;
+/**
+ * Boss HP = clamp(round(BOSS_HP_FACTOR × Σ weekly target minutes × BOSS_HP_GROWTH^biomeIndex), MIN, MAX),
+ * except the tutorial boss. Tuned with `npm run game:balance` (the spec's starting 1.5 × weekly, flat
+ * across biomes, made the last biomes too quick; see PLAN.md).
+ */
+export const BOSS_HP_FACTOR = 1.1;
+export const BOSS_HP_GROWTH = 1.15;
+export const BOSS_HP_MIN = 480;
+export const BOSS_HP_MAX = 2400;
 /** The tutorial boss (biome 1, first loop). */
-export const FIRST_BOSS_HP = 120;
+export const FIRST_BOSS_HP = 420;
+
+// ---- Seals: what a boss needs besides HP (0 disables one) --------------------
+/** Distinct local days with a qualifying session against the boss, by biome index. */
+export const SEAL_DAYS = [3, 4, 5, 5, 6, 6, 7] as const;
+/** Sessions of at least DEPTH_MIN focused minutes against the boss. */
+export const SEAL_DEPTH = [1, 2, 2, 3, 3, 4, 4] as const;
+export const DEPTH_MIN = 45;
+/** Completed weak points plus chronicle entries with text, against the boss. */
+export const SEAL_INSIGHT = [2, 3, 4, 5, 6, 7, 8] as const;
 /** Boss HP multiplier per ascension loop. */
 export const ASCENSION_HP_MULT = 1.2;
 

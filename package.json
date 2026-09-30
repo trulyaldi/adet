@@ -55,7 +55,8 @@
     "game:report": "tsx scripts/asset-report.ts",
     "game:contact": "tsx scripts/contact-sheet.ts",
     "game:needs-art": "tsx scripts/needs-art.ts",
-    "check:size": "tsx scripts/check-size.ts"
+    "check:size": "tsx scripts/check-size.ts",
+    "game:balance": "tsx scripts/balance-sim.ts"
   },
   "private": true
 }

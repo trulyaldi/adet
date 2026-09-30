@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N2. Next: N3 (harder encounters, seals). Nothing half-done.
+**Resume here (v2):** last finished N3. Next: N4 (progress engine, quick log, measures). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -45,19 +45,59 @@ a calm note, the timer strip shows nothing. Guard: `render/noDynamicImport.test.
 Hermes file, 5,124,989 B (−670 B); web export starts (headless Chromium: sign-in screen, no console errors;
 needs `.env` and `expo export --clear`).
 
+### N3 result
+
+`npm run game:balance` (5 seeds; days per biome, first loop):
+
+| Profile | forest | swamp | desert | frost | iron | volcano | astral | total |
+|---|---|---|---|---|---|---|---|---|
+| 1 h/day | 17.6 | 16.6 | 23.4 | 23.2 | 22.6 | 28.4 | 36.0 | 168 |
+| 2 h/day | 9.0 | 11.4 | 16.6 | 17.4 | 18.8 | 19.0 | 25.6 | 118 |
+| 3 h/day | 6.4 | 11.0 | 13.8 | 15.6 | 15.8 | 16.2 | 21.0 | 100 |
+| 4 h/day | 6.2 | 9.6 | 12.8 | 15.6 | 13.8 | 14.2 | 16.2 | 88 |
+
+2 h/day lands in every band (8–10, 16–20, 24–30). 4 h/day finishes the loop 1.9× faster than 1 h/day. Seals
+rarely hold a 2 h/day player back (the boss's HP takes longer than its Days seal); they bite for very heavy
+days (the 4 h/day forest boss waits ~2 days for its Days seal) and for 1 h/day late bosses (Insight).
+**The current biome's node position may move back after this rebalance** (boss defeats, XP, levels and
+credits are unaffected: stored achievements floor the journey).
+
 ### v2 assumptions
 
 (Numbered from 51, continuing the list below.)
 
 51. **Branch base.** Quest Mode is on `origin/main`; v2 branches from it. The stop → Loot hand-off hold from
     the crash investigation (`bf378fe`) is kept: it is tested and independent of N1's cause.
+52. **Error fallbacks are silent.** A failed Skia screen shows the calmest thing that keeps the flow going
+    (see N1 result), never an error message.
 53. **One pixel font (N2).** Tiny5 replaces Pixelify Sans and Silkscreen everywhere; `tiny` text is 12 pt,
     bold uses the same face, check marks are drawn (`PixelCheck`). See `docs/quest/art/FONT_DECISION.md`.
 54. **A flaky run.** One full `npm test` during N1 failed once under heavy load (exports and a headless browser
     running at the same time) and passed on 4 reruns. The only timing-based tests are the 5,000-session
     benchmarks, which take the fastest of several runs.
-52. **Error fallbacks are silent.** A failed Skia screen shows the calmest thing that keeps the flow going
-    (see N1 result), never an error message.
+55. **Surplus follows the path, always (R1).** Damage over the one allowed defeat walks forward, stopping each
+    enemy at 1 HP, past a staggered boss (0 HP), past the Burnout Drake once its daily third is taken, and into
+    the next biome if it gets that far. Nothing is dropped: a test checks that every journey session's hits add
+    up to its base + crit damage.
+56. **Seals count sessions fought against the boss (R3).** A session belongs to the encounter that is the front
+    enemy *before* its damage lands; sessions while a mob is in front count toward no seal. Days are local days
+    (the device time zone); Depth counts focused minutes ≥ 45; Insight counts completed weak points plus a
+    chronicle entry with text, once the chest is claimed.
+57. **When a boss falls (R4).** Either a session's damage empties it with its seals already met, or a session
+    against a staggered boss fills the last seal (its own day, depth or claimed insight). Both use the
+    session's one defeat.
+58. **Pacing constants were retuned (R2).** The spec's starting values (mobs ×1.12 per biome, bosses 1.5 × weekly,
+    flat) put biome 7 at ~18 days for 2 h/day. Shipped: mobs `90 × 1.15^biome`; bosses
+    `clamp(1.1 × weekly × 1.15^biome, 480, 2400)`, tutorial 420; ×1.2 per loop after the clamp. Result below.
+59. **Simulator profiles.** 6 active days a week (rest days rotate), ±25% daily variation, 1–3 sessions a day,
+    40% of chests claimed with a line and 30% with one weak point; each profile's weekly target equals its real
+    weekly minutes. Seeded (mulberry32), so the test and `npm run game:balance` agree.
+60. **Staggered look without new art.** A staggered boss uses its existing `.low` pose plus `fx.dazed` (three
+    stars on an ellipse, drawn in the stand-in pipeline); `icon.calendar` is new stand-in art for the Days seal.
+61. **Seal counts are shown in the boss panel.** The tap on the gate that opens the panel is the reveal; the pips
+    themselves aren't buttons (no nested pressables, see PR #19).
+62. **The crash-repro script is gone.** `scripts/quest-crash-repro.ts` came with the cherry-pick and assumed the
+    old HP rules; `game:balance` and the derive tests cover the same ground.
 
 ## Audit after Codex handoff — 2026-09-29
 

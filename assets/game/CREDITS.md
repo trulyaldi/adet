@@ -39,7 +39,7 @@ or unlicensed assets.
 Sprites no licensed pack provides yet keep Adet's original pixel art, drawn in
 code by `scripts/gen-placeholders.ts` (palette-indexed grids), released with the
 app under the same terms as its source. Each one is listed, with the kind of
-art it needs, in `assets/game/needs-art.json` (327 ids) and
+art it needs, in `assets/game/needs-art.json` (329 ids) and
 `docs/quest/art/INVENTORY.md`.
 
 ## Audio still missing

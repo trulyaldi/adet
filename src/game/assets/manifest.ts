@@ -108,6 +108,7 @@ export const REQUIRED_IDS: string[] = [
   'prop.board',
   'prop.shadow',
   'fx.sparkle',
+  'fx.dazed',
   'fx.dust',
   'fx.hit',
   'fx.glow.warm',
@@ -115,7 +116,7 @@ export const REQUIRED_IDS: string[] = [
   'fx.glow.small',
   'fx.fog',
   'fx.pixel',
-  ...['sword', 'quill', 'coin', 'xp', 'chest', 'lock', 'freeze', 'check', 'heart', 'rested', 'star'].map((i) => `icon.${i}`),
+  ...['sword', 'quill', 'coin', 'xp', 'chest', 'lock', 'freeze', 'check', 'heart', 'rested', 'star', 'calendar'].map((i) => `icon.${i}`),
   ...SHOP.map((s) => s.icon),
 ];
 

@@ -8,7 +8,7 @@ import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'rea
 import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { NODE_MOBS } from '../../domain/game/balance';
-import { nodeAt } from '../../domain/game/derive';
+import { mobHp, nodeAt } from '../../domain/game/derive';
 import { npcName, npcTitle } from '../../game/content/npcs';
 import { bossId, mobId, NpcId, ROSTER } from '../../game/content/roster';
 import { bossLine } from '../../game/content/bossLines';
@@ -210,7 +210,10 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const here = biome * 8 + node;
           const cur = g.position.biomeIndex * 8 + g.position.node;
           const mob = ROSTER[map.id].mobs[Math.max(0, NODE_MOBS[node] as number)];
-          setPanel({ kind: 'mob', sprite: here < cur ? `prop.${map.id}.grave` : `${mobId(map.id, mob.key)}.idle`, name: mob.name, hp: here < cur ? 0 : here === cur ? g.hp : 25, max: 25, x: sx, y: sy });
+          const max = mobHp(biome);
+          // `cur` and `here` count within this loop; `global` counts every node since the first.
+          const ahead = g.softened.find((x) => x.global === g.position.global - cur + here)?.hp ?? max;
+          setPanel({ kind: 'mob', sprite: here < cur ? `prop.${map.id}.grave` : `${mobId(map.id, mob.key)}.idle`, name: mob.name, hp: here < cur ? 0 : here === cur ? g.hp : ahead, max, x: sx, y: sy });
           break;
         }
         case 'gate': {
@@ -220,7 +223,9 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const beaten = biome < g.position.biomeIndex;
           // The boss you face speaks a pre-fight line each tap (the Hollow Echo also quotes you).
           const line = active ? bossLine(m.game, map.id, bossTaps.current++) : undefined;
-          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, x: sx, y: sy });
+          const staggered = active && g.staggered;
+          const here = biome === g.position.biomeIndex;
+          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.${staggered ? 'low' : 'idle'}`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, seals: here ? g.seals : undefined, staggered, x: sx, y: sy });
           break;
         }
         case 'villager':

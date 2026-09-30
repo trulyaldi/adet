@@ -183,8 +183,23 @@ const ICONS: Record<string, { grid: Grid; map: Record<string, Color>; outline?: 
   check: { grid: ['............', '..........a.', '.........ab.', '........ab..', '.a.....ab...', '.ba...ab....', '..ba.ab.....', '...bab......', '....b.......', '............', '............', '............'], map: { a: hex(SHARED.green[2]), b: hex(SHARED.green[1]) } },
   heart: { grid: ['............', '..aa...aa...', '.abba.abba..', '.abcbabbba..', '.abbbbbbba..', '..abbbbba...', '...abbba....', '....aba.....', '.....a......', '............', '............', '............'], map: { a: hex(SHARED.red[0]), b: hex(SHARED.red[1]), c: hex(SHARED.red[2]) } },
   rested: { grid: ['............', '.....aaa....', '...aa.......', '..a.........', '..a.........', '..a......b..', '...a....bb..', '....aaaa.b..', '.........b..', '............', '............', '............'], map: { a: hex('#b8c8f0'), b: hex('#fff6c0') } },
+  calendar: { grid: ['..k.....k...', '.aakaaaakaa.', '.aaaaaaaaaa.', '.bbbbbbbbbb.', '.bcbbcbbcbb.', '.bbbbbbbbbb.', '.bcbbcbbcbb.', '.bbbbbbbbbb.', '.bcbbcbbbbb.', '.bbbbbbbbbb.', '............', '............'], map: { a: hex(SHARED.red[1]), b: hex('#fbf7ec'), c: hex('#6a6070'), k: hex(SHARED.metal[1]) } },
   star: { grid: ['.....a......', '.....a......', '....aba.....', 'aaaabcbaaaa.', '.aabbbbbaa..', '...abbba....', '..abbabba...', '..aa...aa...', '............', '............', '............', '............'], map: { a: hex(SHARED.gold[1]), b: hex(SHARED.gold[2]), c: hex('#ffffff') } },
 };
+
+/** Dazed stars circling a staggered enemy's head: three small stars on a flat ellipse. */
+function dazed(f: number): Px {
+  const px = new Px(17, 7);
+  for (let i = 0; i < 3; i++) {
+    const a = ((f * 30 + i * 120) * Math.PI) / 180;
+    const x = Math.round(8 + Math.cos(a) * 6);
+    const y = Math.round(3 + Math.sin(a) * 2);
+    const c = hex(SHARED.gold[1]);
+    for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) px.set(x + dx, y + dy, c);
+    px.set(x, y, hex('#fff6c0'));
+  }
+  return px;
+}
 
 // ---------------------------------------------------------------------------
 
@@ -206,6 +221,7 @@ export function addProps(reg: Registry): void {
   reg.add({ id: 'fx.glow.cool', atlas: 'shared', frames: [glow(32, '#9fe8ff')], anchor: [16, 16], additive: true });
   reg.add({ id: 'fx.glow.small', atlas: 'shared', frames: [glow(12, '#fff0b0')], anchor: [6, 6], additive: true });
   reg.add({ id: 'fx.fog', atlas: 'shared', frames: [fog(56, 22)], anchor: [28, 11] });
+  reg.add({ id: 'fx.dazed', atlas: 'shared', frames: [0, 1, 2, 3].map(dazed), fps: 6, loop: true, anchor: [8, 3] });
   reg.add({ id: 'fx.pixel', atlas: 'shared', frames: [new Px(1, 1).set(0, 0, hex('#ffffff'))], anchor: [0, 0] });
 
   for (const [name, i] of Object.entries(ICONS)) {

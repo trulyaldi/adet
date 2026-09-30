@@ -1,6 +1,6 @@
-// Crash on completing a long session (docs/quest/CRASH_INVESTIGATION.md):
-// base damage lands when the session is saved, so a long one can beat a boss
-// before its chest is opened. Its full-screen scene must never present while
+// Base damage lands when a session is saved, so a long one can beat a boss
+// before its chest is opened (found while investigating the long-session
+// crash on fix/quest-crash). Its full-screen scene must never present while
 // the focus view or the Loot sheet is still animating in or out.
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
@@ -16,27 +16,32 @@ import { closeLootAfter, handOffAfterStop, isLootOpen } from './loot';
 const GAP = 450;
 const D0 = Date.UTC(2026, 8, 1, 6);
 const habits = [{ id: 'h1', weeklyTargetMin: 300 }];
-const started = ops.startQuest({ items: [], links: [] }, D0 - 1).items;
-const derive = (min: number, items = started) =>
-  deriveGameState({ sessions: [sess('s1', 'h1', D0, min)], habits, items, links: [], now: D0 + 86_400_000, tz: fixedTz(0) });
+const DAY = 86_400_000;
+// The forest's six 90-HP mobs, then two claimed 150-minute days at the Wisp (420 HP): it has
+// 120 HP left and its seals (3 days counting the next one, a deep session, 2 lines) are met.
+const history = [...Array.from({ length: 6 }, (_, i) => sess(`m${i}`, 'h1', D0 + i * DAY, 90)), sess('b0', 'h1', D0 + 6 * DAY, 150), sess('b1', 'h1', D0 + 7 * DAY, 150)];
+let slice: ops.QuestSlice = ops.startQuest({ items: [], links: [] }, D0 - 1);
+for (const id of ['b0', 'b1']) slice = ops.claimChest(slice, { sessionId: id, habitId: 'h1', doneTaskIds: [], text: 'a line', now: D0 });
+const started = slice.items;
+const derive = (min: number, items = started, withLast = true) =>
+  deriveGameState({ sessions: withLast ? [...history, sess('s1', 'h1', D0 + 8 * DAY, min)] : history, habits, items, links: slice.links, now: D0 + 9 * DAY, tz: fixedTz(0) });
 
-test('a fresh journey: 299 focused minutes beat the Fog Wisp on save, 298 do not', () => {
-  // 3 mobs + 3 mobs (150) + the tutorial boss (120) = 270; the day cap makes 299 min worth 269.5 → 270.
-  assert.equal(derive(298).journey.defeated.length, 0);
-  const g = derive(299);
+test('the Fog Wisp at 120 HP with its seals met: 120 focused minutes fell it on save, 119 do not', () => {
+  assert.equal(derive(119).journey.defeated.length, 0);
+  const g = derive(120);
   assert.deepEqual(g.journey.defeated.map((d) => d.biome), ['forest']);
-  assert.equal(g.sessions[0].claimed, false, 'no chest opened: base damage alone');
+  assert.equal(g.sessions.at(-1)!.claimed, false, 'no chest opened: base damage alone');
 });
 
 test('the boss scene waits through the stop → Loot → close hand-offs', () => {
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
     // The watcher records the boss as soon as the session is saved.
-    const before = deriveGameState({ sessions: [], habits, items: started, links: [], now: D0, tz: fixedTz(0) });
+    const before = derive(0, started, false);
     const marks = seedCeremonyMarks(before);
-    const saved = derive(299);
-    const items = ops.addAchievements({ items: started, links: [] }, saved.newAchievements, D0).items;
-    const game = derive(299, items);
+    const saved = derive(120);
+    const items = ops.addAchievements({ items: started, links: slice.links }, saved.newAchievements, D0).items;
+    const game = derive(120, items);
     const [next] = detectCeremonies(marks, game);
     assert.equal(next?.kind, 'boss_defeated', 'a full-screen Modal scene is due');
 
