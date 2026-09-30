@@ -3,9 +3,10 @@
 // friendly note instead, and nothing is written.
 
 import React, { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph';
+import { PixelDots } from '../../components/PixelDots';
 import { loadPlayground, loadQuestScreen } from '../../game/render/screens';
 import { SkiaGate } from '../../game/render/SkiaGate';
 import { questTabView, useQuestTables } from '../../sync/questTables';
@@ -16,7 +17,7 @@ function Note({ title, body, busy }: { title: string; body: string; busy?: boole
   const { colors } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12, backgroundColor: colors.bg }}>
-      {busy ? <ActivityIndicator color={colors.sub} /> : <Glyph name="quest" size={40} color={colors.sub} label={title} />}
+      {busy ? <PixelDots color={colors.sub} /> : <Glyph name="quest" size={40} color={colors.sub} label={title} />}
       <Text style={{ fontSize: 18, fontWeight: '800', color: colors.ink, textAlign: 'center' }}>{title}</Text>
       <Text style={{ fontSize: 15, color: colors.sub, textAlign: 'center', maxWidth: 300 }}>{body}</Text>
     </View>

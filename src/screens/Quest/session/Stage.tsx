@@ -41,6 +41,7 @@ import { PixelText } from '../../../game/ui/PixelText';
 import { SealPips, sealsLabel } from '../../../game/ui/SealPips';
 import { QUI } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
+import { QUEST_MS } from '../../../game/ui/motion';
 
 const SCENE_CODE: Record<SceneState, number> = { fight: 0, defeat: 1, walkIn: 2, stagger: 3, nap: 4, wake: 5, ended: 6 };
 /** A soft warm tint for a hit (never white). */
@@ -107,7 +108,7 @@ export default function Stage({ width, height, slim, live, reduced, force }: Sta
   useEffect(() => {
     sceneCode.value = SCENE_CODE[scene];
     since.value = clock.value;
-    dusk.value = reduced ? (scene === 'nap' ? STAGE_TIMING.napDusk : 0) : withTiming(scene === 'nap' ? STAGE_TIMING.napDusk : 0, { duration: 1200 });
+    dusk.value = reduced ? (scene === 'nap' ? STAGE_TIMING.napDusk : 0) : withTiming(scene === 'nap' ? STAGE_TIMING.napDusk : 0, { duration: QUEST_MS.light });
   }, [scene, reduced, clock, sceneCode, since, dusk]);
   // A gentle swing every 4–6 s while fighting (clock time, no React state).
   useEffect(() => {

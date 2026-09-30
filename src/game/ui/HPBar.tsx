@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { QUI, useUiUnit } from './theme';
+import { QUEST_MS } from './motion';
 
 export function HPBar({
   hp,
@@ -36,7 +37,7 @@ export function HPBar({
   const ghost = useSharedValue(seg);
   const prev = useRef(seg);
   useEffect(() => {
-    if (seg < prev.current && !reduced) ghost.value = withDelay(380, withTiming(seg, { duration: 420 }));
+    if (seg < prev.current && !reduced) ghost.value = withDelay(380, withTiming(seg, { duration: QUEST_MS.drain }));
     else ghost.value = seg;
     prev.current = seg;
   }, [seg, reduced, ghost]);

@@ -8,7 +8,7 @@ import { Canvas, Group } from '@shopify/react-native-skia';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
-import { useDerivedValue, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { Icon } from '../../../components/Icon';
 import { useQuestWrites } from '../../../data/itemsRepo';
@@ -36,6 +36,7 @@ import { QUI, useUiUnit } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
 import { AmountField, amountOf } from '../sheets/AmountField';
 import { TextInput } from '../../../components/Text';
+import { shakeOnce } from '../../../game/ui/motion';
 
 type Phase = { kind: 'offer' } | { kind: 'opening'; preview: ClaimPreview; crits: number } | { kind: 'rewards'; preview: ClaimPreview };
 
@@ -106,7 +107,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
         setTimeout(() => {
           hitAt.value = clock.value;
           flashUntil.value = clock.value + 70; // one white frame
-          shake.value = withSequence(withTiming(2, { duration: 40 }), withTiming(-2, { duration: 40 }), withTiming(0, { duration: 60 }));
+          shake.value = shakeOnce();
           feedback.haptic('light', 'loot');
           feedback.sfx('crit', 'loot');
         }, 450 + i * 320)

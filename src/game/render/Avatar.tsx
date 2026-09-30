@@ -18,6 +18,7 @@ import { AvatarAnimation, avatarLayers, AvatarLook, POSE } from '../avatar';
 import { useAtlas } from './atlas';
 import { NEAREST } from './pixel';
 import { SpriteView } from './SpriteView';
+import { QUEST_MS } from '../ui/motion';
 
 /** Slow and calm: a nap breathes once every two seconds. */
 const FPS: Record<AvatarAnimation, number> = { idle: 2, walk: 6, kneel: 1, cheer: 1, wave: 4, attack: 5, nap: 1, wake: 2, sit: 1 };
@@ -56,7 +57,7 @@ export const Avatar = memo(function Avatar({ tier, gear, stars = 0, animation = 
   // Cheer: a small hop on the idle frame.
   const hop = useSharedValue(0);
   useEffect(() => {
-    if (animation === 'cheer' && animate) hop.value = withRepeat(withSequence(withTiming(-2 * s, { duration: 140 }), withTiming(0, { duration: 180 })), -1);
+    if (animation === 'cheer' && animate) hop.value = withRepeat(withSequence(withTiming(-2 * s, { duration: QUEST_MS.hop }), withTiming(0, { duration: 180 })), -1);
     else {
       cancelAnimation(hop);
       hop.value = 0;

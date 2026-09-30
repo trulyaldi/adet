@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N8. Next: N9 (raw-look pass: stand-ins, consistency, motion, empty states). Nothing half-done.
+**Resume here (v2):** last finished N9. Next: N10 (QA panel additions, DEVICE_QA, README, size, PR). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -96,6 +96,19 @@ and adds `GameState.activity`. Constants in `balance.ts`: outside weak point +5 
 (3/day), completed day +5 credits (once a day), bounty +40 credits +60 XP (once a week). Non-session XP (quick
 logs + outside weak points together) is held to 30 a day = 10% of a full day of sessions (300 XP). The memo now
 keys on marks, per-day edits, daily logs, prefs and the local day, so a check-off moves the game at once.
+
+### N9 result
+
+- **Stand-ins:** `needs-art` 322 → 325 ids (+ `icon.calendar`, `fx.dazed`, `fx.zzz`, all drawn in the stand-in
+  pipeline); `generated-placeholder` 0 → 0. No stand-in could be replaced: the only packs here are Kenney Tiny
+  Dungeon and Tiny Town (already mapped where they fit), and the spec's primary pack (Ninja Adventure, CC0)
+  needs a browser click-through on itch.io (`docs/quest/OWNER_ACTIONS.md`). All eight contact sheets were
+  regenerated and inspected: every avatar layer has its 11 poses aligned, new effects match the outline style.
+- **Motion:** `src/game/ui/motion.ts` (`QUEST_MS`, `shakeOnce`) replaces scattered durations and three copies
+  of the same hit shake.
+- **Loading:** `PixelDots` (three squares stepping) replaces the breathing logo and the system spinners (app
+  loading, sign-in, the Quest tab's "Finding the path").
+- **Not done here:** the 3×/4× light/dark check of every screen needs the phone (DEVICE_QA §16).
 
 ### v2 assumptions
 

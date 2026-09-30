@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
-import { cancelAnimation, Easing, makeMutable, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { cancelAnimation, Easing, makeMutable, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { NODE_MOBS } from '../../domain/game/balance';
 import { mobHp, nodeAt } from '../../domain/game/derive';
@@ -38,6 +38,7 @@ import { PE } from '../../game/ui/pointer';
 import { MODAL_GAP_MS } from '../../theme/motion';
 import { SpriteView } from '../../game/render/SpriteView';
 import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
+import { QUEST_MS, shakeOnce } from '../../game/ui/motion';
 
 const POPS = 12;
 
@@ -142,7 +143,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         const node = m.maps[n.biomeIndex].nodes[n.node];
         setPopSpots([{ x: node.x, y: node.y }]);
         fx.pops[0].at.set(clock.value);
-        shake.set(withSequence(withTiming(1.5, { duration: 50 }), withTiming(-1.5, { duration: 50 }), withTiming(0, { duration: 60 })));
+        shake.set(shakeOnce(1.5));
       }
       settle();
       return;
@@ -155,7 +156,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
     setPopSpots(plan.pops.slice(0, POPS).map((p) => ({ x: p.x, y: p.y })));
     finish.current = () => {
       settle();
-      camY.set(withTiming(cameraFor(m.at.y, size.h, size.w), { duration: 250 }));
+      camY.set(withTiming(cameraFor(m.at.y, size.h, size.w), { duration: QUEST_MS.camera }));
     };
     const step = plan.stepMs;
     plan.points.slice(1).forEach((pt, i) => {
