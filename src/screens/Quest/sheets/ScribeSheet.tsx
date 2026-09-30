@@ -110,7 +110,7 @@ function Chronicle({ model }: { model: QuestModel }) {
         const habit = data.habits.find((h) => h.id === l.habitId);
         const enemy = enemyOf(l.props.sessionId);
         const tasks = data.links.filter((k) => k.kind === 'completed_in' && k.toId === l.props.sessionId).length;
-        const text = l.body || (tasks ? `✓ ${tasks} weak point${tasks === 1 ? '' : 's'}` : '');
+        const text = l.body || (tasks ? `${tasks} weak point${tasks === 1 ? '' : 's'} done` : '');
         if (editing === l.id) {
           return (
             <View style={{ gap: 6, marginVertical: 4 }}>
@@ -206,7 +206,7 @@ function Credits() {
   const rows = [
     ...PACK_CREDITS.map((p) => [p.title, `${p.author} · ${p.license} · ${p.uses}`]),
     ['Original art', STAND_IN_SPRITES ? `${STAND_IN_SPRITES} sprites are Adet's own pixel art, drawn in code.` : "None: every sprite is from a pack above."],
-    ['Fonts', 'Pixelify Sans by Stefie Justprince, Silkscreen by Jason Kottke (SIL OFL 1.1).'],
+    ['Fonts', 'Tiny5 by the Tiny5 Project Authors (SIL OFL 1.1).'],
     ['Names', 'Aqyl, Saudager and Hatshy nod to Kazakh: wisdom, merchant, scribe.'],
   ];
   return (

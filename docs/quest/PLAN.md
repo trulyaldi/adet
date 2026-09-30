@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N1. Next: N2 (pixel font). Nothing half-done.
+**Resume here (v2):** last finished N2. Next: N3 (harder encounters, seals). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -51,6 +51,11 @@ needs `.env` and `expo export --clear`).
 
 51. **Branch base.** Quest Mode is on `origin/main`; v2 branches from it. The stop → Loot hand-off hold from
     the crash investigation (`bf378fe`) is kept: it is tested and independent of N1's cause.
+53. **One pixel font (N2).** Tiny5 replaces Pixelify Sans and Silkscreen everywhere; `tiny` text is 12 pt,
+    bold uses the same face, check marks are drawn (`PixelCheck`). See `docs/quest/art/FONT_DECISION.md`.
+54. **A flaky run.** One full `npm test` during N1 failed once under heavy load (exports and a headless browser
+    running at the same time) and passed on 4 reruns. The only timing-based tests are the 5,000-session
+    benchmarks, which take the fastest of several runs.
 52. **Error fallbacks are silent.** A failed Skia screen shows the calmest thing that keeps the flow going
     (see N1 result), never an error message.
 

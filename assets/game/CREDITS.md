@@ -56,5 +56,4 @@ art it needs, in `assets/game/needs-art.json` (327 ids) and
 
 | Font | Author | License | Source |
 |---|---|---|---|
-| Pixelify Sans | Stefie Justprince | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Pixelify+Sans |
-| Silkscreen | Jason Kottke | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Silkscreen |
+| Tiny5 | The Tiny5 Project Authors (Gissio) | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Tiny5 |

@@ -28,6 +28,7 @@ import { SpriteView } from '../../../game/render/SpriteView';
 import { useQuestReduced } from '../../../game/state/settings';
 import { CountUp } from '../../../game/ui/CountUp';
 import { PixelButton } from '../../../game/ui/PixelButton';
+import { PixelCheck } from '../../../game/ui/PixelCheck';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { QUI, useUiUnit } from '../../../game/ui/theme';
@@ -162,7 +163,7 @@ export default function LootSheet({ sessionId, fresh, onClose }: { sessionId: st
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 2 * u, minHeight: 44 }}
                 >
                   <View style={{ width: 24, height: 24, borderWidth: u, borderColor: QUI.ink, backgroundColor: on ? QUI.gold : QUI.white, alignItems: 'center', justifyContent: 'center' }}>
-                    {on && <PixelText size="sm" bold>✓</PixelText>}
+                    {on && <PixelCheck px={2} />}
                   </View>
                   <PixelText size="md" style={{ flex: 1 }}>
                     {t.title}

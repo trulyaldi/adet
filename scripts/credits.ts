@@ -77,8 +77,7 @@ ${Object.keys(needsAudio).length ? Object.entries(needsAudio).map(([id, why]) =>
 
 | Font | Author | License | Source |
 |---|---|---|---|
-| Pixelify Sans | Stefie Justprince | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Pixelify+Sans |
-| Silkscreen | Jason Kottke | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Silkscreen |
+| Tiny5 | The Tiny5 Project Authors (Gissio) | SIL Open Font License 1.1 | https://fonts.google.com/specimen/Tiny5 |
 `;
   fs.writeFileSync(path.join(ROOT, 'assets/game/CREDITS.md'), md);
 
