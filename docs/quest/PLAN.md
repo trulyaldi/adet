@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N7.1 (theme layer). Next: N7.3 vocabulary, then N7.5 light game touches + RewardChip. Nothing half-done.
+**Resume here (v2):** last finished N7.3 (vocabulary). Next: N7.5 light game touches + RewardChip. Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -190,6 +190,12 @@ repo; their text was recovered from Codex's session log into
     Adet's blue stays the accent, light and dark both follow the system.
 77. **The pixel font loads before sign-in** (in `App`); on web the stack falls back to the system face, not the
     browser's serif, for the moment before it arrives.
+78. **Vocabulary, sparingly (N7.3).** There is no central strings file, and an i18n layer would be a rewrite, so
+    `src/domain/words.ts` holds the table (game word + plain word, `spoken()` says both). Applied where it stays
+    instantly clear: Stats → **Almanac** (screen title; the tab says "Almanac, stats"), Streak freeze → **Ember
+    shield** (the Merchant, with its icon). Weak point and Chronicle already name those things in Quest Mode.
+    Kept plain, because a game word would make you stop and think: habit (forms), weekly target (a stepper),
+    session note (a placeholder), focus session, streak (the flame and its number already read as one).
 
 | Ticket | Status | Evidence |
 |---|---|---|

@@ -18,6 +18,7 @@ import { nextStreakMilestone } from '../domain/stats';
 import { useActions, useData, useStoreNow } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
+import { spoken, WORDS } from '../domain/words';
 
 /** Fewer days with time than this: the chart shows what exists with your character, and focus time and records wait. */
 const LOW_DATA_DAYS = 3;
@@ -60,7 +61,8 @@ export function StatsScreen() {
 
   const header = (
     <ScreenHeader
-      title="Stats"
+      title={WORDS.stats.game}
+      titleLabel={spoken(WORDS.stats)}
       right={<IconButton label="Log time" name="logTime" size={21} color={colors.sub} bg={colors.card} diameter={40} onPress={() => actions.openLogSheet()} tipBelow />}
     />
   );
