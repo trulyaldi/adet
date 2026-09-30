@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N7.4 (activity rewards, domain). Next: N7.2 (SVG pixel icons), then N7.1 theme tokens, N7.3 vocabulary, N7.5 light game touches + RewardChip. Nothing half-done.
+**Resume here (v2):** last finished N7.2 (pixel icons). Next: N7.1 theme tokens, then N7.3 vocabulary, N7.5 light game touches + RewardChip. Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -174,6 +174,12 @@ repo; their text was recovered from Codex's session log into
     the reward follows the record (re-ticking the same task is still one record, so nothing can be farmed).
 74. **"Daily goal met" is the day's plan completed** (the Today ring full, when the confetti plays), not any
     logged time (that lights the streak). A past day the app never logged earns nothing, as elsewhere.
+75. **Pixel icons are SVG, not Skia.** `Glyph` draws a 16×16 grid from `pixelGlyphs.ts` as merged `<Rect>`
+    runs, sized to a whole number of device pixels and centred on whole pixels (react-native-svg has no
+    `shape-rendering`; aligned edges are crisp without it). So the tab bar and every screen get pixel icons
+    without loading Skia at start. 34 of 65 glyphs have one (the tab bar, timer controls, check, clock,
+    calendar, flame, gear, chevrons…); the rest keep their stroke glyph, listed in INVENTORY. The icons are
+    original art drawn for the app: the licensed packs here have no UI icons.
 
 | Ticket | Status | Evidence |
 |---|---|---|
