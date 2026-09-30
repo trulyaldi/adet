@@ -22,6 +22,7 @@ import type { BiomeId } from '../../../domain/game/biomes';
 import type { ColorMatrix } from '../../../domain/game/daylight';
 import { nodeAt } from '../../../domain/game/derive';
 import { gameInput } from '../../../domain/game/fromData';
+import { dkey } from '../../../domain/time';
 import { attackGap, encounterOf, liveSession, previewGame, SceneState, STAGE_TIMING, stageStep, StageState, TimerState } from '../../../domain/game/stage';
 import { sprite } from '../../../game/assets/manifest';
 import { avatarLayers, AvatarLook } from '../../../game/avatar';
@@ -74,7 +75,7 @@ export default function Stage({ width, height, slim, live, reduced, force }: Sta
     return () => clearInterval(t);
   }, [timer]);
   const at = Math.max(minute, active?.startedAt ?? 0);
-  const game = useMemo(() => previewGame(gameInput(data, 0), liveSession(active, at)), [data, active, at]);
+  const game = useMemo(() => previewGame(gameInput(data, 0, undefined, dkey(new Date(at))), liveSession(active, at)), [data, active, at]);
   const enc = encounterOf(game);
 
   // The scene machine: stepped when its inputs change and when a timed scene ends.

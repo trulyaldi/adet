@@ -84,6 +84,21 @@ export const TASK_XP = 15;
 export const QUICK_LOG_XP = 3;
 /** Quick logs rewarded per local day; more are still saved, without reward. */
 export const QUICK_LOG_DAILY_CAP = 3;
+
+// ---- Activity outside sessions (v2 N7.4; from the journey's start) ----------
+/** A weak point completed outside any session. */
+export const OUTSIDE_TASK_XP = 5;
+export const OUTSIDE_TASK_DAILY_CAP = 5;
+/** The day's plan completed (the Today ring full): once per local day. */
+export const GOAL_DAY_CREDITS = 5;
+/** Every weekly target met (the Stats hero relaxed): once per week. */
+export const BOUNTY_CREDITS = 40;
+export const BOUNTY_XP = 60;
+/**
+ * Non-session XP (quick logs and weak points done outside sessions, together)
+ * never exceeds this share of the most XP a day of sessions can earn.
+ */
+export const ACTIVITY_XP_SHARE = 0.1;
 export const BOSS_XP = 100;
 /** Cumulative XP for level L is LEVEL_XP_BASE × (L−1)². */
 export const LEVEL_XP_BASE = 100;

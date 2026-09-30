@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N6. Next: N7 (pixel theme across the app, activity rewards). Nothing half-done.
+**Resume here (v2):** last finished N7.4 (activity rewards, domain). Next: N7.2 (SVG pixel icons), then N7.1 theme tokens, N7.3 vocabulary, N7.5 light game touches + RewardChip. Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -88,6 +88,15 @@ kneels (`.low` + `fx.dazed`); a nap sits with closed eyes, breathing, "z"s and a
 stops with reduced motion, a dimmed screen or the app in the background. QA panel: "Timer Stage" forces each
 scene, full size and slim.
 
+### N7.4 result (activity rewards, domain)
+
+`deriveGameState` takes `goalDays` and `bountyWeeks` (from `fromData`: days whose plan was all done, by their
+once-a-day log and today's live plan; weeks where every active project met its weekly target, by session start)
+and adds `GameState.activity`. Constants in `balance.ts`: outside weak point +5 XP (5/day), quick log +3 XP
+(3/day), completed day +5 credits (once a day), bounty +40 credits +60 XP (once a week). Non-session XP (quick
+logs + outside weak points together) is held to 30 a day = 10% of a full day of sessions (300 XP). The memo now
+keys on marks, per-day edits, daily logs, prefs and the local day, so a check-off moves the game at once.
+
 ### v2 assumptions
 
 (Numbered from 51, continuing the list below.)
@@ -155,6 +164,16 @@ repo; their text was recovered from Codex's session log into
 70. **The benchmark takes the best of 30.** Under the suite's parallel load, best-of-12 still caught
     contended runs now and then; 30 runs measure the same minimum more reliably.
 ### Status (after the fixes below)
+71. **Which activities are "non-session".** Quick logs and weak points done outside a session share the 30 XP
+    day cap. A completed day and a met week reward session time already tracked, so they sit outside it (a
+    day's bonus is 5 credits and no XP; a week's 60 XP comes once a week).
+72. **Activity rewards count from the journey's start**, for XP as well as credits (unlike session XP, which
+    counts all history): a veteran doesn't receive years of bounties at once. A week counts if any of its days
+    is on or after the start day.
+73. **Deleting a weak point done outside a session removes its +5 XP**, as deleting a session removes its XP:
+    the reward follows the record (re-ticking the same task is still one record, so nothing can be farmed).
+74. **"Daily goal met" is the day's plan completed** (the Today ring full, when the confetti plays), not any
+    logged time (that lights the streak). A past day the app never logged earns nothing, as elsewhere.
 
 | Ticket | Status | Evidence |
 |---|---|---|

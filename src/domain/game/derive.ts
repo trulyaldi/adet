@@ -37,6 +37,26 @@ export interface DeriveInput {
   tz?: GameTz;
   /** Σ weekly target minutes across active habits (boss HP). Default: Σ over `habits`. */
   weeklyTargetMin?: number;
+  /** Local days ('YYYY-MM-DD') whose plan was completed (the Today ring full). */
+  goalDays?: readonly string[];
+  /** Weeks (their first day, 'YYYY-MM-DD') in which every weekly target was met. */
+  bountyWeeks?: readonly string[];
+}
+
+/** The most XP a day of sessions can earn (the burnout guard's bands). */
+export const DAY_SESSION_XP_MAX = (DAY_FULL_MIN + (DAY_HALF_MIN - DAY_FULL_MIN) * HALF_RATE) * XP_PER_MIN;
+/** Non-session XP allowed per local day. */
+export const DAY_ACTIVITY_XP_MAX = Math.round(DAY_SESSION_XP_MAX * B.ACTIVITY_XP_SHARE);
+
+export interface ActivityRewards {
+  /** Quick logs with a line that earned XP (after both caps). */
+  quickLogXp: number;
+  /** Weak points done outside a session. */
+  outsideTaskXp: number;
+  goalDays: number;
+  bounties: number;
+  xp: number;
+  credits: number;
 }
 
 export type NodeKind = (typeof B.NODE_KINDS)[number];
@@ -167,6 +187,8 @@ export interface GameState {
   newAchievements: AchievementProps[];
   /** Boss-defeat achievements already recorded in items, for ceremonies. */
   bossAchievements: string[];
+  /** What activity outside sessions earned (v2 N7.4). */
+  activity: ActivityRewards;
 }
 
 // ---------------------------------------------------------------------------
@@ -391,15 +413,12 @@ export function deriveGameState(input: DeriveInput): GameState {
   const results: SessionResult[] = [];
   let xpTotal = 0;
   let earned = 0;
-  let quickXp = 0;
   let qi = 0;
   /** Rewarded quick logs up to `until`: XP always; Insight against a boss on the journey. */
   const flushQuick = (until: number) => {
     for (; qi < quick.length && quick[qi].at < until; qi++) {
       const l = quick[qi];
-      if (!l.rewarded) continue;
-      quickXp += B.QUICK_LOG_XP;
-      if (startedAt === null || l.at < startedAt) continue;
+      if (!l.rewarded || startedAt === null || l.at < startedAt) continue;
       snapTo(l.at);
       if (pos.kind !== 'boss') continue;
       sealOf(pos).insight++;
@@ -547,7 +566,11 @@ export function deriveGameState(input: DeriveInput): GameState {
   }
   flushQuick(Infinity);
   snapTo(Infinity);
-  xpTotal += quickXp;
+
+  // ---- activity outside sessions ----
+  const activity = activityRewards(input, tz, startedAt, quick, completed);
+  xpTotal += activity.xp;
+  earned += activity.credits;
 
   // Bosses: XP and credits, whichever way they were beaten.
   const defeated = [...defeats.values()].sort((a, b) => a.at - b.at || a.loop - b.loop);
@@ -621,5 +644,68 @@ export function deriveGameState(input: DeriveInput): GameState {
     sessions: results,
     newAchievements,
     bossAchievements: [...new Set(storedBosses.map((d) => biomeRef(d.biome, d.loop)))],
+    activity,
   };
+}
+
+/**
+ * Rewards for what happens outside sessions (v2 N7.4), derived from current
+ * data: quick logs with a line, weak points completed outside any session,
+ * completed day plans and weeks with every target met. On the journey only
+ * (from startedAt). Per-kind caps first, then the day's non-session XP is held
+ * to DAY_ACTIVITY_XP_MAX. Deleting a completed weak point removes its XP, the
+ * way deleting a session does.
+ */
+function activityRewards(
+  input: DeriveInput,
+  tz: GameTz,
+  startedAt: number | null,
+  quick: readonly { id: string; at: number; rewarded: boolean }[],
+  completedIn: ReadonlyMap<string, number>
+): ActivityRewards {
+  const none: ActivityRewards = { quickLogXp: 0, outsideTaskXp: 0, goalDays: 0, bounties: 0, xp: 0, credits: 0 };
+  if (startedAt === null) return none;
+  const startDay = tz.dayKey(startedAt);
+  // Events in time order, per local day.
+  const inSession = new Set<string>();
+  for (const l of input.links) if (l.kind === 'completed_in' && l.toType === 'session' && completedIn.has(l.toId)) inSession.add(l.fromId);
+  const events: { at: number; kind: 'quick' | 'task' }[] = [];
+  for (const q of quick) if (q.rewarded && q.at >= startedAt) events.push({ at: q.at, kind: 'quick' });
+  for (const t of itemsOfType(input.items, 'task')) {
+    if (t.props.status !== 'done' || !t.props.doneAt || inSession.has(t.id)) continue;
+    const at = parseIso(t.props.doneAt);
+    if (at !== null && at >= startedAt) events.push({ at, kind: 'task' });
+  }
+  events.sort((a, b) => a.at - b.at);
+  const tasksPerDay = new Map<string, number>();
+  const xpPerDay = new Map<string, number>();
+  let quickLogXp = 0;
+  let outsideTaskXp = 0;
+  for (const e of events) {
+    const day = tz.dayKey(e.at);
+    let gain = B.QUICK_LOG_XP;
+    if (e.kind === 'task') {
+      const n = tasksPerDay.get(day) ?? 0;
+      tasksPerDay.set(day, n + 1);
+      if (n >= B.OUTSIDE_TASK_DAILY_CAP) continue;
+      gain = B.OUTSIDE_TASK_XP;
+    }
+    const used = xpPerDay.get(day) ?? 0;
+    const take = Math.max(0, Math.min(gain, DAY_ACTIVITY_XP_MAX - used));
+    if (!take) continue;
+    xpPerDay.set(day, used + take);
+    if (e.kind === 'quick') quickLogXp += take;
+    else outsideTaskXp += take;
+  }
+  const goalDays = new Set((input.goalDays ?? []).filter((d) => d >= startDay)).size;
+  // A week counts once its first day is on or after the journey's start week.
+  const bounties = new Set((input.bountyWeeks ?? []).filter((w) => addDaysKey(w, 6) >= startDay)).size;
+  const xp = quickLogXp + outsideTaskXp + bounties * B.BOUNTY_XP;
+  return { quickLogXp, outsideTaskXp, goalDays, bounties, xp, credits: goalDays * B.GOAL_DAY_CREDITS + bounties * B.BOUNTY_CREDITS };
+}
+
+/** 'YYYY-MM-DD' plus n days (calendar arithmetic, no time zone). */
+function addDaysKey(k: string, n: number): string {
+  const [y, m, d] = k.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
