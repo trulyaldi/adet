@@ -13,6 +13,7 @@ import { Icon } from '../../../components/Icon';
 import { useQuestWrites } from '../../../data/itemsRepo';
 import { ICONS } from '../../../domain/constants';
 import { MAX_CRITS, NODE_MOBS } from '../../../domain/game/balance';
+import type { NodeRef } from '../../../domain/game/derive';
 import { ClaimPreview, gameStateOf, previewClaim } from '../../../domain/game/fromData';
 import { LOG_BODY_MAX, openTasksFor } from '../../../domain/items/ops';
 import { itemsOfType } from '../../../domain/items/types';
@@ -225,7 +226,7 @@ function LootStage(p: {
   flashUntil: ReturnType<typeof useSharedValue<number>>;
   shake: ReturnType<typeof useSharedValue<number>>;
   opened: boolean;
-  enemy: import('../../../domain/game/derive').NodeRef | null;
+  enemy: NodeRef | null;
   reduced: boolean;
 }) {
   const { worldW, worldH, scale, clock } = p;

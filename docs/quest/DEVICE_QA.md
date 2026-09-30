@@ -103,6 +103,14 @@ Scribe → Settings → Sound effects on. With the ringer on:
 - [ ] Scribe → Settings → AI Sage asks with a browser dialog ("Chronicle entries are
       sent to generate suggestions."); Cancel leaves it off.
 
+## 14. Dev-server drops (v2 N1)
+The red screen "Cannot read property 'reload' of undefined" came from Metro's HMR client
+when a lazily loaded Quest screen was first fetched after the dev connection had dropped.
+- [ ] Start a timer, lock the phone for 10+ minutes, unlock, finish the session: no red
+      screen, the Loot sheet opens.
+- [ ] Start a timer, stop Metro (Ctrl-C) mid-session, finish the session: the Loot sheet
+      still opens and the chest can be opened or sent to camp. Restart Metro afterwards.
+
 ## If something's wrong, send back
 - a screenshot or screen recording;
 - the iPhone model and iOS version;

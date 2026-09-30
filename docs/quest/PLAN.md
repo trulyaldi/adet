@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N0. Next: N1 (render error). Nothing half-done.
+**Resume here (v2):** last finished N1. Next: N2 (pixel font). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -33,9 +33,26 @@ Code: `src/components/ilmek/{Ilmek,ScreenIlmek,art}.tsx`, `src/components/ilmek/
 pet 4, decor 63, parallax 21, prop 38, tile 35, fx 8, icon 22. Only 38 ids come from a pack or a recolour/composite
 of one (see `docs/quest/art/INVENTORY.md`).
 
+### N1 result
+
+Confirmed in code: every Skia screen (map, Loot sheet, battle strip, ceremonies, playground) was a
+`() => import(...)` passed to `SkiaGate`, so Expo Go fetched each one as an async bundle through the dev
+server on first use. Now `src/game/render/screens.ts` (native: `require` inside each loader, still lazy)
+and `screens.web.ts` (web: `import()` for CanvasKit) hold every loader; `SkiaGate` renders the synchronous
+module inside a `SkiaBoundary`. Error paths: a ceremony that fails finishes (`onError={done}`), the Loot
+sheet falls back to a plain "Later" panel (the chest waits at camp), a Quest sheet closes, the map shows
+a calm note, the timer strip shows nothing. Guard: `render/noDynamicImport.test.ts`. iOS export: one
+Hermes file, 5,124,989 B (−670 B); web export starts (headless Chromium: sign-in screen, no console errors;
+needs `.env` and `expo export --clear`).
+
 ### v2 assumptions
 
 (Numbered from 51, continuing the list below.)
+
+51. **Branch base.** Quest Mode is on `origin/main`; v2 branches from it. The stop → Loot hand-off hold from
+    the crash investigation (`bf378fe`) is kept: it is tested and independent of N1's cause.
+52. **Error fallbacks are silent.** A failed Skia screen shows the calmest thing that keeps the flow going
+    (see N1 result), never an error message.
 
 ## Audit after Codex handoff — 2026-09-29
 

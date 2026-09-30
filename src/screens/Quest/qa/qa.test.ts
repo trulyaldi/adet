@@ -69,7 +69,11 @@ test('the QA tools call only the ceremony host previews', () => {
 
 test('the QA tools are reachable only in development builds', () => {
   const tab = readFileSync(join(root, 'src/screens/Quest/QuestTab.tsx'), 'utf8');
-  assert.match(tab, /const loadPlayground = __DEV__ \? \(\) => import\('\.\/Playground'\) : null;/);
+  // The loaders keep __DEV__ at the load site, so production folds the QA tools out of the bundle.
+  const native = readFileSync(join(root, 'src/game/render/screens.ts'), 'utf8');
+  const web = readFileSync(join(root, 'src/game/render/screens.web.ts'), 'utf8');
+  assert.match(native, /export const loadPlayground = __DEV__ \? \(\): PlaygroundModule => require\('\.\.\/\.\.\/screens\/Quest\/Playground'\) : null;/);
+  assert.match(web, /export const loadPlayground = __DEV__ \? \(\) => import\('\.\.\/\.\.\/screens\/Quest\/Playground'\) : null;/);
   assert.match(tab, /\{__DEV__ && playground && loadPlayground &&/);
   const importers = readdirSync(join(root, 'src/screens/Quest')).filter((f) => f.endsWith('.tsx') && /from '\.\/qa\//.test(readFileSync(join(root, 'src/screens/Quest', f), 'utf8')));
   assert.deepEqual(importers, ['Playground.tsx']);

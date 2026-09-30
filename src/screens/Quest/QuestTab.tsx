@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph';
+import { loadPlayground, loadQuestScreen } from '../../game/render/screens';
 import { SkiaGate } from '../../game/render/SkiaGate';
 import { questTabView, useQuestTables } from '../../sync/questTables';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -21,9 +22,6 @@ function Note({ title, body, busy }: { title: string; body: string; busy?: boole
   );
 }
 
-const loadQuestScreen = () => import('./QuestScreen');
-// Dev builds only: in production __DEV__ is false, so the playground and its QA tools aren't bundled.
-const loadPlayground = __DEV__ ? () => import('./Playground') : null;
 
 export function QuestTab() {
   const tables = useQuestTables();
@@ -36,7 +34,7 @@ export function QuestTab() {
   const fallback = <Note title="Finding the path…" body="" busy />;
   return (
     <>
-      <SkiaGate load={loadQuestScreen} props={{ onPlayground: () => setPlayground(true) }} fallback={fallback} />
+      <SkiaGate load={loadQuestScreen} props={{ onPlayground: () => setPlayground(true) }} fallback={fallback} errorFallback={<Note title="The map is resting" body="Your focus time still counts." />} />
       {__DEV__ && playground && loadPlayground && <SkiaGate load={loadPlayground} props={{ onClose: () => setPlayground(false) }} />}
     </>
   );

@@ -7,6 +7,7 @@ import { useWindowDimensions, View } from 'react-native';
 
 import { useQuestStarted } from '../../../data/itemsRepo';
 import { QUEST_ENABLED } from '../../../game/enabled';
+import { loadBattleStrip } from '../../../game/render/screens';
 import { SkiaGate } from '../../../game/render/SkiaGate';
 import { useQuestReduced, useQuestSettings } from '../../../game/state/settings';
 import { useQuestTables } from '../../../sync/questTables';
@@ -27,7 +28,6 @@ export function QuestFocusStrip(p: { bottom: number; left: number; paused: boole
   return QUEST_ENABLED ? <Strip {...p} /> : null;
 }
 
-const loadBattleStrip = () => import('./BattleStrip');
 
 function Strip({ bottom, left, paused, dimmed }: { bottom: number; left: number; paused: boolean; dimmed: boolean }) {
   const started = useQuestStarted();

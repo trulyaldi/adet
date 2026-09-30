@@ -14,6 +14,7 @@ import { useAuth } from '../../sync/AuthProvider';
 import { useQuestTables } from '../../sync/questTables';
 import { useAppActive } from '../../theme/useMotion';
 import { MODAL_GAP_MS } from '../../theme/motion';
+import { loadScene } from '../render/screens';
 import { SkiaGate } from '../render/SkiaGate';
 import { coverWorld } from '../state/focus';
 import { setCeremonyPlaying, useCeremoniesHeld } from './gate';
@@ -40,8 +41,6 @@ export const ceremonyHost = {
   /** Dev QA: forget this device's marks. The host reseeds silently from the real state. */
   forgetMarks(): void { handlers?.forgetMarks(); },
 };
-
-const loadScene = () => import('../../screens/Quest/ceremonies/Scene');
 
 export function RootCeremonyHost() {
   const { session } = useAuth();
@@ -141,7 +140,7 @@ export function RootCeremonyHost() {
   if (current.event.kind === 'level_up') return <LevelUp level={current.event.level} game={shownGame} onDone={done} reduced={reduced} />;
   return (
     <Modal visible transparent animationType={reduced ? 'fade' : 'none'} onRequestClose={done} statusBarTranslucent>
-      <SkiaGate load={loadScene} props={{ event: current.event, game: shownGame, onDone: done, reduced }} />
+      <SkiaGate load={loadScene} props={{ event: current.event, game: shownGame, onDone: done, reduced }} onError={done} />
     </Modal>
   );
 }

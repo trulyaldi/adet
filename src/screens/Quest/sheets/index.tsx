@@ -2,6 +2,7 @@
 
 import React from 'react';
 
+import { SkiaBoundary } from '../../../game/render/SkiaBoundary';
 import { useQuestReduced } from '../../../game/state/settings';
 import type { QuestModel } from '../useQuestModel';
 import { BoardSheet } from './BoardSheet';
@@ -12,7 +13,16 @@ import { ScribeSheet } from './ScribeSheet';
 
 export type SheetId = 'sage' | 'board' | 'merchant' | 'scribe' | 'chests' | 'character';
 
-export function QuestSheets({ sheet, onClose, onReplayIntro, model }: { sheet: SheetId | null; onClose(): void; onOpen(id: SheetId): void; onReplayIntro(): void; model: QuestModel }) {
+export function QuestSheets(p: { sheet: SheetId | null; onClose(): void; onOpen(id: SheetId): void; onReplayIntro(): void; model: QuestModel }) {
+  // A sheet that fails to draw just closes; the map behind it stays.
+  return (
+    <SkiaBoundary key={p.sheet ?? 'none'} fallback={null} onError={p.onClose}>
+      <Sheet {...p} />
+    </SkiaBoundary>
+  );
+}
+
+function Sheet({ sheet, onClose, onReplayIntro, model }: { sheet: SheetId | null; onClose(): void; onReplayIntro(): void; model: QuestModel }) {
   const reduced = useQuestReduced();
   switch (sheet) {
     case 'sage':
