@@ -240,6 +240,20 @@ repo; their text was recovered from Codex's session log into
     Loot sheet and the quick log show − / amount / +; an amount alone may open a chest (it earns nothing extra).
     The Almanac (Stats) links to the Trail from its header; its week hero stays as it was (per project), the
     Trail is per habit, so nothing is shown twice. Aqyl's local insight names a rising skill first.
+81. **Known: a completed day's +5 credits can be taken back.** The reward is derived from today's live plan, so
+    setting a habit aside or changing today's capacity after the ring fills un-completes the day and its 5
+    credits disappear (the chip had already shown them). Around midnight the same can happen briefly until
+    yesterday's once-a-day log is written. Kept derived (nothing stored), noted for the owner.
+82. **Known: web now fetches CanvasKit at launch.** Your character on Today is drawn with Skia (N5), so on web
+    the Skia runtime downloads when Today first renders (native loads Skia there too, lazily through
+    `require`); offline, the character's box stays empty. This supersedes assumption 50's "only when the
+    Quest tab opens". Drawing the non-Quest portrait with the SVG pixel renderer would remove it.
+83. **N1 evidence.** Expo Go's lazy iOS dev bundle (`index.bundle?platform=ios&dev=true&lazy=true`): on
+    `origin/main` none of QuestScreen, BattleStrip, LootSheet or Scene is in it and it carries 15 async-require
+    calls (each fetched through the dev server on first use: the red screen's path); on this branch all the
+    Quest screens are in the main bundle and it has no async-require call.
+84. **The kill switch hides, it doesn't strip.** The off build inlines `EXPO_PUBLIC_QUEST_ENABLED=false`
+    (checked in the web bundle) and hides Quest at runtime; its code still ships (same size).
 
 | Ticket | Status | Evidence |
 |---|---|---|
