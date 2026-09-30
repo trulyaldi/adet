@@ -1,5 +1,42 @@
 # Quest Mode — implementation plan
 
+**Resume here (v2):** last finished N0. Next: N1 (render error). Nothing half-done.
+
+## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
+
+Worktree `../adet-v2`, branch `feat/quest-v2` from `origin/main` (`024dcb3`, PR #23 merged), with the
+tested stop → Loot hand-off fix cherry-picked from `fix/quest-crash` (`bf378fe`; its diagnostic commit was
+not taken). Dependencies are a real `npm ci` (the owner's `node_modules` predates #22's lockfile). Packs
+copied read-only from `../adet-polish/assets/game/raw/` (Kenney: impact, interface, music jingles, rpg audio,
+tiny dungeon, tiny town).
+
+### N0 baseline
+
+| Check | Result |
+|---|---|
+| Typecheck | pass |
+| Tests | 447 pass, 0 fail |
+| iOS export | one Hermes bundle, 5,125,659 B; assets 669,624 B |
+| Web export | `index` 2,690,049 B + async chunks (BattleStrip 2.3 KB, LootSheet 7.6 KB, QuestScreen 64 KB, Scene 12 KB, common 555 KB) |
+
+### N0 Ilmek (mascot) references, for N5
+
+Code: `src/components/ilmek/{Ilmek,ScreenIlmek,art}.tsx`, `src/components/ilmek/motion.ts`, `src/theme/mascot.ts`
+(+ `mascot.test.ts`), `src/components/ErrorBoundary.tsx`, `src/components/stats/{PeriodChart,WeekHero}.tsx`,
+`src/overlays/{CelebrationHost,FocusView,WelcomeFlow}.tsx`, `src/screens/{ProjectsScreen,StatsScreen,TodayScreen}.tsx`,
+`src/screens/Quest/session/QuestFocus.tsx`, `src/store/{StreakStore.tsx,Watchers.tsx}`. Assets/docs: `assets/mascot/ILMEK_SPEC.md`.
+
+### N0 stand-in inventory, for N9
+
+`generated-placeholder`: 0. `needs-art` (Adet's own code-drawn stand-ins, allowlisted in
+`assets/game/needs-art.json`): 327 ids — avatar 28, boss 21, trophy 14, mob 42, npc 6, villager 7, critter 18,
+pet 4, decor 63, parallax 21, prop 38, tile 35, fx 8, icon 22. Only 38 ids come from a pack or a recolour/composite
+of one (see `docs/quest/art/INVENTORY.md`).
+
+### v2 assumptions
+
+(Numbered from 51, continuing the list below.)
+
 ## Audit after Codex handoff — 2026-09-29
 
 Claude resumed after Codex. Codex's commits are `d7aeff8` (R), `59f7576` (Q10
