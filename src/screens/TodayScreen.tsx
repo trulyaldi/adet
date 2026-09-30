@@ -4,7 +4,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 
 import { AdetLockup } from '../components/AdetMark';
-import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
+import { Character } from '../components/character/Character';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Appear } from '../components/motion/Appear';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -69,7 +69,7 @@ export function TodayScreen() {
 
       {model.noHabits ? (
         <View style={{ alignItems: 'center', paddingVertical: 48, gap: 20 }}>
-          <ScreenIlmek state="idle" size={120} />
+          <Character mood="idle" size={120} />
           <IconButton
             label="Add a project and habits"
             name="plus"
@@ -177,7 +177,7 @@ export function TodayScreen() {
   );
 }
 
-/** Ilmek hops up beside the ring for a moment when the day completes. */
+/** Your character hops up beside the ring for a moment when the day completes. */
 function DayCheer() {
   const confetti = useUi((u) => u.confetti);
   const [on, setOn] = useState(false);
@@ -190,7 +190,7 @@ function DayCheer() {
   if (!on) return null;
   return (
     <Animated.View entering={ZoomIn.springify().damping(12)} exiting={FadeOut} style={{ position: 'absolute', right: 0, bottom: -6, pointerEvents: 'none' }}>
-      <ScreenIlmek state="celebrating" size={76} />
+      <Character mood="celebrating" size={76} />
     </Animated.View>
   );
 }
@@ -220,7 +220,7 @@ function FreeDay({ trackedSec, onBonus }: { trackedSec: number; onBonus(): void 
   return (
     <View style={{ alignItems: 'center', paddingTop: 36, gap: 12 }}>
       <View accessible accessibilityLabel="Nothing planned today, rest easy">
-        <ScreenIlmek state="sleepy" size={130} decorative />
+        <Character mood="sleepy" size={130} decorative />
       </View>
       <Glyph name="moon" size={22} color={colors.muted} />
       {trackedSec > 0 && <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] }}>{fmtDur(trackedSec)}</Text>}

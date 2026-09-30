@@ -109,6 +109,7 @@ export const REQUIRED_IDS: string[] = [
   'prop.shadow',
   'fx.sparkle',
   'fx.dazed',
+  'fx.zzz',
   'fx.dust',
   'fx.hit',
   'fx.glow.warm',

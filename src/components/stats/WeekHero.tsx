@@ -8,7 +8,7 @@ import { fmtDur, fmtH, sayDur } from '../../domain/time';
 import { springs, timings } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
-import { ScreenIlmek } from '../ilmek/ScreenIlmek';
+import { Character } from '../character/Character';
 import { Press } from '../motion/Press';
 import { arcPath, ProjectInfo, TextNum, TrendMark } from './common';
 
@@ -21,7 +21,7 @@ const GAP_DEG = 2.5;
 /**
  * This week at a glance: a ring toward the combined weekly target, segmented
  * by project color, with the total inside; the change against this time last
- * week; a dot per day with time; and Ilmek. Tap to jump to the daily chart.
+ * week; a dot per day with time; and your character. Tap to jump to the daily chart.
  */
 export const WeekHero = memo(function WeekHero({ week, info, onPress }: { week: ThisWeek; info: Map<string, ProjectInfo>; onPress(): void }) {
   const t = useTheme();
@@ -59,7 +59,7 @@ export const WeekHero = memo(function WeekHero({ week, info, onPress }: { week: 
         <View style={{ flex: 1, gap: 14 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <TrendMark trend={week.trend} deltaSec={week.totalSec - week.lastWeekSec} size={17} />
-            <ScreenIlmek state={week.mood} size={64} decorative />
+            <Character mood={week.mood} size={64} decorative />
           </View>
           <DayDots dots={week.dots} />
         </View>

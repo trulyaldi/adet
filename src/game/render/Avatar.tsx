@@ -19,7 +19,8 @@ import { useAtlas } from './atlas';
 import { NEAREST } from './pixel';
 import { SpriteView } from './SpriteView';
 
-const FPS: Record<AvatarAnimation, number> = { idle: 2, walk: 6, kneel: 1, cheer: 1, wave: 4 };
+/** Slow and calm: a nap breathes once every two seconds. */
+const FPS: Record<AvatarAnimation, number> = { idle: 2, walk: 6, kneel: 1, cheer: 1, wave: 4, attack: 5, nap: 1, wake: 2, sit: 1 };
 /** Where the pips float, in avatar pixels: above the right shoulder. */
 const pipAt = (i: number) => ({ x: 13 + i * 4, y: 1 + (i % 2) });
 
@@ -74,6 +75,9 @@ export const Avatar = memo(function Avatar({ tier, gear, stars = 0, animation = 
         {layers.length > 0 && <SpriteView id={layers} scale={s} animate={moving} seq={moving ? [...seq] : undefined} frame={moving ? undefined : seq[0]} fps={FPS[animation]} flip={flip} />}
         {animation === 'wave' && (
           <SpriteView id="avatar.wave" scale={s} animate={animate} seq={animate ? [0, 1] : undefined} frame={animate ? undefined : 0} fps={FPS.wave} flip={flip} style={{ position: 'absolute', left: 0, top: 0 }} />
+        )}
+        {animation === 'nap' && animate && (
+          <SpriteView id="fx.zzz" scale={s} animate style={{ position: 'absolute', left: (flip ? 1 : base.w - 7) * s, top: 0 }} />
         )}
         {Array.from({ length: pips }, (_, i) => {
           const p = pipAt(i);

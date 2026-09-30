@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../components/Button';
 import { BadgeArt } from '../components/celebrate/BadgeArt';
-import { Ilmek } from '../components/ilmek/Ilmek';
+import { Character } from '../components/character/Character';
 import { Glyph } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
@@ -138,7 +138,7 @@ function Celebrations() {
   return (
     <View style={{ alignItems: 'center', gap: 30 }}>
       <BadgeArt info={{ id: 'demo', kind: 'streak', value: 7 }} size={160} animated />
-      <Ilmek state="waving" size={110} />
+      <Character mood="waving" size={110} />
     </View>
   );
 }

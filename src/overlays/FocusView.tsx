@@ -9,7 +9,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '../components/Button';
 import { Burst } from '../components/celebrate/Burst';
-import { Ilmek } from '../components/ilmek/Ilmek';
+import { Character } from '../components/character/Character';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { ProgressRing } from '../components/motion/ProgressRing';
@@ -34,7 +34,7 @@ const DIM_OFFER_MS = 2 * 60_000;
 
 /**
  * Full-screen focus: the count-up inside a ring in the project's color,
- * the project's scene growing behind it, Ilmek in a corner, and
+ * the project's scene growing behind it, your character in a corner, and
  * pause / done. Swipe down to minimize back to Today; the session keeps
  * running. The screen stays awake while it's open.
  */
@@ -114,7 +114,7 @@ function FocusContent() {
   const ringSize = Math.min(290, width - 70);
   const cy = insets.top + 70 + (height - insets.top - insets.bottom - 250) / 2;
   const cheering = cheerUntil > Date.now();
-  const mascot = p.paused ? 'sleepy' : cheering ? 'cheering' : 'focused';
+  const mood = p.paused ? 'sleepy' : cheering ? 'cheering' : 'focused';
 
   return (
     <GestureDetector gesture={swipe}>
@@ -189,12 +189,12 @@ function FocusContent() {
           </ProgressRing>
         </View>
 
-        {/* Ilmek, bottom corner */}
+        {/* Your character, bottom corner */}
         <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
-          <Ilmek state={mascot} size={78} tint={look.color} />
+          <Character mood={mood} size={78} />
         </View>
 
-        {/* Quest Mode: the battle strip beside Ilmek. */}
+        {/* Quest Mode: the battle strip beside your character. */}
         <QuestFocusStrip bottom={insets.bottom + 114} left={104} paused={p.paused} dimmed={dimmed} />
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>

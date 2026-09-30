@@ -141,6 +141,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
   "fx.hit": "needs-art",
   "fx.pixel": "needs-art",
   "fx.sparkle": "needs-art",
+  "fx.zzz": "needs-art",
   "icon.calendar": "needs-art",
   "icon.check": "needs-art",
   "icon.chest": "needs-art",

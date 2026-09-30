@@ -2,7 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '../theme/ThemeProvider';
-import { Ilmek } from './ilmek/Ilmek';
+import { SkiaBoundary } from '../game/render/SkiaBoundary';
+import { Character } from './character/Character';
 import { IconButton } from './Glyph';
 
 interface State {
@@ -10,7 +11,7 @@ interface State {
 }
 
 /**
- * If a screen crashes, show Ilmek dozing and a retry button instead
+ * If a screen crashes, show your character napping and a retry button instead
  * of a blank app. Data lives in the store above, so retrying loses nothing.
  */
 export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State> {
@@ -34,7 +35,9 @@ function Fallback({ onRetry }: { onRetry(): void }) {
   const { colors } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24, backgroundColor: colors.bg }}>
-      <Ilmek state="sleepy" size={120} />
+      <SkiaBoundary fallback={null}>
+        <Character mood="sleepy" size={120} />
+      </SkiaBoundary>
       <IconButton label="Try again" name="undo" size={24} color={colors.onBrand} bg={colors.brand} edge={colors.brandDark} variant="chunky" diameter={60} onPress={onRetry} />
     </View>
   );

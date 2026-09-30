@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { CapacityIndicator } from '../components/CapacityIndicator';
-import { ScreenIlmek } from '../components/ilmek/ScreenIlmek';
+import { Character } from '../components/character/Character';
 import { Glyph, IconButton } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Appear, useLayoutMotion } from '../components/motion/Appear';
@@ -62,7 +62,7 @@ export function ProjectsScreen() {
 
       {model.cards.length === 0 && (
         <View accessible accessibilityLabel="No projects yet" style={{ alignItems: 'center', paddingVertical: 40 }}>
-          <ScreenIlmek state="relaxed" size={120} decorative />
+          <Character mood="relaxed" size={120} decorative />
         </View>
       )}
 

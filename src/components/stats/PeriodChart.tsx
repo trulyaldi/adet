@@ -14,7 +14,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { IconButton } from '../Glyph';
 import { Icon } from '../Icon';
-import { ScreenIlmek } from '../ilmek/ScreenIlmek';
+import { Character } from '../character/Character';
 import { Press } from '../motion/Press';
 import { ProjectInfo, StatsCard, TextNum } from './common';
 
@@ -32,7 +32,7 @@ const PERIODS: { key: Period; short: string; label: string }[] = [
  * Time per day (week), per week (month) or per month (year), stacked by
  * project color, with a dashed capacity mark per bar. Swipe or use the
  * chevrons to move between periods; tap a bar for its breakdown.
- * With little data yet, Ilmek waves beside whatever bars exist.
+ * With little data yet, your character waves beside whatever bars exist.
  */
 export const PeriodChart = memo(function PeriodChart({ info, lowData }: { info: Map<string, ProjectInfo>; lowData: boolean }) {
   const { colors } = useTheme();
@@ -63,7 +63,7 @@ export const PeriodChart = memo(function PeriodChart({ info, lowData }: { info: 
   );
 
   const controls = lowData ? (
-    <ScreenIlmek state="waving" size={56} decorative />
+    <Character mood="waving" size={56} decorative />
   ) : (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
       <IconButton label="Earlier" name="chevronLeft" size={16} color={colors.sub} bg={colors.well} diameter={28} disabled={!c.hasEarlier} onPress={older} />

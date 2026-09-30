@@ -7,3 +7,4 @@ export const loadPlayground = __DEV__ ? () => import('../../screens/Quest/Playgr
 export const loadScene = () => import('../../screens/Quest/ceremonies/Scene');
 export const loadLootSheet = () => import('../../screens/Quest/session/LootSheet');
 export const loadBattleStrip = () => import('../../screens/Quest/session/BattleStrip');
+export const loadCharacterArt = () => import('./CharacterArt');

@@ -187,6 +187,15 @@ const ICONS: Record<string, { grid: Grid; map: Record<string, Color>; outline?: 
   star: { grid: ['.....a......', '.....a......', '....aba.....', 'aaaabcbaaaa.', '.aabbbbbaa..', '...abbba....', '..abbabba...', '..aa...aa...', '............', '............', '............', '............'], map: { a: hex(SHARED.gold[1]), b: hex(SHARED.gold[2]), c: hex('#ffffff') } },
 };
 
+/** Sleep: a small "z" drifting up and fading, three frames. */
+function zzz(f: number): Px {
+  const px = new Px(9, 11);
+  const c = withAlpha(hex('#e8f0ff'), 255 - f * 60);
+  const Z = ['aaa', '..a', '.a.', 'a..', 'aaa'];
+  px.stamp(Z, { a: c }, 1 + f * 2, 6 - f * 3);
+  return px;
+}
+
 /** Dazed stars circling a staggered enemy's head: three small stars on a flat ellipse. */
 function dazed(f: number): Px {
   const px = new Px(17, 7);
@@ -221,6 +230,7 @@ export function addProps(reg: Registry): void {
   reg.add({ id: 'fx.glow.cool', atlas: 'shared', frames: [glow(32, '#9fe8ff')], anchor: [16, 16], additive: true });
   reg.add({ id: 'fx.glow.small', atlas: 'shared', frames: [glow(12, '#fff0b0')], anchor: [6, 6], additive: true });
   reg.add({ id: 'fx.fog', atlas: 'shared', frames: [fog(56, 22)], anchor: [28, 11] });
+  reg.add({ id: 'fx.zzz', atlas: 'shared', frames: [0, 1, 2].map(zzz), fps: 1.5, loop: true, anchor: [4, 10] });
   reg.add({ id: 'fx.dazed', atlas: 'shared', frames: [0, 1, 2, 3].map(dazed), fps: 6, loop: true, anchor: [8, 3] });
   reg.add({ id: 'fx.pixel', atlas: 'shared', frames: [new Px(1, 1).set(0, 0, hex('#ffffff'))], anchor: [0, 0] });
 

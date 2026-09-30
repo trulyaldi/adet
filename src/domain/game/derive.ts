@@ -188,15 +188,23 @@ export function bossGlobal(biomeIndex: number, loop: number): number {
   return loop * PER_LOOP + biomeIndex * B.NODES_PER_BIOME + (B.NODES_PER_BIOME - 1);
 }
 
+const MOB_HP_BY_BIOME = Array.from({ length: BIOME_COUNT }, (_, i) => Math.round(B.MOB_HP_BASE * B.MOB_HP_GROWTH ** i));
+
 /** Mob HP for a biome (effective minutes). */
 export function mobHp(biomeIndex: number): number {
-  return Math.round(B.MOB_HP_BASE * B.MOB_HP_GROWTH ** biomeIndex);
+  return MOB_HP_BY_BIOME[biomeIndex] ?? Math.round(B.MOB_HP_BASE * B.MOB_HP_GROWTH ** biomeIndex);
 }
+
+// Hot-loop copies (a module namespace read is a getter call in some bundlers).
+const NODES = B.NODES_PER_BIOME;
+const KINDS = B.NODE_KINDS;
+const DEPTH_MIN = B.DEPTH_MIN;
+
+const SEAL_TARGETS: Record<SealKind, number>[] = B.SEAL_DAYS.map((days, i) => ({ days, depth: B.SEAL_DEPTH[i], insight: B.SEAL_INSIGHT[i] }));
 
 /** The seals a biome's boss needs (0 disables one). */
 export function sealTargets(biomeIndex: number): Record<SealKind, number> {
-  const i = Math.max(0, Math.min(6, biomeIndex));
-  return { days: B.SEAL_DAYS[i], depth: B.SEAL_DEPTH[i], insight: B.SEAL_INSIGHT[i] };
+  return { ...SEAL_TARGETS[Math.max(0, Math.min(SEAL_TARGETS.length - 1, biomeIndex))] };
 }
 
 /** Boss HP for a biome run, from the weekly target minutes. */
@@ -306,14 +314,37 @@ export function deriveGameState(input: DeriveInput): GameState {
   // staggered (R4): it doesn't heal, and later sessions fill the seals.
   let pos = nodeAt(0);
   const soft = new Map<number, number>(); // damage already dealt to enemies ahead of the front
-  const hpAt = (g: number) => nodeMaxHp(nodeAt(g), target) - (soft.get(g) ?? 0);
+  /** Max HP of node `g`, without building its NodeRef (the walk calls this a lot). */
+  const maxAt = (g: number) => {
+    const inLoop = g % PER_LOOP;
+    const node = inLoop % NODES;
+    const kind = KINDS[node];
+    if (kind === 'mob') return MOB_HP_BY_BIOME[Math.floor(inLoop / NODES)];
+    if (kind === 'camp') return 0;
+    return bossHp(Math.floor(inLoop / NODES), Math.floor(g / PER_LOOP), target);
+  };
+  const hpAt = (g: number) => maxAt(g) - (soft.get(g) ?? 0);
   let hp = hpAt(0);
+  // Every enemy after the front and before `frontier` is down to 1 HP (or is a
+  // camp): surplus skips straight past them. Enemies only lose HP, so it only
+  // moves forward (the burnout guard keeps the walk short, but a long run of
+  // softened enemies would otherwise be re-walked by every session).
+  let frontier = 1;
+  const settleFrontier = () => {
+    if (frontier <= pos.global) frontier = pos.global + 1;
+    for (;;) {
+      const max = maxAt(frontier);
+      if (max > 0 && max - (soft.get(frontier) ?? 0) > 1) break;
+      frontier++;
+    }
+  };
   const advance = (to: number) => {
     // Walk past nodes with no HP (the camp); a softened node keeps its damage.
     pos = nodeAt(to);
     while (nodeMaxHp(pos, target) <= 0) pos = nodeAt(pos.global + 1);
     hp = hpAt(pos.global);
     soft.delete(pos.global);
+    settleFrontier();
   };
   advance(0);
   // Seals per boss encounter (its biome run), from sessions fought against it.
@@ -325,7 +356,7 @@ export function deriveGameState(input: DeriveInput): GameState {
     return v;
   };
   const sealsMet = (n: NodeRef) => {
-    const t = sealTargets(n.biomeIndex);
+    const t = SEAL_TARGETS[Math.max(0, Math.min(SEAL_TARGETS.length - 1, n.biomeIndex))];
     const v = sealOf(n);
     return v.days.size >= t.days && v.depth >= t.depth && v.insight >= t.insight;
   };
@@ -403,7 +434,7 @@ export function deriveGameState(input: DeriveInput): GameState {
       if (pos.kind === 'boss') {
         const v = sealOf(pos);
         v.days.add(day);
-        if (s.duration / 60 >= B.DEPTH_MIN) v.depth++;
+        if (s.duration / 60 >= DEPTH_MIN) v.depth++;
         v.insight += c.completed + (hasChronicle ? 1 : 0);
         // A staggered boss whose seals are now filled falls to this session.
         if (hp <= 0 && sealsMet(pos)) {
@@ -430,13 +461,17 @@ export function deriveGameState(input: DeriveInput): GameState {
       let left = baseDamage + critDamage;
       let g = pos.global;
       while (left > 0) {
-        const n = nodeAt(g);
-        const max = nodeMaxHp(n, target);
+        const front = g === pos.global;
+        if (!front && g < frontier) {
+          g = frontier;
+          continue;
+        }
+        const max = maxAt(g);
         if (max <= 0) {
           g++;
           continue;
         }
-        const front = g === pos.global;
+        const n = front ? pos : nodeAt(g);
         const cur = front ? hp : hpAt(g);
         // Only the front enemy can fall, and only once per session; the rest stop at 1 HP.
         const floor = front && !felled ? 0 : 1;
@@ -452,7 +487,10 @@ export function deriveGameState(input: DeriveInput): GameState {
           left -= take;
           damage += take;
           if (front) hp -= take;
-          else soft.set(g, (soft.get(g) ?? 0) + take);
+          else {
+            soft.set(g, (soft.get(g) ?? 0) + take);
+            if (g === frontier && cur - take <= 1) settleFrontier();
+          }
         }
         if (front && hp <= 0 && !felled) {
           if (n.kind === 'boss' && !sealsMet(n)) {

@@ -1,5 +1,5 @@
 // Quest Mode's part of the focus view: the weak points row under the header
-// and the battle strip beside Ilmek. Both are optional: nothing shows before
+// and the battle strip beside your character. Both are optional: nothing shows before
 // the journey starts, and the strip can be turned off in Quest settings.
 
 import React from 'react';

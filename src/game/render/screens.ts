@@ -19,3 +19,5 @@ export const loadPlayground = __DEV__ ? (): PlaygroundModule => require('../../s
 export const loadScene = (): SceneModule => require('../../screens/Quest/ceremonies/Scene');
 export const loadLootSheet = (): LootSheetModule => require('../../screens/Quest/session/LootSheet');
 export const loadBattleStrip = (): BattleStripModule => require('../../screens/Quest/session/BattleStrip');
+type CharacterArtModule = typeof import('./CharacterArt');
+export const loadCharacterArt = (): CharacterArtModule => require('./CharacterArt');

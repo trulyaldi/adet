@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N4. Next: N5 (the pixel character replaces Ilmek). Nothing half-done.
+**Resume here (v2):** last finished N5. Next: N6 (the timer Stage). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -19,12 +19,14 @@ tiny dungeon, tiny town).
 | iOS export | one Hermes bundle, 5,125,659 B; assets 669,624 B |
 | Web export | `index` 2,690,049 B + async chunks (BattleStrip 2.3 KB, LootSheet 7.6 KB, QuestScreen 64 KB, Scene 12 KB, common 555 KB) |
 
-### N0 Ilmek (mascot) references, for N5
+### N0 mascot references, for N5
 
-Code: `src/components/ilmek/{Ilmek,ScreenIlmek,art}.tsx`, `src/components/ilmek/motion.ts`, `src/theme/mascot.ts`
-(+ `mascot.test.ts`), `src/components/ErrorBoundary.tsx`, `src/components/stats/{PeriodChart,WeekHero}.tsx`,
+The old mascot lived in its own component folder (`Mascot`, `ScreenMascot`, art and motion files), in
+`src/theme/mascot.ts` (+ its test) and in `assets/mascot/` (a spec and eight SVGs). It was used by
+`src/components/ErrorBoundary.tsx`, `src/components/stats/{PeriodChart,WeekHero}.tsx`,
 `src/overlays/{CelebrationHost,FocusView,WelcomeFlow}.tsx`, `src/screens/{ProjectsScreen,StatsScreen,TodayScreen}.tsx`,
-`src/screens/Quest/session/QuestFocus.tsx`, `src/store/{StreakStore.tsx,Watchers.tsx}`. Assets/docs: `assets/mascot/ILMEK_SPEC.md`.
+and named in comments in `src/screens/Quest/session/QuestFocus.tsx` and `src/store/{StreakStore.tsx,Watchers.tsx}`.
+All of it is gone after N5.
 
 ### N0 stand-in inventory, for N9
 
@@ -62,6 +64,18 @@ days (the 4 h/day forest boss waits ~2 days for its Days seal) and for 1 h/day l
 **The current biome's node position may move back after this rebalance** (boss defeats, XP, levels and
 credits are unaffected: stored achievements floor the journey).
 
+### N5 result
+
+Every mascot appearance is now `<Character mood>` (`src/components/character/Character.tsx`): the player's
+own layered avatar in their rank and gear, loaded through `SkiaGate` so app start still loads no Skia, with an
+empty same-size box until it draws. Moods map to avatar animations: idle → idle, focused → attack, sleepy →
+nap (breathing, drifting "z"), cheering/celebrating → cheer, relaxed → sit, waving → wave. New poses for every
+layer (all 7 tiers and all gear): attack ×2 (lean and a sheared blade swing, grip stays in hand), nap ×2 (eyes
+closed), wake, sit; `fx.zzz`. Removed: the mascot's components, colours, test, SVGs and spec (no dependency
+became unused: `react-native-svg` is still used by icons and charts). Bundle, N0 → N5 (cumulative, N2's font
+swap included): iOS Hermes 5,125,659 → 5,110,167 B (−15.5 KB); iOS assets 669,624 → 539,424 B (−130 KB);
+web index 2,690,049 → 2,671,082 B (−19 KB).
+
 ### v2 assumptions
 
 (Numbered from 51, continuing the list below.)
@@ -72,9 +86,8 @@ credits are unaffected: stored achievements floor the journey).
     (see N1 result), never an error message.
 53. **One pixel font (N2).** Tiny5 replaces Pixelify Sans and Silkscreen everywhere; `tiny` text is 12 pt,
     bold uses the same face, check marks are drawn (`PixelCheck`). See `docs/quest/art/FONT_DECISION.md`.
-54. **A flaky run.** One full `npm test` during N1 failed once under heavy load (exports and a headless browser
-    running at the same time) and passed on 4 reruns. The only timing-based tests are the 5,000-session
-    benchmarks, which take the fastest of several runs.
+54. **A flaky run.** The 5,000-session benchmark (best of 12 runs, < 50 ms) is the one timing test; it failed
+    twice under heavy parallel load (N1, and during N5 before 67's speed-up). See 67.
 55. **Surplus follows the path, always (R1).** Damage over the one allowed defeat walks forward, stopping each
     enemy at 1 HP, past a staggered boss (0 HP), past the Burnout Drake once its daily third is taken, and into
     the next biome if it gets that far. Nothing is dropped: a test checks that every journey session's hits add
@@ -96,6 +109,8 @@ credits are unaffected: stored achievements floor the journey).
     stars on an ellipse, drawn in the stand-in pipeline); `icon.calendar` is new stand-in art for the Days seal.
 61. **Seal counts are shown in the boss panel.** The tap on the gate that opens the panel is the reveal; the pips
     themselves aren't buttons (no nested pressables, see PR #19).
+62. **The crash-repro script is gone.** `scripts/quest-crash-repro.ts` came with the cherry-pick and assumed the
+    old HP rules; `game:balance` and the derive tests cover the same ground.
 63. **A quick log is a `log` with `sessionId: ''` (N4).** Older builds already parse a missing session id to
     `''`, so the new records read harmlessly there. A measure is one `metric_def` per habit with the fixed id
     `metric:<habitId>` ("at most one" by construction; editing overwrites it on every device). No migration:
@@ -107,11 +122,13 @@ credits are unaffected: stored achievements floor the journey).
     Monday morning is never "resting" against a whole week. Weeks follow the app's week-start setting (local
     time, `time.ts`). Focused minutes count every session by its start; skill levels use the game's effective
     minutes when given. A session's measure counts on the session's day; a quick log's on its own.
-62. **The crash-repro script is gone.** `scripts/quest-crash-repro.ts` came with the cherry-pick and assumed the
-    old HP rules; `game:balance` and the derive tests cover the same ground.
-
 ## Audit after Codex handoff — 2026-09-29
-
+66. **Mascot moods keep their meaning.** "Focused" became a gentle attack, "sleepy" a nap, "relaxed" sitting.
+    Project tints no longer apply (the character wears its own gear). Accessibility labels read "Your
+    character, napping" and so on.
+67. **Derive stays fast.** N3/N4 made a 5,000-session derive ~40% slower in Node (module getters in tsx's
+    output); caching mob HP per biome, computing max HP without building node objects and skipping enemies
+    already at 1 HP brought it back to ~13 ms alone (~35–40 ms when the whole suite runs in parallel).
 Claude resumed after Codex. Codex's commits are `d7aeff8` (R), `59f7576` (Q10
 previews), `9aeb50b` (Q11) and `daee7e7` (Q12); it ran out of credits in the
 middle of the Q9 rewrite, which was left uncommitted (`be5ae32` commits it as
