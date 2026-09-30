@@ -8,9 +8,13 @@ architecture, file map and every assumption; the spec is in `spec/`.
 
 1. **Choose.** On the focus view, an optional, collapsed weak-points row picks up
    to 3 open tasks for this session. Starting a timer is still one tap.
-2. **Fight.** A slim battle strip (≤72 px, no sound, no flashing) shows the
-   current enemy losing HP as minutes accrue. It's only a preview; real values
-   come from derivation after the session.
+2. **Fight.** The **Stage** under the timer ring (at most 28% of the screen; a
+   slim 72 pt strip on short screens) shows your character gently swinging at
+   the current enemy every 4–6 s, its HP draining with effective minutes. Pause
+   and your character naps; resume and it wakes. A beaten enemy dissolves into
+   warm petals and the next walks in; a boss without its seals kneels, dazed.
+   No sound, no haptics, nothing flashes. It's a live preview through the same
+   rules (`domain/game/stage.ts`); real values come from the saved session.
 3. **Loot.** A session of 10+ minutes ends with the Loot sheet. Tick finished
    weak points and/or write one line, then **Open**, or tap **Later** and the
    chest waits at camp. It never expires.
@@ -20,7 +24,8 @@ writes `quest_meta.startedAt`. Before that, sessions end exactly as before.
 
 Everything lives in the world: the **Quest Board** (tasks), **Saudager** the
 merchant (shop), **Hatshy** the scribe (chronicle, chests, settings, credits)
-and **Aqyl** the sage (suggestions).
+and **Aqyl** the sage (suggestions). Hatshy also keeps the **Trail** (is each
+skill rising?) and the **quick log** (the camp's quill).
 
 ## State
 
@@ -46,11 +51,15 @@ change alters derived results.
 | Burnout guard (per local day) | first 240 min at 100%, 240–360 at 50%, beyond at 0% |
 | Damage | 1 per effective minute; +10 per completed weak point (max 3), once the chest is claimed |
 | Nodes per biome | 3 mobs, camp, 3 mobs, boss |
-| Mob HP | 25 |
-| Boss HP | 0.8 × Σ weekly target minutes, clamped 150–900; forest (first loop) 120; ×1.2 per ascension loop |
+| One defeat per session | at most one enemy falls per session; surplus damage walks on, stopping each enemy at 1 HP, and is never dropped |
+| Mob HP | round(90 × 1.15^biome) effective minutes: 90, 103, 119, 137, 157, 181, 208 |
+| Boss HP | clamp(round(1.1 × Σ weekly target minutes × 1.15^biome), 480, 2400); forest (first loop) 420; ×1.2 per ascension loop |
+| Seals (bosses only) | Days (distinct local days) 3,4,5,5,6,6,7 · Depth (sessions ≥ 45 min) 1,2,2,3,3,4,4 · Insight (weak points + lines) 2,3,4,5,6,7,8, by biome; counted from sessions fought against the boss; 0 disables one |
+| Staggered | a boss at 0 HP without its seals kneels; it never heals, and falls the moment its seals fill |
 | XP | 1 per effective minute; +20% of the session's XP with a chronicle line; +15 per completed weak point; +100 per boss |
 | Level | cumulative XP for level L = 100 × (L−1)² |
 | Skill (per habit) | level L needs 25 × (L−1)² effective minutes |
+| Quick log | +3 XP with a line, at most 3 rewarded a day; counts toward Insight against a boss; amounts never earn |
 | Ranks | Wanderer 1, Squire 3, Knight 6, Captain 10, Warden 15, Lord 20, Legend 27 |
 | Credits | ⌊effective min / 10⌋ per session; +2 per chest with a line; +25 per boss; +50 welcome |
 | Journey scope | only sessions ending after `startedAt` move the journey, spawn chests and earn credits; XP, levels, ranks and skills count all history |
@@ -61,7 +70,7 @@ Biome twists (only while that biome is active):
 
 | Biome | Boss | Twist |
 |---|---|---|
-| Whispering Forest | The Fog Wisp | tutorial boss, 120 HP |
+| Whispering Forest | The Fog Wisp | tutorial boss, 420 HP |
 | Mirewood Swamp | The Doomscroll Hydra | 25+ unbroken minutes ×1.2 (pauses aren't recorded) |
 | Sunscorch Desert | The Mirage Djinn | ×1.5 with a completed weak point, ×0.75 without |
 | Frostpeak | The Frozen Titan | first 10 min of the day's first session ×2 |
@@ -71,6 +80,63 @@ Biome twists (only while that biome is active):
 
 After the Astral Citadel the journey loops (Ascension) with a night palette,
 1.2× boss HP per loop and a star pip on the avatar.
+
+## Encounters (v2): rules R1–R6
+
+- **R1 One defeat per session.** Surplus carries forward, flooring each enemy at 1 HP, past a staggered boss or
+  the Drake's daily limit, until absorbed; every session's hits add up to its damage (tested).
+- **R2 Bigger HP with a curve** (table above), tuned with the simulator.
+- **R3 Seals.** A boss falls only at 0 HP with every seal filled. A session belongs to the encounter in front
+  of it before its damage lands; sessions against mobs fill no seal.
+- **R4 Staggered** (see the table): no healing, no defeat until the seals fill.
+- **R5 No regression.** `boss_defeated` achievements floor the journey. After this rebalance the current
+  biome's node position may move back; boss defeats, XP, levels, skills and credits are unaffected.
+- **R6 Twists still apply** to damage only.
+
+**Balance simulator:** `npm run game:balance` plays daily-effort profiles (1–4 h/day, 6 days a week, 1–3
+sessions a day, some chests claimed with a line or a weak point) through `deriveGameState` and prints
+calendar days per biome. At 2 h/day: forest ~9, biome 4 ~17, biome 7 ~26 days; `balanceSim.test.ts` holds
+those bands (±25%) and keeps 4 h/day between 1.3× and 4× faster than 1 h/day.
+
+## Activity rewards (v2)
+
+Derived from data the app already has; nothing new is stored. From the journey's start only.
+
+| Activity | Effect |
+|---|---|
+| Focus session ≥ 10 min | damage, XP, credits, a chest |
+| Session under 10 min | nothing (a warm-up) |
+| Day's plan completed | +5 credits, once a day |
+| Every weekly target met | a Bounty: +40 credits and +60 XP, once a week |
+| Weak point done in a session | a crit and XP (through the chest) |
+| Weak point done outside a session | +5 XP, at most 5 a day |
+| Chronicle line after a session | bonus XP |
+| Quick log | +3 XP, at most 3 a day; Insight against a boss |
+| Streak freeze used | the campfire shows an ember shield |
+| Habit created | a new skill in the character sheet |
+
+Quick logs and outside weak points together earn at most 30 XP a day (10% of a full day of sessions). A small
+"+5 XP" chip floats up when one of these lands (not for sessions: the Loot sheet counts those up).
+
+## The Trail (v2)
+
+`src/domain/progress/` compares this week so far with last week to the same moment (weeks follow the app's
+week-start setting): focused minutes, sessions, weak points, a measure's total and its amount per focused
+hour, skill levels. A habit is **rising** when two of these hold: minutes +15%, per hour +10%, more weak
+points, a level gained; **resting** when minutes fell and nothing else improved; otherwise **steady**. The
+Scribe shows it per habit with four weekly bars; a habit can have one measure (`metric_def`, e.g. Pages).
+
+## Words
+
+Game words appear only where they stay clear; VoiceOver always hears the plain word too (`src/domain/words.ts`).
+
+| Plain | Game word | Where |
+|---|---|---|
+| Stats | Almanac | the Stats screen title and tab |
+| Streak freeze | Ember shield | the Merchant |
+| Task | Weak point | Quest Mode |
+| Session note | Chronicle | Quest Mode (the Scribe) |
+| Focus session, Habit, Streak, Weekly target | Battle, Skill, Campfire, Bounty | kept plain in forms; the game words name the Stage, skill levels, the campfire and the week's reward |
 
 ## Ceremonies
 

@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N9. Next: N10 (QA panel additions, DEVICE_QA, README, size, PR). Nothing half-done.
+**Resume here (v2):** all tickets N0–N10 done; PR open for feat/quest-v2. Remaining: device QA on the owner's iPhone (DEVICE_QA §14–16), and the Ninja Adventure download (OWNER_ACTIONS) for real art.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -109,6 +109,23 @@ keys on marks, per-day edits, daily logs, prefs and the local day, so a check-of
 - **Loading:** `PixelDots` (three squares stepping) replaces the breathing logo and the system spinners (app
   loading, sign-in, the Quest tab's "Finding the path").
 - **Not done here:** the 3×/4× light/dark check of every screen needs the phone (DEVICE_QA §16).
+
+### N10 result
+
+| Check | Result |
+|---|---|
+| Tests | 505 pass, 0 fail |
+| Typecheck | pass (the Sage is a Supabase Edge Function, unchanged in v2; no `worker/` on this branch) |
+| Lint (Quest scope) | 0 errors, the same 8 warnings as the baseline |
+| `npm run game:balance` | 2 h/day: 9.0 / 17.4 / 25.6 days for biomes 1 / 4 / 7 |
+| `npm run check:size` | within budget |
+| iOS export, Quest on / off | one Hermes file each, 5,172,642 B (N0: 5,125,659, +47 KB); assets 539,424 B (N0: 669,624, −130 KB) |
+| Web export, Quest on / off | index 2,692,128 B (N0: 2,690,049, +2 KB); starts (headless Chromium: sign-in in the pixel font) |
+| `npx expo start` | serves the iOS bundle (200, 12.4 MB dev) |
+| Stand-ins | needs-art 322 → 325; generated-placeholder 0 → 0 |
+
+QA panel (dev only, in memory): force each Stage scene (full and slim), "+2 weeks" of sessions and
+"+3 logs" for the Trail, fill or empty each seal, and a Trail preview of the what-if data.
 
 ### v2 assumptions
 
