@@ -85,7 +85,7 @@ export interface QuestSettings {
   ai: boolean;
   /** The privacy line was shown the first time AI was turned on. */
   aiNoticeSeen: boolean;
-  /** The battle strip on the timer screen. */
+  /** The scene (the Stage) on the timer screen. The key keeps its shipped name. */
   battleStrip: boolean;
   motion: QuestMotion;
   /** Custom NPC names by NPC id; empty = the defaults. */

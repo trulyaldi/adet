@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N5. Next: N6 (the timer Stage). Nothing half-done.
+**Resume here (v2):** last finished N6. Next: N7 (pixel theme across the app, activity rewards). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -76,6 +76,18 @@ became unused: `react-native-svg` is still used by icons and charts). Bundle, N0
 swap included): iOS Hermes 5,125,659 → 5,110,167 B (−15.5 KB); iOS assets 669,624 → 539,424 B (−130 KB);
 web index 2,690,049 → 2,671,082 B (−19 KB).
 
+### N6 result
+
+`Stage` (`src/screens/Quest/session/Stage.tsx`) replaces the battle strip and the timer's corner character:
+one canvas (sky, slow far parallax and clouds, ground, 6 ambient particles, your layered character, the enemy),
+then the HP bar and a seal row at fixed heights. Scene logic is pure (`domain/game/stage.ts`: `stageStep`,
+`STAGE_TIMING`, `stageSize`, `previewGame` = the running session through `deriveGameState`, re-derived once a
+focused minute). A hit is a 1 px recoil plus a warm colour-matrix tint (no white); a defeat is warm petals
+(`dissolve` tinted with the biome accent), a coin and a cheer, then the next enemy walks in; a staggered boss
+kneels (`.low` + `fx.dazed`); a nap sits with closed eyes, breathing, "z"s and a 13% dusk overlay. The clock
+stops with reduced motion, a dimmed screen or the app in the background. QA panel: "Timer Stage" forces each
+scene, full size and slim.
+
 ### v2 assumptions
 
 (Numbered from 51, continuing the list below.)
@@ -135,7 +147,13 @@ middle of the Q9 rewrite, which was left uncommitted (`be5ae32` commits it as
 it stood). `226e664` (Q10) predates Codex. The spec files were never in the
 repo; their text was recovered from Codex's session log into
 `docs/quest/spec/`.
-
+68. **The Stage's size.** Between the ring (+12 pt) and the controls; at most 28% of the screen; a slim 72 pt
+    strip under 700 pt tall or when there's under 120 pt of room; below 48 pt it isn't shown (your
+    character stays in the corner). Its pixel scale fits a mob (36 px) or a boss (70 px) tall.
+69. **The setting keeps its key.** Quest settings now say "Scene on the timer"; the synced key is still
+    `battleStrip` so older builds read the same choice.
+70. **The benchmark takes the best of 30.** Under the suite's parallel load, best-of-12 still caught
+    contended runs now and then; 30 runs measure the same minimum more reliably.
 ### Status (after the fixes below)
 
 | Ticket | Status | Evidence |

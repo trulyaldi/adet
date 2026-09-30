@@ -597,21 +597,22 @@ test('benchmark: 5,000 sessions derive in under 50 ms', () => {
   }
   const input: DeriveInput = { sessions: sess, habits: [{ id: 'h1', weeklyTargetMin: 600 }, { id: 'h2', weeklyTargetMin: 300 }], items, links, now: at(2000, 0), tz: UTC };
   deriveGameState(input); // warm up
-  // The best of several runs: the test runner runs files in parallel, so a
+  // The best of many runs: the test runner runs files in parallel, so a
   // single timing can include time the CPU spent elsewhere.
+  const RUNS = 30;
   let ms = Infinity;
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
     deriveGameState(input);
     ms = Math.min(ms, performance.now() - t0);
   }
   assert.ok(ms < 50, `took ${ms.toFixed(1)} ms`);
-  console.log(`  deriveGameState, 5,000 sessions: ${ms.toFixed(1)} ms (best of 12)`);
+  console.log(`  deriveGameState, 5,000 sessions: ${ms.toFixed(1)} ms (best of ${RUNS})`);
 
   // The dev QA panel derives the same history with a what-if overlay on top.
   let qa = Infinity;
   const overlay = { sessions: [{ habitId: 'h1', minutes: 60, weakPoint: true }, { habitId: 'h2', minutes: 240 }], bossHp: 0.5 };
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
     whatIfGame(input, overlay);
     qa = Math.min(qa, performance.now() - t0);

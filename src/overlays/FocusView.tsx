@@ -19,7 +19,7 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
-import { QuestFocusRow, QuestFocusStrip } from '../screens/Quest/session/QuestFocus';
+import { QuestFocusRow, QuestFocusStage } from '../screens/Quest/session/QuestFocus';
 import { useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { TIMER_FRAME_MS, useActiveProgress } from '../store/useActiveProgress';
@@ -189,13 +189,17 @@ function FocusContent() {
           </ProgressRing>
         </View>
 
-        {/* Your character, bottom corner */}
-        <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
-          <Character mood={mood} size={78} />
-        </View>
-
-        {/* Quest Mode: the battle strip beside your character. */}
-        <QuestFocusStrip bottom={insets.bottom + 114} left={104} paused={p.paused} dimmed={dimmed} />
+        {/* Quest Mode: the Stage between the ring and the controls; else your character in a corner. */}
+        <QuestFocusStage
+          band={{ top: cy + ringSize / 2 + 12, bottom: height - insets.bottom - 108, screenHeight: height, width }}
+          paused={p.paused}
+          dimmed={dimmed}
+          portrait={
+            <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
+              <Character mood={mood} size={78} />
+            </View>
+          }
+        />
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>
           <MessageToast />

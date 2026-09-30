@@ -48,7 +48,7 @@ export function QuestSettingsPanel({ model, onCredits, onReplayIntro }: { model:
           ))}
         </Row>
       </PixelPanel>
-      <SettingRow icon="B" label="Battle strip" value={settings?.battleStrip ?? true} onChange={(v) => save({ battleStrip: v })} />
+      <SettingRow icon="B" label="Scene on the timer" value={settings?.battleStrip ?? true} onChange={(v) => save({ battleStrip: v })} />
       <SettingRow icon="A" label="AI Sage" value={settings?.ai ?? false} onChange={toggleAi} />
       <PixelButton label="Replay intro" accessibilityLabel="Replay Quest introduction" tone="parchment" onPress={onReplayIntro} />
       <PixelButton label="Credits" accessibilityLabel="View Quest art and license credits" tone="parchment" onPress={onCredits} />

@@ -1,5 +1,5 @@
 // The player's own pixel character, in their current rank and gear: the one
-// figure the app shows everywhere (it replaced the Ilmek mascot). It keeps the
+// figure the app shows everywhere (it replaced the old mascot). It keeps the
 // mascot's moods as animations. Drawn with Skia, loaded at first use: until
 // then (and if drawing fails) an empty box of the same size holds the layout.
 

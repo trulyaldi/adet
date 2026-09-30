@@ -10,6 +10,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useQuestMeta } from '../../../data/itemsRepo';
 import { BIOME_IDS, BiomeId } from '../../../domain/game/biomes';
 import type { CeremonyEvent } from '../../../domain/game/ceremonies';
+import type { SceneState } from '../../../domain/game/stage';
 import { DayPhase } from '../../../domain/game/daylight';
 import { gameInput } from '../../../domain/game/fromData';
 import { RANKS } from '../../../domain/game/balance';
@@ -27,6 +28,7 @@ import { QUI } from '../../../game/ui/theme';
 import { useData, useStoreNow } from '../../../store/StreakStore';
 import { Onboarding } from '../ceremonies/Onboarding';
 import { cameraFor, JourneyMap } from '../map/JourneyMap';
+import Stage from '../session/Stage';
 import { spotFor } from '../model';
 
 const PHASES: DayPhase[] = ['dawn', 'day', 'dusk', 'night'];
@@ -48,6 +50,7 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
   const [bossBiome, setBossBiome] = useState<BiomeId>('forest');
   const [json, setJson] = useState(false);
   const [intro, setIntro] = useState(false);
+  const [scene, setScene] = useState<SceneState>('fight');
 
   // A separate game for this view only; the real one (and its watcher) never sees the overlay.
   // Re-derived when the data or the overlay changes, or once a minute (not on every store tick).
@@ -174,6 +177,20 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
         <Row>
           <PixelButton small tone="night" label="Forget marks" accessibilityLabel="Clear this device's ceremony marks (they reseed silently)" onPress={() => ceremonyHost.forgetMarks()} />
         </Row>
+      </Section>
+
+      <Section title="Timer Stage">
+        <Row>
+          {(['fight', 'defeat', 'walkIn', 'stagger', 'nap', 'wake'] as const).map((k) => (
+            <PixelButton key={k} small tone={scene === k ? 'gold' : 'parchment'} label={k} accessibilityLabel={`Show the Stage in its ${k} state`} onPress={() => setScene(k)} />
+          ))}
+        </Row>
+        <View style={{ height: 180 }}>
+          <Stage key={scene} width={width - 64} height={180} slim={false} live reduced={reduced} force={scene} />
+        </View>
+        <View style={{ height: 72 }}>
+          <Stage width={width - 64} height={72} slim live reduced={reduced} force={scene} />
+        </View>
       </Section>
 
       <Section title="Derived state">
