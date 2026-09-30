@@ -16,7 +16,8 @@ import { DayPhase } from '../../../domain/game/daylight';
 import { gameInput } from '../../../domain/game/fromData';
 import { dkey } from '../../../domain/time';
 import { RANKS } from '../../../domain/game/balance';
-import { isWhatIfOff, NO_WHAT_IF, WhatIf, whatIfGame } from '../../../domain/game/whatIf';
+import type { SealKind } from '../../../domain/game/derive';
+import { isWhatIfOff, NO_WHAT_IF, WhatIf, whatIfGame, withWhatIf } from '../../../domain/game/whatIf';
 import { activeHabits } from '../../../domain/projects';
 import { ceremonyHost } from '../../../game/ceremonies/host';
 import { npcName } from '../../../game/content/npcs';
@@ -31,6 +32,7 @@ import { useData, useStoreNow } from '../../../store/StreakStore';
 import { Onboarding } from '../ceremonies/Onboarding';
 import { cameraFor, JourneyMap } from '../map/JourneyMap';
 import Stage from '../session/Stage';
+import { Trail } from '../sheets/Trail';
 import { spotFor } from '../model';
 import { Text } from '../../../components/Text';
 
@@ -74,6 +76,14 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
   const look = { tier: game.rank.tier, gear: meta?.props.avatar.gear ?? {} };
 
   const add = (minutes: number) => setOverlay((o) => ({ ...o, sessions: [...o.sessions, { habitId, minutes, weakPoint }] }));
+  // Two synthetic weeks for the Trail: 40 min a day last week, 60 this week.
+  const addWeeks = () =>
+    setOverlay((o) => ({ ...o, sessions: [...o.sessions, ...Array.from({ length: 14 }, (_, d) => ({ habitId, minutes: d < 7 ? 60 : 40, daysAgo: d, weakPoint: d % 3 === 0 }))] }));
+  const setSeal = (kind: SealKind, have: number | undefined) => setOverlay((o) => ({ ...o, seals: { ...o.seals, [kind]: have } }));
+  const qaData = useMemo(() => {
+    const i = withWhatIf(gameInput(data, minute * 60_000), overlay);
+    return { ...data, sessions: [...i.sessions], items: [...i.items], links: [...i.links] };
+  }, [data, minute, overlay]);
   const jump = (b: BiomeId) => {
     const m = maps[BIOME_IDS.indexOf(b)];
     camY.set(cameraFor(m.top + BIOME_H / 2, MAP_H, width));
@@ -112,6 +122,15 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
         <Row>
           {BOSS_HP.map((f) => (
             <PixelButton key={String(f)} small tone={overlay.bossHp === f ? 'gold' : 'parchment'} label={f === undefined ? 'boss: real' : `boss ${Math.round(f * 100)}%`} accessibilityLabel={f === undefined ? 'Boss at its real HP' : `Boss at ${Math.round(f * 100)} percent HP`} onPress={() => setOverlay((o) => ({ ...o, bossHp: f }))} />
+          ))}
+        </Row>
+        <Row>
+          <PixelButton small label="+2 weeks" accessibilityLabel="Add two weeks of sessions for the Trail" onPress={addWeeks} />
+          <PixelButton small label="+3 logs" accessibilityLabel="Add three quick logs" onPress={() => setOverlay((o) => ({ ...o, quickLogs: (o.quickLogs ?? 0) + 3 }))} />
+        </Row>
+        <Row>
+          {game.journey.seals.map((s) => (
+            <PixelButton key={s.kind} small tone={overlay.seals?.[s.kind] !== undefined ? 'gold' : 'parchment'} label={`${s.kind} ${s.have >= s.need ? 'full' : 'empty'}`} accessibilityLabel={`Seal ${s.kind}: ${s.have >= s.need ? 'empty it' : 'fill it'}`} onPress={() => setSeal(s.kind, s.have >= s.need ? 0 : s.need)} />
           ))}
         </Row>
         <Row>
@@ -180,6 +199,10 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
         <Row>
           <PixelButton small tone="night" label="Forget marks" accessibilityLabel="Clear this device's ceremony marks (they reseed silently)" onPress={() => ceremonyHost.forgetMarks()} />
         </Row>
+      </Section>
+
+      <Section title="Trail (what-if data)">
+        <Trail model={{ data: qaData, game, now: minute * 60_000 }} />
       </Section>
 
       <Section title="Timer Stage">

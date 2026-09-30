@@ -37,6 +37,7 @@ export type ScribeTab = 'chronicle' | 'trail' | 'chests' | 'credits' | 'settings
 type Tab = ScribeTab;
 
 export function ScribeSheet({ model, onClose, onReplayIntro, reduced, initialTab = 'chronicle', quickLog = false }: { model: QuestModel; onClose(): void; onReplayIntro(): void; reduced: boolean; initialTab?: Tab; /** Open with the quick log showing (the camp's quill). */ quickLog?: boolean }) {
+  const writes = useQuestWrites();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [logging, setLogging] = useState(quickLog);
   const settings = model.meta?.props.settings;
@@ -61,7 +62,7 @@ export function ScribeSheet({ model, onClose, onReplayIntro, reduced, initialTab
         ))}
       </Row>
       {tab === 'chronicle' && <Chronicle model={model} />}
-      {tab === 'trail' && <Trail model={model} />}
+      {tab === 'trail' && <Trail model={model} onSetMetric={writes.setMetric} />}
       {tab === 'chests' && <Chests model={model} onOpen={(id) => {
         onClose();
         // After this sheet has gone: iOS shows one modal at a time.

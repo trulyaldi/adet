@@ -10,7 +10,6 @@ import { Pressable, View } from 'react-native';
 import { Icon } from '../../../components/Icon';
 import { PixelGlyph } from '../../../components/PixelGlyph';
 import { TextInput } from '../../../components/Text';
-import { useQuestWrites } from '../../../data/itemsRepo';
 import { ICONS } from '../../../domain/constants';
 import { METRIC_LABEL_MAX } from '../../../domain/items/types';
 import { HabitProgress, trailOf, Verdict, WindowStats } from '../../../domain/progress';
@@ -35,7 +34,8 @@ export function VerdictIcon({ verdict, size = 18 }: { verdict: Verdict; size?: n
   return <PixelGlyph grid={VERDICT_GRID[verdict]} size={size} color={verdict === 'resting' ? QUI.muted : QUI.ink} bg={QUI.parchment} />;
 }
 
-export function Trail({ model }: { model: QuestModel }) {
+/** `onSetMetric` saves a habit's measure; without it (the QA preview) measures can't be edited. */
+export function Trail({ model, onSetMetric }: { model: Pick<QuestModel, 'data' | 'game' | 'now'>; onSetMetric?(habitId: string, label: string, unit: string): void }) {
   const { data, game } = model;
   const habits = useMemo(() => activeHabits(data).filter((h) => h.kind !== 'check'), [data]);
   const day = dkey(new Date(model.now));
@@ -68,13 +68,13 @@ export function Trail({ model }: { model: QuestModel }) {
       </View>
       {trail.habits.map((h) => {
         const habit = habits.find((x) => x.id === h.habitId)!;
-        return <HabitTrail key={h.habitId} progress={h} name={habit.name} icon={habit.icon} open={open === h.habitId} onToggle={() => setOpen(open === h.habitId ? null : h.habitId)} />;
+        return <HabitTrail key={h.habitId} progress={h} name={habit.name} icon={habit.icon} open={open === h.habitId} onToggle={() => setOpen(open === h.habitId ? null : h.habitId)} onSetMetric={onSetMetric} />;
       })}
     </View>
   );
 }
 
-function HabitTrail({ progress: h, name, icon, open, onToggle }: { progress: HabitProgress; name: string; icon: string; open: boolean; onToggle(): void }) {
+function HabitTrail({ progress: h, name, icon, open, onToggle, onSetMetric }: { progress: HabitProgress; name: string; icon: string; open: boolean; onToggle(): void; onSetMetric?(habitId: string, label: string, unit: string): void }) {
   const max = Math.max(1, ...h.series.map((w) => w.minutes));
   return (
     <PixelPanel tone="parchment" padding={2} style={{ gap: 6 }}>
@@ -99,7 +99,7 @@ function HabitTrail({ progress: h, name, icon, open, onToggle }: { progress: Hab
           </Row>
         )}
       </Pressable>
-      {open && <Details progress={h} habitId={h.habitId} />}
+      {open && <Details progress={h} habitId={h.habitId} onSetMetric={onSetMetric} />}
     </PixelPanel>
   );
 }
@@ -118,8 +118,7 @@ function Bars({ series, max }: { series: HabitProgress['series']; max: number })
 
 const fmt = (n: number | null, digits = 0) => (n === null ? '–' : n.toFixed(digits));
 
-function Details({ progress: h, habitId }: { progress: HabitProgress; habitId: string }) {
-  const writes = useQuestWrites();
+function Details({ progress: h, habitId, onSetMetric }: { progress: HabitProgress; habitId: string; onSetMetric?(habitId: string, label: string, unit: string): void }) {
   const [label, setLabel] = useState(h.metric?.label ?? '');
   const [unit, setUnit] = useState(h.metric?.unit ?? '');
   const [editing, setEditing] = useState(!h.metric);
@@ -156,14 +155,14 @@ function Details({ progress: h, habitId }: { progress: HabitProgress; habitId: s
           </PixelText>
         </View>
       ))}
-      {editing ? (
+      {!onSetMetric ? null : editing ? (
         <View style={{ gap: 6 }}>
           <View style={{ flexDirection: 'row', gap: 6 }}>
             <TextInput value={label} onChangeText={setLabel} maxLength={METRIC_LABEL_MAX} placeholder="Measure (e.g. Pages)" placeholderTextColor={QUI.muted} accessibilityLabel="What to measure" style={{ flex: 2, minHeight: 44, paddingHorizontal: 8, backgroundColor: QUI.white, color: QUI.ink, fontSize: 14, borderWidth: 2, borderColor: QUI.ink }} />
             <TextInput value={unit} onChangeText={setUnit} maxLength={METRIC_LABEL_MAX} placeholder="unit" placeholderTextColor={QUI.muted} accessibilityLabel="Its unit" style={{ flex: 1, minHeight: 44, paddingHorizontal: 8, backgroundColor: QUI.white, color: QUI.ink, fontSize: 14, borderWidth: 2, borderColor: QUI.ink }} />
           </View>
           <PixelButton small label={h.metric ? 'Save measure' : 'Add measure'} accessibilityLabel={h.metric ? 'Save the measure' : 'Add a measure to this skill'} disabled={!label.trim()} onPress={() => {
-            writes.setMetric(habitId, label, unit);
+            onSetMetric(habitId, label, unit);
             setEditing(false);
           }} />
         </View>

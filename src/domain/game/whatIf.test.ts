@@ -54,3 +54,23 @@ test('boss HP puts the current biome boss at that share of its HP', () => {
   assert.equal(g.journey.position.biomeIndex, deriveGameState(real).journey.position.biomeIndex);
   assert.equal(g.journey.hp, Math.round(0.25 * g.journey.bossMaxHp));
 });
+
+test('a synthetic week: sessions placed days back; quick logs in memory; the real input is untouched', () => {
+  const before = JSON.stringify(real);
+  const w = { sessions: Array.from({ length: 7 }, (_, d) => ({ habitId: 'h1', minutes: 30, daysAgo: d })), quickLogs: 2 };
+  const i = withWhatIf(real, w);
+  const qa = i.sessions.filter((s) => s.id.startsWith('qa:'));
+  assert.equal(qa.length, 7);
+  assert.deepEqual(qa.map((s) => Math.round((real.now - s.end) / 86_400_000)), [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(i.items.filter((x) => x.id.startsWith('qa:q')).length, 2);
+  assert.equal(JSON.stringify(real), before);
+});
+
+test('seal overrides are a view patch: counts change, and a boss at 0 HP staggers or not', () => {
+  const g = whatIfGame(real, { sessions: [], bossHp: 0, seals: { days: 99, depth: 99, insight: 0 } });
+  const byKind = Object.fromEntries(g.journey.seals.map((s) => [s.kind, s.have]));
+  assert.equal(byKind.insight, 0);
+  assert.equal(g.journey.staggered, true);
+  const full = whatIfGame(real, { sessions: [], bossHp: 0, seals: { days: 99, depth: 99, insight: 99 } });
+  assert.equal(full.journey.staggered, false);
+});
