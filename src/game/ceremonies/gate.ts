@@ -28,7 +28,8 @@ export function holdCeremonies(): () => void {
   };
 }
 
-export const useCeremoniesHeld = () => useSyncExternalStore(subscribe, () => holds > 0);
+export const ceremoniesHeld = () => holds > 0;
+export const useCeremoniesHeld = () => useSyncExternalStore(subscribe, ceremoniesHeld);
 
 export function setCeremonyPlaying(on: boolean): void {
   if (playing === on) return;

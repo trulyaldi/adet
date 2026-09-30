@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ceremonyHost } from '../../../game/ceremonies/host';
 import { SkiaGate } from '../../../game/render/SkiaGate';
-import { closeLoot, useLootRequest } from '../../../game/state/loot';
+import { closeLootAfter, useLootRequest } from '../../../game/state/loot';
 import { useQuestReduced } from '../../../game/state/settings';
 import { MODAL_GAP_MS } from '../../../theme/motion';
 
@@ -19,9 +19,8 @@ export function LootHost() {
   const insets = useSafeAreaInsets();
   const reduced = useQuestReduced();
   const close = useCallback(() => {
-    closeLoot();
     // After this modal has gone (iOS drops a modal presented during another's dismissal).
-    setTimeout(() => ceremonyHost.evaluate(), MODAL_GAP_MS);
+    closeLootAfter(MODAL_GAP_MS, () => ceremonyHost.evaluate());
   }, []);
   return (
     <Modal visible={!!req} transparent animationType={reduced ? 'fade' : 'slide'} onRequestClose={close} statusBarTranslucent>
