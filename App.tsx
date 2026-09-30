@@ -32,6 +32,7 @@ import { RootCeremonyHost } from './src/game/ceremonies/host';
 import { LootHost } from './src/screens/Quest/session/LootHost';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
 import { WelcomeFlow } from './src/overlays/WelcomeFlow';
+import { RewardChipHost } from './src/components/RewardChipHost';
 import { useQuestFonts } from './src/game/assets/fonts';
 import { BurstHost } from './src/components/celebrate/Burst';
 import { ConfettiHost } from './src/components/celebrate/Confetti';
@@ -93,6 +94,7 @@ const Root = memo(function Root() {
           <RootCeremonyHost />
         </>
       )}
+      <RewardChipHost />
       <ConfettiHost />
       <BurstHost />
       <HabitSheet />

@@ -1,6 +1,6 @@
 # Quest Mode — implementation plan
 
-**Resume here (v2):** last finished N7.3 (vocabulary). Next: N7.5 light game touches + RewardChip. Nothing half-done.
+**Resume here (v2):** last finished N7.5 (N7 done). Next: N8 (the Trail, quick log, measures in the Scribe). Nothing half-done.
 
 ## Quest Mode v2 (spec: the N0–N10 prompt, 2026-09-30)
 
@@ -196,6 +196,12 @@ repo; their text was recovered from Codex's session log into
     shield** (the Merchant, with its icon). Weak point and Chronicle already name those things in Quest Mode.
     Kept plain, because a game word would make you stop and think: habit (forms), weekly target (a stepper),
     session note (a placeholder), focus session, streak (the flame and its number already read as one).
+79. **The game on other screens, lightly (N7.5).** Today's plan rows show a small `LV n` beside each habit (once
+    the journey has started); the streak pill shows a small ember shield when a freeze covered yesterday;
+    a `+5 XP` / `+5 credits` chip floats up for about a second when something outside a session earns a
+    reward. The chip host watches the derived totals and stays quiet for session changes (the Loot sheet counts
+    those up), open sheets and the focus view. No numbers are duplicated and no panels were added. A habit
+    created simply appears as a skill in the character sheet (derived).
 
 | Ticket | Status | Evidence |
 |---|---|---|

@@ -19,7 +19,7 @@ import { StreakPill } from '../components/today/StreakPill';
 import { SummaryCard } from '../components/today/SummaryCard';
 import { TodayItem } from '../domain/day';
 import { todayListsOf, todayOf } from '../domain/selectors';
-import { fmtDur } from '../domain/time';
+import { addDays, dkey, fmtDur } from '../domain/time';
 import { useActions, useData, useSettings, useStoreNow, useUi } from '../store/StreakStore';
 import { useDayStreak } from '../store/useDayStreak';
 import { useTheme } from '../theme/ThemeProvider';
@@ -37,7 +37,10 @@ export function TodayScreen() {
   const actions = useActions();
   const model = todayOf(data, now);
   const { pending, done, bonus, summary } = todayListsOf(model);
-  const streak = useDayStreak().current;
+  const dayStreak = useDayStreak();
+  const streak = dayStreak.current;
+  // A freeze covered yesterday: the campfire shows its ember shield.
+  const shielded = dayStreak.marks.get(dkey(addDays(new Date(now), -1))) === 'freeze';
   // Only a day that finishes on screen animates into the check.
   const opened = useRef({ day: model.day, complete: model.complete });
   const animateIn = !(opened.current.complete && opened.current.day === model.day);
@@ -61,7 +64,7 @@ export function TodayScreen() {
         left={<AdetLockup height={26} />}
         right={
           <>
-            <StreakPill days={streak} />
+            <StreakPill days={streak} shielded={shielded} />
             <SyncIndicator />
             <IconButton label="Week" name="week" size={20} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.openWeek} tipBelow />
             <IconButton label="Settings" name="gear" size={20} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.openSettings} tipBelow />
