@@ -97,14 +97,14 @@ asset pipeline are in [`docs/quest/README.md`](docs/quest/README.md).
 
 <table>
   <tr>
-    <td align="center"><img src="docs/media/today.png" alt="Today tab (placeholder)" width="180" /><br /><sub>Today</sub></td>
-    <td align="center"><img src="docs/media/focus.png" alt="Focus timer (placeholder)" width="180" /><br /><sub>Focus</sub></td>
-    <td align="center"><img src="docs/media/stats.png" alt="Stats (placeholder)" width="180" /><br /><sub>Almanac</sub></td>
-    <td align="center"><img src="docs/media/quest-stage.png" alt="Quest tab (placeholder)" width="180" /><br /><sub>Quest</sub></td>
+    <td align="center"><img src="docs/media/today.png" alt="Today tab: day ring and the habit plan" width="180" /><br /><sub>Today</sub></td>
+    <td align="center"><img src="docs/media/focus.png" alt="Focus timer with the Quest Stage and enemy HP bar" width="180" /><br /><sub>Focus</sub></td>
+    <td align="center"><img src="docs/media/stats.png" alt="Almanac: weekly chart and project progress" width="180" /><br /><sub>Almanac</sub></td>
+    <td align="center"><img src="docs/media/quest-stage.png" alt="Quest tab: the Whispering Forest with Aqyl, Saudager and Hatshy at camp" width="180" /><br /><sub>Quest</sub></td>
   </tr>
 </table>
 
-> The grey images are placeholders. See [`docs/media/PLACEHOLDER.md`](docs/media/PLACEHOLDER.md) for what to add.
+<sub>Captured from the web build at 390×844 with the app's built-in sample data.</sub>
 
 ## 🧰 Tech stack
 
