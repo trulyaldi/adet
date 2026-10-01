@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Pressable, View } from 'react-native';
 
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { TodayItem } from '../../domain/day';
 import { sayDur } from '../../domain/time';
@@ -37,7 +37,7 @@ export function ActiveSessionCard({ item }: { item: TodayItem }) {
   const frac = p.sec / p.targetSec;
 
   return (
-    <Animated.View entering={reduced ? FadeIn : ZoomIn.springify().damping(14)} style={{ marginTop: 18 }}>
+    <Animated.View entering={reduced ? FadeIn : FadeInDown.duration(220)} style={{ marginTop: 18 }}>
       {/* The open-focus press and the buttons are siblings: a button inside a button is invalid (web renders both as <button>). */}
       <Animated.View
         style={[{ backgroundColor: sw.base, borderRadius: radius.xxl, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 5, borderBottomColor: sw.dark }, t.shadow, open.style]}

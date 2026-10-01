@@ -105,7 +105,7 @@ function FocusContent() {
       })
       .onEnd((e) => {
         if (e.translationY > 140 || e.velocityY > 900) scheduleOnRN(close);
-        y.value = withSpring(0, springs.appear);
+        y.value = withSpring(0, springs.reorder);
       });
   }, [y]);
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));

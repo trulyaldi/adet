@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { feedback } from '../../feedback/feedback';
-import { springs } from '../../theme/motion';
+import { timings } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useReducedMotion } from '../../theme/useMotion';
 import { Flame } from '../Flame';
@@ -22,7 +22,7 @@ export function StreakPill({ days, shielded = false }: { days: number; shielded?
   useEffect(() => {
     if (days > prev.current) {
       feedback('streak_up');
-      if (!reduced) s.value = withSequence(withSpring(1.25, springs.bounce), withSpring(1, springs.bounce));
+      if (!reduced) s.value = withSequence(withTiming(1.12, timings.quick), withTiming(1, timings.fade));
     }
     prev.current = days;
   }, [days, reduced, s]);

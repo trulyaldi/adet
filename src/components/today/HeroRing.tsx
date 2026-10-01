@@ -147,7 +147,7 @@ export function HeroRing({ segments, trackedSec, capacitySec, complete, day, siz
   const lastSec = useRef(trackedSec);
   useEffect(() => {
     if (trackedSec - lastSec.current >= 60 && !reduced) {
-      pulse.value = withSequence(withSpring(1.06, springs.bounce), withSpring(1, springs.appear));
+      pulse.value = withSequence(withTiming(1.03, timings.quick), withTiming(1, timings.fade));
     }
     lastSec.current = trackedSec;
   }, [trackedSec, reduced, pulse]);
