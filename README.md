@@ -22,14 +22,14 @@ A calm focus and habit tracker where your focused time fights through a pixel-ar
 
 ---
 
-## 🌿 Why Adet
+## Why Adet
 
 - **Forgiving and calm.** No guilt mechanics. A day with nothing planned is neutral, and the first unfinished day of each week is a rest day.
 - **Focus sessions.** Start a timer in one tap.
 - **Habit streaks.** A day counts when its plan is done, not when you hit an arbitrary number.
 - **Quest Mode.** Optional. Your focused minutes become damage against pixel-art enemies. Nothing flashes, nothing nags.
 
-## ✨ Features
+## Features
 
 | | |
 |---|---|
@@ -41,7 +41,7 @@ A calm focus and habit tracker where your focused time fights through a pixel-ar
 | ⚔️ **Quest Mode** | Seven biomes, bosses, loot chests, levels and ranks, all derived from your real sessions. |
 | 🦉 **Sage assistant** | Optional AI suggestions. Works offline on local rules; the AI is opt-in and off by default. |
 
-## ⚔️ Quest Mode
+##  Quest Mode
 
 Quest Mode gives focused time a purpose. It lives in its own tab and never changes how a normal session works.
 
@@ -106,7 +106,7 @@ asset pipeline are in [`docs/quest/README.md`](docs/quest/README.md).
 
 <sub>Captured from the web build at 390×844 with the app's built-in sample data.</sub>
 
-## 🧰 Tech stack
+##  Tech stack
 
 <p>
   <img src="https://skillicons.dev/icons?i=react,ts,expo,supabase,postgres,github" alt="React, TypeScript, Expo, Supabase, Postgres, GitHub" />
@@ -118,7 +118,7 @@ asset pipeline are in [`docs/quest/README.md`](docs/quest/README.md).
 - **Last-write-wins.** Simple merging, with append-only rows for game achievements.
 - **Supabase is the only backend.** Postgres with row-level security, email-code sign-in, and one Edge Function.
 
-## 🏗️ Architecture
+##  Architecture
 
 ```mermaid
 flowchart LR
@@ -173,7 +173,7 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm test`.
 
 </details>
 
-## 🗂️ Project structure
+##  Project structure
 
 <details>
 <summary>Show the tree</summary>
@@ -211,7 +211,7 @@ scripts/             Asset, audio and balance tooling
 - [ ] Items and links knowledge graph
 - [ ] Job tracker
 
-## 🙏 Credits and licences
+##  Credits and licences
 
 Quest Mode art and sound come from [Kenney](https://kenney.nl) (all CC0). Everything else is Adet's own.
 
