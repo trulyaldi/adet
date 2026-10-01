@@ -18,12 +18,12 @@ export const springs = {
 
 /**
  * Touch feedback, like iOS system controls: quick and small, no bounce.
- * Press in eases down at once; release returns on a critically damped spring.
+ * Press in eases down at once; release eases back.
  * Bigger things move less. Reduce Motion swaps movement for a dim.
  */
 export const press = {
   in: { duration: 90, easing: Easing.out(Easing.quad) } satisfies WithTimingConfig,
-  out: { damping: 26, stiffness: 380, mass: 0.8, overshootClamping: true } satisfies WithSpringConfig,
+  out: { duration: 120, easing: Easing.out(Easing.quad) } satisfies WithTimingConfig,
   /** Pressed scale per element size: none (the pixel look presses down a pixel instead). */
   scale: { icon: 1, button: 1, card: 1, hero: 1 },
   /** Everything but chunky buttons moves down this many px when pressed. */

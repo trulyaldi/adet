@@ -1,13 +1,11 @@
 import React, { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { feedback } from '../feedback/feedback';
 import { Screen } from '../store/StreakStore';
-import { press } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
-import { useReducedMotion } from '../theme/useMotion';
 import { Glyph, GlyphName } from './Glyph';
 import { usePressMotion } from './motion/Press';
 import { QuestBadge, useFreshChest, useQuestInvite } from './QuestBadge';
@@ -69,17 +67,13 @@ function QuestTabItem({ on, onPress }: { on: boolean; onPress(): void }) {
 
 function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: GlyphName; on: boolean; onPress(): void; badge?: React.ReactNode }) {
   const { colors, radius } = useTheme();
-  const reduced = useReducedMotion();
   const pressMotion = usePressMotion('icon');
-  // The pill fades in and out (~180ms); the icon lifts to at most 1.05 and settles without overshoot.
+  // The pill fades in and out (~180ms); the icon doesn't move.
   const pill = useSharedValue(on ? 1 : 0);
-  const s = useSharedValue(1);
   useEffect(() => {
     pill.value = withTiming(on ? 1 : 0, TAB_FADE);
-    if (on && !reduced) s.value = withSequence(withTiming(1.05, press.in), withSpring(1, press.out));
-  }, [on, reduced, pill, s]);
+  }, [on, pill]);
   const pillStyle = useAnimatedStyle(() => ({ opacity: pill.value }));
-  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
       <Pressable
@@ -97,9 +91,9 @@ function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: Glyph
       >
         <Animated.View style={[{ width: 72, height: 42, alignItems: 'center', justifyContent: 'center' }, pressMotion.style]}>
           <Animated.View style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: radius.pill, backgroundColor: colors.brandLight }, pillStyle]} />
-          <Animated.View style={iconStyle}>
+          <View>
             <Glyph name={glyph} size={25} color={on ? colors.brand : colors.sub} bg={on ? colors.brandLight : colors.card} />
-          </Animated.View>
+          </View>
           {badge}
         </Animated.View>
       </Pressable>
