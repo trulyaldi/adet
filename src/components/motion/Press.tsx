@@ -1,6 +1,6 @@
 import React from 'react';
 import { GestureResponderEvent, Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { press, PressKind } from '../../theme/motion';
 import { useReducedMotion } from '../../theme/useMotion';
@@ -35,7 +35,7 @@ export function usePressMotion(
     if (!disabled) p.value = withTiming(1, press.in);
   };
   const onPressOut = () => {
-    p.value = withSpring(0, press.out);
+    p.value = withTiming(0, press.out);
   };
   return { style, onPressIn, onPressOut };
 }

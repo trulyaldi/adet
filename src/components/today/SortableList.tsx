@@ -153,7 +153,7 @@ function SortableRow({
     right: 0,
     top: top.value,
     zIndex: dragging.value ? 10 : 0,
-    transform: [{ scale: dragging.value ? withTiming(1.03, press.in) : withSpring(1, press.out) }],
+    transform: [{ scale: dragging.value ? withTiming(1.03, press.in) : withTiming(1, press.out) }],
     ...(WEB ? { boxShadow: `0px 6px 14px rgba(0,0,0,${lift.value})` } : { shadowOpacity: lift.value, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }),
   }));
 

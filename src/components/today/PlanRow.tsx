@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { Gesture, GestureDetector, GestureType } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { TodayItem } from '../../domain/day';
@@ -52,7 +52,7 @@ export function PlanRow({ item, onStart, onCheck, onAside, dragGesture, onMove }
     .onEnd((e) => {
       if (e.translationX < -90 || e.velocityX < -800) {
         x.value = withTiming(-420, { duration: 180 }, () => scheduleOnRN(onAside));
-      } else x.value = withSpring(0, press.out);
+      } else x.value = withTiming(0, press.out);
     });
 
   const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
