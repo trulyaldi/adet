@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+import { isTimerSkin, TimerSkin } from '../domain/game/timerSkin';
+
 // Device look-and-feel preferences, available before sign-in (the theme and
 // sounds work on the sign-in screen too). Never synced.
 const KEY = 'adet-device-prefs-v1';
@@ -17,9 +19,11 @@ export interface DevicePrefs {
   questSfx: boolean;
   questMusic: boolean;
   questHaptics: boolean;
+  /** The Quest timer's skin; null until chosen (then each project's old focus scene maps to one). */
+  timerSkin: TimerSkin | null;
 }
 
-export const DEFAULT_DEVICE_PREFS: DevicePrefs = { sound: true, haptics: true, appearance: 'system', motion: 'system', questSfx: true, questMusic: false, questHaptics: true };
+export const DEFAULT_DEVICE_PREFS: DevicePrefs = { sound: true, haptics: true, appearance: 'system', motion: 'system', questSfx: true, questMusic: false, questHaptics: true, timerSkin: null };
 
 function parse(raw: string | null): DevicePrefs {
   try {
@@ -33,6 +37,7 @@ function parse(raw: string | null): DevicePrefs {
       questSfx: v.questSfx !== false,
       questMusic: v.questMusic === true,
       questHaptics: v.questHaptics !== false,
+      timerSkin: isTimerSkin(v.timerSkin) ? v.timerSkin : null,
     };
   } catch {
     return DEFAULT_DEVICE_PREFS;

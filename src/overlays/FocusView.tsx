@@ -1,12 +1,10 @@
-import { useKeepAwake } from 'expo-keep-awake';
-import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Modal, Pressable, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
+import { Modal, useWindowDimensions, View } from 'react-native';
 
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Rect } from 'react-native-svg';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '../components/Button';
 import { Burst } from '../components/celebrate/Burst';
@@ -20,19 +18,16 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
-import { QuestFocusRow, QuestFocusStage } from '../screens/Quest/session/QuestFocus';
+import { QUEST_ENABLED } from '../game/enabled';
+import { QuestFocusContent } from '../screens/Quest/session/QuestFocus';
 import { useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { TIMER_FRAME_MS, useActiveProgress } from '../store/useActiveProgress';
-import { useStopTimer } from '../store/useStopTimer';
-import { springs } from '../theme/motion';
 import { mix, Swatch } from '../theme/palette';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAppActive, useReducedMotion } from '../theme/useMotion';
 import { Text } from '../components/Text';
-
-/** After this long in focus, a dim button appears. */
-const DIM_OFFER_MS = 2 * 60_000;
+import { DimOverlay, useFocusShell } from './focusShell';
 
 /**
  * Full-screen focus: the count-up inside a ring in the project's color,
@@ -50,13 +45,12 @@ export function FocusView() {
   const open = timerOpen && !!data.active;
   return (
     <Modal visible={open} animationType="slide" onRequestClose={actions.closeTimer} statusBarTranslucent>
-      <GestureHandlerRootView style={{ flex: 1 }}>{open && <FocusContent />}</GestureHandlerRootView>
+      <GestureHandlerRootView style={{ flex: 1 }}>{open && (QUEST_ENABLED ? <QuestFocusContent /> : <FocusContent />)}</GestureHandlerRootView>
     </Modal>
   );
 }
 
 function FocusContent() {
-  useKeepAwake();
   const t = useTheme();
   const { colors, radius } = t;
   const data = useData();
@@ -68,19 +62,12 @@ function FocusContent() {
   const appActive = useAppActive();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const stop = useStopTimer();
+  const { swipe, sheetStyle, dimOffer, dimmed, setDimmed, finish } = useFocusShell();
   // The screen refreshes slowly; the clock text ticks on its own and the ring
   // moves on the UI thread.
   const p = useActiveProgress(TIMER_FRAME_MS);
-  const [dimOffer, setDimOffer] = useState(false);
-  const [dimmed, setDimmed] = useState(false);
   const [burst, setBurst] = useState<{ x: number; y: number } | null>(null);
   const doneRef = useRef<View>(null);
-  const finishing = useRef(false);
-  useEffect(() => {
-    const tm = setTimeout(() => setDimOffer(true), DIM_OFFER_MS);
-    return () => clearTimeout(tm);
-  }, []);
 
   // The cheer ends on its own clock (the screen doesn't re-render every second).
   const [, endCheer] = useReducer((n: number) => n + 1, 0);
@@ -90,25 +77,6 @@ function FocusContent() {
     const tm = setTimeout(endCheer, ms + 50);
     return () => clearTimeout(tm);
   }, [cheerUntil]);
-
-  const y = useSharedValue(0);
-  // Built once, so re-renders don't rebuild the gesture.
-  const closeRef = useRef(actions.closeTimer);
-  closeRef.current = actions.closeTimer;
-  const swipe = useMemo(() => {
-    const close = () => closeRef.current();
-    return Gesture.Pan()
-      .activeOffsetY(14)
-      .failOffsetX([-30, 30])
-      .onUpdate((e) => {
-        y.value = Math.max(0, e.translationY);
-      })
-      .onEnd((e) => {
-        if (e.translationY > 140 || e.velocityY > 900) scheduleOnRN(close);
-        y.value = withSpring(0, springs.reorder);
-      });
-  }, [y]);
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
   const habit = data.habits.find((h) => h.id === p?.habitId);
   if (!p || !habit) return null;
@@ -169,9 +137,6 @@ function FocusContent() {
           <IconButton label="Minimize" name="chevronDown" size={22} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.closeTimer} tipBelow />
         </View>
 
-        {/* Quest Mode: weak points for this session (optional, collapsed). */}
-        <QuestFocusRow habitId={habit.id} top={insets.top + 60} />
-
         {/* The timer */}
         <View style={{ position: 'absolute', left: 0, right: 0, top: cy - ringSize / 2, alignItems: 'center' }}>
           <ProgressRing
@@ -190,17 +155,10 @@ function FocusContent() {
           </ProgressRing>
         </View>
 
-        {/* Quest Mode: the Stage between the ring and the controls; else your character in a corner. */}
-        <QuestFocusStage
-          band={{ top: cy + ringSize / 2 + 12, bottom: height - insets.bottom - 108, screenHeight: height, width }}
-          paused={p.paused}
-          dimmed={dimmed}
-          portrait={
-            <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
-              <Character mood={mood} size={78} />
-            </View>
-          }
-        />
+        {/* Your character in a corner. */}
+        <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
+          <Character mood={mood} size={78} />
+        </View>
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>
           <MessageToast />
@@ -221,33 +179,17 @@ function FocusContent() {
               label="Done"
               swatch={sw}
               quiet
-              onPress={() => {
-                if (finishing.current) return;
-                finishing.current = true;
-                doneRef.current?.measureInWindow((x, yy, w, h) => setBurst({ x: x + w / 2, y: yy + h / 2 }));
+              onPress={() =>
                 // Let the burst play, then save (and close).
-                setTimeout(stop, reduced ? 0 : 520);
-                // A long-session question may be cancelled; allow another try.
-                setTimeout(() => (finishing.current = false), 1500);
-              }}
+                finish(reduced ? 0 : 520, () => doneRef.current?.measureInWindow((x, yy, w, h) => setBurst({ x: x + w / 2, y: yy + h / 2 })))
+              }
             />
           </View>
         </View>
 
         {burst && !reduced && <Burst x={burst.x} y={burst.y} color={sw.base} />}
 
-        {dimmed && (
-          <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-            <Pressable
-              onPress={() => setDimmed(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Undim the screen"
-              style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <SessionClock style={{ fontSize: 44, fontWeight: '800', color: '#7C818B', fontVariant: ['tabular-nums'] }} />
-            </Pressable>
-          </Animated.View>
-        )}
+        {dimmed && <DimOverlay onUndim={() => setDimmed(false)} />}
       </Animated.View>
     </GestureDetector>
   );

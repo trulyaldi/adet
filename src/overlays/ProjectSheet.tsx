@@ -9,6 +9,7 @@ import { ScenePreview } from '../components/ScenePreview';
 import { Sheet } from '../components/Sheet';
 import { ICONS } from '../domain/constants';
 import { PROJECT_COLORS, PROJECT_ICONS, SCENES } from '../domain/look';
+import { QUEST_ENABLED } from '../game/enabled';
 import { isCheck } from '../domain/marks';
 import { fmtDur } from '../domain/time';
 import { SceneKind } from '../domain/types';
@@ -112,30 +113,32 @@ export function ProjectSheet() {
             })}
           </View>
 
-          {/* Scene */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            {SCENES.map((k) => {
-              const on = sheet.scene === k;
-              return (
-                <Press
-                  kind="card"
-                  key={k}
-                  onPress={() => actions.patchProjectSheet({ scene: k })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Focus scene: ${SCENE_NAMES[k]}`}
-                  accessibilityState={{ selected: on }}
-                  style={{ borderRadius: 19, borderWidth: 3, borderColor: on ? sw.base : 'transparent', padding: 1 }}
-                >
-                  <ScenePreview kind={k} swatch={sw} width={72} height={96} />
-                  {on && (
-                    <View style={{ position: 'absolute', right: 5, top: 5, width: 20, height: 20, borderRadius: 10, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
-                      <Glyph name="done" size={12} color={sw.on} bg={sw.base} />
-                    </View>
-                  )}
-                </Press>
-              );
-            })}
-          </View>
+          {/* Scene (the classic timer only: with Quest Mode the timer skin is in Settings) */}
+          {!QUEST_ENABLED && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              {SCENES.map((k) => {
+                const on = sheet.scene === k;
+                return (
+                  <Press
+                    kind="card"
+                    key={k}
+                    onPress={() => actions.patchProjectSheet({ scene: k })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Focus scene: ${SCENE_NAMES[k]}`}
+                    accessibilityState={{ selected: on }}
+                    style={{ borderRadius: 19, borderWidth: 3, borderColor: on ? sw.base : 'transparent', padding: 1 }}
+                  >
+                    <ScenePreview kind={k} swatch={sw} width={72} height={96} />
+                    {on && (
+                      <View style={{ position: 'absolute', right: 5, top: 5, width: 20, height: 20, borderRadius: 10, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
+                        <Glyph name="done" size={12} color={sw.on} bg={sw.base} />
+                      </View>
+                    )}
+                  </Press>
+                );
+              })}
+            </View>
+          )}
 
           {/* Weekly target */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.well, borderRadius: radius.lg, padding: 10 }}>

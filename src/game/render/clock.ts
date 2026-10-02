@@ -8,8 +8,12 @@ import { SharedValue, useFrameCallback, useSharedValue } from 'react-native-rean
 /** Frames slower than this (ms, smoothed) switch to the 30 fps fallback. */
 const BUDGET_MS = 20;
 
-/** Milliseconds of world time (a shared value, advanced on the UI thread). */
-export function useGameClock(running: boolean): SharedValue<number> {
+/**
+ * Milliseconds of world time (a shared value, advanced on the UI thread).
+ * With `stepMs`, it publishes only in whole steps (a stepped, low-fps world:
+ * whatever reads it redraws that often, not every frame).
+ */
+export function useGameClock(running: boolean, stepMs = 0): SharedValue<number> {
   const t = useSharedValue(0);
   const inner = useSharedValue(0);
   const avg = useSharedValue(16);
@@ -23,6 +27,11 @@ export function useGameClock(running: boolean): SharedValue<number> {
     if (avg.value > BUDGET_MS) {
       odd.value = !odd.value;
       if (odd.value) return;
+    }
+    if (stepMs > 0) {
+      const stepped = Math.floor(inner.value / stepMs) * stepMs;
+      if (stepped !== t.value) t.value = stepped;
+      return;
     }
     t.value = inner.value;
   }, false);

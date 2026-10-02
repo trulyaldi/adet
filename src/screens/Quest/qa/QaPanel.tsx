@@ -31,7 +31,8 @@ import { QUI } from '../../../game/ui/theme';
 import { useData, useStoreNow } from '../../../store/StreakStore';
 import { Onboarding } from '../ceremonies/Onboarding';
 import { cameraFor, JourneyMap } from '../map/JourneyMap';
-import Stage from '../session/Stage';
+import TimerStage from '../session/TimerStage';
+import { TIMER_SKINS, TimerSkin } from '../../../domain/game/timerSkin';
 import { Trail } from '../sheets/Trail';
 import { spotFor } from '../model';
 import { Text } from '../../../components/Text';
@@ -56,6 +57,8 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
   const [json, setJson] = useState(false);
   const [intro, setIntro] = useState(false);
   const [scene, setScene] = useState<SceneState>('fight');
+  const [skin, setSkin] = useState<TimerSkin>('sun');
+  const [skinAt, setSkinAt] = useState(0.35);
 
   // A separate game for this view only; the real one (and its watcher) never sees the overlay.
   // Re-derived when the data or the overlay changes, or once a minute (not on every store tick).
@@ -211,11 +214,33 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
             <PixelButton key={k} small tone={scene === k ? 'gold' : 'parchment'} label={k} accessibilityLabel={`Show the Stage in its ${k} state`} onPress={() => setScene(k)} />
           ))}
         </Row>
-        <View style={{ height: 180 }}>
-          <Stage key={scene} width={width - 64} height={180} slim={false} live reduced={reduced} force={scene} />
-        </View>
-        <View style={{ height: 72 }}>
-          <Stage width={width - 64} height={72} slim live reduced={reduced} force={scene} />
+        <Row>
+          {TIMER_SKINS.map((k) => (
+            <PixelButton key={k} small tone={skin === k ? 'gold' : 'parchment'} label={k} accessibilityLabel={`Show the ${k} skin`} onPress={() => setSkin(k)} />
+          ))}
+        </Row>
+        <Row>
+          {[0, 0.35, 0.7, 1, 1.2].map((k) => (
+            <PixelButton key={k} small tone={skinAt === k ? 'gold' : 'parchment'} label={`${Math.round(k * 100)}%`} accessibilityLabel={`Show the skin at ${Math.round(k * 100)}% of the target`} onPress={() => setSkinAt(k)} />
+          ))}
+        </Row>
+        <View style={{ height: 300 }}>
+          <TimerStage
+            key={scene}
+            width={width - 64}
+            height={300}
+            skin={skin}
+            progress={Math.min(1, skinAt)}
+            past={skinAt >= 1}
+            sessionSec={0}
+            paused={scene === 'nap'}
+            live
+            reduced={reduced}
+            battle
+            payoff={0}
+            victory={false}
+            force={scene}
+          />
         </View>
       </Section>
 

@@ -6,11 +6,13 @@ architecture, file map and every assumption; the spec is in `spec/`.
 
 ## The loop
 
-1. **Choose.** On the focus view, an optional, collapsed weak-points row picks up
-   to 3 open tasks for this session. Starting a timer is still one tap.
-2. **Fight.** The **Stage** under the timer ring (at most 28% of the screen; a
-   slim 72 pt strip on short screens) shows your character gently swinging at
-   the current enemy every 4–6 s, its HP draining with effective minutes. Pause
+1. **Choose.** On the focus view, the sword chip in the header opens a list that
+   picks up to 3 open tasks for this session. Starting a timer is still one tap.
+2. **Fight.** The focus screen is the **Stage** (about half the screen, under a
+   pixel clock plate). Its world is the clock: a skin (Sun Arc by default;
+   Campfire, Hourglass or Trail in Settings) moves with today's time against the
+   target. Your character swings at the current enemy once a focused minute, its
+   HP (a bar above it) draining with effective minutes. Pause
    and your character naps; resume and it wakes. A beaten enemy dissolves into
    warm petals and the next walks in; a boss without its seals kneels, dazed.
    No sound, no haptics, nothing flashes. It's a live preview through the same

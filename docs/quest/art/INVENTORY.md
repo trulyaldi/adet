@@ -210,3 +210,16 @@ their stroke glyph until one is drawn. Habit icons (domain/constants.ts `ICONS`)
 **Pixel (34):** `done`, `clock`, `calendar`, `dots`, `close`, `gear`, `week`, `flame`, `play`, `pause`, `plus`, `minus`, `pencil`, `trash`, `archive`, `bell`, `undo`, `list`, `bars`, `chevronRight`, `chevronLeft`, `chevronDown`, `chevronUp`, `stop`, `edit`, `stats`, `moon`, `sparkle`, `habits`, `info`, `today`, `target`, `sword`, `quest`
 
 **Stroke, no pixel version yet (31):** `full`, `min`, `doneMin`, `rest`, `bonus`, `logTime`, `swap`, `remove`, `chain`, `unarchive`, `merge`, `signOut`, `cloud`, `cloudSync`, `cloudOff`, `drag`, `soundOn`, `soundOff`, `haptic`, `capLight`, `capNormal`, `capHeavy`, `badge`, `contrast`, `motion`, `scene`, `palette`, `weekStart`, `dim`, `shrink`, `raise`
+
+## Timer skins: code-drawn placeholders (P9 art pass)
+
+Drawn as pixel grids or rects in `src/screens/Quest/session/skins/` and `src/components/skinPreviews.ts`;
+no external art. Each wants a real sprite (or sheet) in the atlas.
+
+- **Sun Arc:** the sun disk and its halo (`SUN`, `HALO` in SunArc.tsx); the evening stars (single pixels).
+- **Campfire:** the stars (single pixels). The fire reuses `prop.campfire.default.lit` (a needs-art stand-in).
+- **Hourglass:** the whole hourglass: wooden caps and posts, glass, sand and falling grains (built from `CHAMBER`).
+- **Trail:** the dirt path and its dashes (rects). The landmark reuses `decor.<biome>.landmark`.
+- **The Sage flying over:** reuses `npc.sage.idle@flip` (a sitting pose); wants a 2–4 frame flight cycle.
+- **Enemy HP:** a segmented bar (rects), fine as UI; pixel hearts are an option.
+- **Settings previews:** four 12×10 grids (`SKIN_PREVIEWS`).

@@ -6,7 +6,7 @@ import * as ops from '../items/ops';
 import { sessionFromTimer } from '../sessions';
 import type { ActiveTimer, Session } from '../types';
 import { DeriveInput, deriveGameState, mobHp } from './derive';
-import { attackGap, Encounter, encounterOf, liveSession, previewGame, STAGE_TIMING, stageSize, stageStep, StageState } from './stage';
+import { Encounter, encounterOf, liveSession, previewGame, STAGE_TIMING, stageStep, StageState } from './stage';
 import { fixedTz } from './tz';
 
 const E = (p: Partial<Encounter> = {}): Encounter => ({ global: 0, kind: 'mob', hp: 90, maxHp: 90, staggered: false, seals: [], ...p });
@@ -55,11 +55,6 @@ test('the session ends: ended, whatever was playing', () => {
   for (const scene of ['fight', 'defeat', 'nap', 'wake'] as const) assert.equal(stageStep({ scene, since: 0, enemy: E() }, 'ended', E(), 10).scene, 'ended');
 });
 
-test('attacks come every 4–6 seconds', () => {
-  for (let n = 0; n < 50; n++) assert.ok(attackGap(n) >= 4000 && attackGap(n) <= 6000);
-  assert.ok(new Set(Array.from({ length: 10 }, (_, n) => attackGap(n))).size > 3, 'varied');
-});
-
 test('the live preview is exactly what the saved session derives to, including a boss falling at session end', () => {
   const D0 = Date.UTC(2026, 8, 1, 6);
   const DAY = 86_400_000;
@@ -84,18 +79,4 @@ test('the live preview is exactly what the saved session derives to, including a
   assert.equal(saved.journey.hp, mobHp(1) - 1);
   // Under ten minutes a session counts for nothing, in the preview too.
   assert.deepEqual(encounterOf(previewGame(input, liveSession({ habitId: 'h1', startedAt: end, baseSec: 0 }, end + 9 * 60_000))), encounterOf(deriveGameState(input)));
-});
-
-test('layout: never over the timer ring, at most 28% of the screen, a slim 72 pt strip on short screens', () => {
-  // iPhone 14: the band under the ring is ~190 pt of an 844 pt screen.
-  assert.deepEqual(stageSize({ top: 530, bottom: 702, screenHeight: 844, width: 390 }), { height: 172, slim: false });
-  assert.deepEqual(stageSize({ top: 520, bottom: 820, screenHeight: 932, width: 430 }), { height: Math.floor(932 * 0.28), slim: false });
-  // iPhone SE (667 pt): slim.
-  assert.deepEqual(stageSize({ top: 445, bottom: 559, screenHeight: 667, width: 375 }), { height: 72, slim: true });
-  // Almost no room: the slim strip shrinks to fit rather than overlap.
-  assert.deepEqual(stageSize({ top: 500, bottom: 540, screenHeight: 800, width: 390 }), { height: 40, slim: true });
-  for (const h of [600, 700, 844, 1000]) {
-    const band = { top: h * 0.6, bottom: h * 0.85, screenHeight: h, width: 390 };
-    assert.ok(stageSize(band).height <= band.bottom - band.top);
-  }
 });
