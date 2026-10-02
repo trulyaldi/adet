@@ -106,7 +106,7 @@ export function planReveal(maps: BiomeMap[], seen: number, now: number): Reveal 
 // Tap targets (world coordinates, at least 44 pt however small the sprite).
 
 export interface Target {
-  kind: 'node' | 'npc' | 'chests' | 'fire' | 'pet' | 'critter' | 'villager' | 'avatar' | 'gate';
+  kind: 'node' | 'npc' | 'chests' | 'fire' | 'pet' | 'critter' | 'villager' | 'avatar' | 'gate' | 'plus';
   key: string;
   x: number;
   y: number;

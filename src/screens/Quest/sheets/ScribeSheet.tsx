@@ -19,6 +19,9 @@ import { PIXEL_FONT, PIXEL_TEXT } from '../../../game/assets/fonts';
 import { greeting, npcName } from '../../../game/content/npcs';
 import { mobId, ROSTER } from '../../../game/content/roster';
 import { openLoot } from '../../../game/state/loot';
+import { clearedAt } from '../../../domain/world/rules';
+import { liveWorld } from '../../../domain/world/select';
+import { PixelCheck } from '../../../game/ui/PixelCheck';
 import { PixelButton } from '../../../game/ui/PixelButton';
 import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
@@ -101,6 +104,38 @@ function Chronicle({ model }: { model: QuestModel }) {
     const mob = ROSTER[b].mobs[Math.max(0, NODE_MOBS[hit.node.node] as number)];
     return { sprite: `${mobId(b, mob.key)}.idle`, name: mob.name };
   };
+  // World Mode: cleared quests are trophies, newest first (the old chronicle stays below).
+  const trophies = useMemo(() => {
+    const w = liveWorld(data.items);
+    const realms = new Map(w.realms.map((r) => [r.id, r.name]));
+    return w.quests
+      .filter((q) => !q.parentQuestId)
+      .map((q) => ({ q, at: clearedAt(q, w.results, w.quests) }))
+      .filter((t): t is { q: typeof t.q; at: number } => t.at !== null)
+      .sort((a, b) => b.at - a.at)
+      .map((t) => ({ id: t.q.id, title: t.q.title, realm: realms.get(t.q.realmId) ?? '' }));
+  }, [data.items]);
+  const trophyList = trophies.length ? (
+    <View style={{ gap: 2, marginBottom: 6 }}>
+      <PixelText size="sm" bold color={QUI.wood} accessibilityRole="header">
+        Trophies
+      </PixelText>
+      {trophies.map((t) => (
+        <View key={t.id} accessible accessibilityLabel={`Cleared: ${t.title}${t.realm ? `, in ${t.realm}` : ''}`} style={{ minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <PixelCheck />
+          <PixelText size="md" style={{ flex: 1 }} numberOfLines={2}>
+            {t.title}
+          </PixelText>
+          {!!t.realm && (
+            <PixelText size="tiny" color={QUI.muted} numberOfLines={1} style={{ maxWidth: 90 }}>
+              {t.realm}
+            </PixelText>
+          )}
+        </View>
+      ))}
+    </View>
+  ) : null;
+  if (!sections.length && trophyList) return trophyList;
   if (!sections.length) {
     return (
       <PixelText size="sm" color={QUI.muted}>
@@ -110,6 +145,7 @@ function Chronicle({ model }: { model: QuestModel }) {
   }
   return (
     <SectionList
+      ListHeaderComponent={trophyList}
       sections={sections}
       keyExtractor={(l) => l.id}
       style={{ flexShrink: 1 }}

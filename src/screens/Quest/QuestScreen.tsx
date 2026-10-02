@@ -1,46 +1,54 @@
-// The Quest tab: the journey map with its HUD. On open the camera finds the
-// avatar; if progress was made since the last visit, the avatar walks there
-// (dust puffs, beaten mobs popping into sparkles, the camera easing along),
-// in under four seconds, skippable with a tap.
+// The Quest tab: the Realm screen (World Mode, world-3). One realm's path in
+// its slot's biome: the uncleared quests along it, the oldest uncleared boss
+// in the lair at the top, the camp (Sage, Merchant, Scribe) and a "+" at the
+// path's start. Tap a quest for its sheet (Start, Mark done, edit, phases,
+// delete); tap "+" to name a new one. The legacy linear journey isn't shown
+// or converted; its chronicle stays in the Scribe and the HUD keeps level and
+// credits.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
-import { cancelAnimation, Easing, makeMutable, useSharedValue, withTiming } from 'react-native-reanimated';
+import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
-import { NODE_MOBS } from '../../domain/game/balance';
-import { mobHp, nodeAt } from '../../domain/game/derive';
-import { npcName, npcTitle } from '../../game/content/npcs';
-import { bossId, mobId, NpcId, ROSTER } from '../../game/content/roster';
-import { bossLine } from '../../game/content/bossLines';
+import { TextInput } from '../../components/Text';
 import { useQuestWrites } from '../../data/itemsRepo';
-import { useQuestFonts } from '../../game/assets/fonts';
+import { useRealmView, useSlots, useWorldWrites } from '../../data/worldRepo';
+import { RESULT_UNDO_MS } from '../../domain/game/balance';
+import { BIOME_IDS } from '../../domain/game/biomes';
+import { QUEST_TITLE_MAX } from '../../domain/world/types';
+import { PIXEL_FONT, PIXEL_TEXT, useQuestFonts } from '../../game/assets/fonts';
+import { preloadQuestSounds } from '../../game/audio';
+import { holdCeremonies } from '../../game/ceremonies/gate';
+import { ceremonyHost } from '../../game/ceremonies/host';
+import { npcName, npcTitle } from '../../game/content/npcs';
+import { NpcId } from '../../game/content/roster';
+import { feedback } from '../../game/feedback';
 import { useGameClock } from '../../game/render/clock';
-import { pixelScale } from '../../game/render/pixel';
-import { getQuestLocal, updateQuestLocal, useQuestLocal } from '../../game/state/local';
+import { SpriteView } from '../../game/render/SpriteView';
+import { useQuestLocal } from '../../game/state/local';
+import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
 import { useQuestReduced, useWorldRunning } from '../../game/state/settings';
+import { setTimerQuest } from '../../game/state/timerQuest';
 import { PixelButton } from '../../game/ui/PixelButton';
 import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
+import { PE } from '../../game/ui/pointer';
 import { QUI } from '../../game/ui/theme';
-import { ceremonyHost } from '../../game/ceremonies/host';
-import { holdCeremonies } from '../../game/ceremonies/gate';
-import { preloadQuestSounds } from '../../game/audio';
-import { feedback } from '../../game/feedback';
+import { useActions } from '../../store/StreakStore';
+import { useQuestTables } from '../../sync/questTables';
+import { MODAL_GAP_MS } from '../../theme/motion';
 import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
-import { cameraFor, JourneyMap, MapFx } from './map/JourneyMap';
-import { campLayout, hitTest, planReveal, spotFor, Target, targetAt } from './model';
+import { campLayout, hitTest, Target, targetAt } from './model';
+import { QuestNodeSheet } from './realm/QuestNodeSheet';
+import { RealmMap, realmCamera, realmCameraFor } from './realm/RealmMap';
+import { realmLayout } from './realm/realmModel';
 import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
-import { useActions } from '../../store/StreakStore';
-import { PE } from '../../game/ui/pointer';
-import { MODAL_GAP_MS } from '../../theme/motion';
-import { SpriteView } from '../../game/render/SpriteView';
-import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
-import { QUEST_MS, shakeOnce } from '../../game/ui/motion';
 
-const POPS = 12;
+/** TEMP(world-5): until the Overworld lets you claim slots, slot 0 is claimed for you. */
+const FIRST_REALM = { slot: 0, name: 'My first realm', icon: 'target' } as const;
 
 export default function QuestScreen({ onPlayground }: { onPlayground?(): void }) {
   useQuestFonts();
@@ -50,9 +58,29 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const clock = useGameClock(running);
   const local = useQuestLocal();
   const writes = useQuestWrites();
+  const world = useWorldWrites();
+  const tables = useQuestTables();
+  const actions = useActions();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [sheet, setSheet] = useState<SheetId | null>(null);
+  const [nodeId, setNodeId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const [undo, setUndo] = useState<{ resultId: string; title: string } | null>(null);
+  const [replayIntro, setReplayIntro] = useState(false);
+  const [screenReader, setScreenReader] = useState(false);
+
+  // TEMP(world-5): the realm shown is the first claimed slot; slot 0 is claimed once the journey has started.
+  const slots = useSlots();
+  const realm = slots.find((s) => s.realm)?.realm ?? null;
+  useEffect(() => {
+    if (m.meta && tables === 'available' && !realm) world.claimSlot(FIRST_REALM.slot, FIRST_REALM.name, FIRST_REALM.icon);
+  }, [m.meta, tables, realm, world]);
+  const view = useRealmView(realm?.id ?? null);
+  const map = m.maps[realm?.slot ?? 0];
+  const layout = useMemo(() => (view ? realmLayout(map, view) : null), [map, view]);
+
   // A sheet asked for from elsewhere (the Almanac's Trail link).
   useEffect(() => {
     const take = () => {
@@ -62,199 +90,98 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
     take();
     return onQuestSheetRequest(take);
   }, []);
-  const [replayIntro, setReplayIntro] = useState(false);
-  // Android back during onboarding: step out of the Quest tab (nothing is written).
-  const actions = useActions();
   const leaveQuest = useCallback(() => actions.setScreen('today'), [actions]);
-  const bossTaps = useRef(0);
   // Ceremonies wait while a sheet, a panel or the intro replay is up.
-  const busy = !!sheet || !!panel || replayIntro;
+  const busy = !!sheet || !!panel || !!nodeId || adding || replayIntro;
   useEffect(() => (busy ? holdCeremonies() : undefined), [busy]);
-  const [screenReader, setScreenReader] = useState(false);
   useEffect(() => { preloadQuestSounds(); }, []);
   useEffect(() => {
-    feedback.music.setBiome(m.game.journey.position.biome);
+    feedback.music.setBiome(BIOME_IDS[realm?.slot ?? 0]);
     return () => feedback.music.setBiome(null);
-  }, [m.game.journey.position.biome, m.data.active]);
+  }, [realm?.slot]);
   useEffect(() => {
     AccessibilityInfo.isScreenReaderEnabled().then(setScreenReader).catch(() => {});
     const sub = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReader);
     return () => sub.remove();
   }, []);
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), RESULT_UNDO_MS);
+    return () => clearTimeout(t);
+  }, [undo]);
+  // Evaluate ceremonies once the screen settles (as the reveal used to).
+  useEffect(() => {
+    if (local.loaded && m.meta) ceremonyHost.evaluate();
+  }, [local.loaded, m.meta]);
 
   const camY = useSharedValue(0);
-  const avatarX = useSharedValue(m.at.x);
-  const avatarY = useSharedValue(m.at.y);
+  const avatarX = useSharedValue(0);
+  const avatarY = useSharedValue(0);
   const avatarMode = useSharedValue(0);
-  const shake = useSharedValue(0);
-  const fx: MapFx = useMemo(
-    () => ({
-      pops: Array.from({ length: POPS }, () => ({ x: 0, y: 0, at: makeMutable(-1e9) })),
-      dust: { x: makeMutable(0), y: makeMutable(0), at: makeMutable(-1e9) },
-    }),
-    []
-  );
-  const [popSpots, setPopSpots] = useState<{ x: number; y: number }[]>([]);
-  const mapFx = useMemo(() => ({ ...fx, pops: fx.pops.map((p, i) => ({ ...p, x: popSpots[i]?.x ?? -99, y: popSpots[i]?.y ?? -99 })) }), [fx, popSpots]);
+  const pop = useMemo(() => ({ at: makeMutable(-1e9) }), []);
+  const [popAt, setPopAt] = useState({ x: -99, y: -99 });
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setSize((s) => (s && s.w === width && s.h === height ? s : { w: width, h: height }));
   };
-
-  // ---- the reveal ----
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const finish = useRef<(() => void) | null>(null);
-  const skip = useCallback(() => finish.current?.(), []);
-  const pos = m.game.journey.position;
-  const hp = m.game.journey.hp;
-
-  // The camera finds the avatar as soon as the map has a size.
-  const placed = useRef(false);
+  // The camera starts at the camp; the avatar stands there.
+  const placedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!size || placed.current) return;
-    placed.current = true;
-    camY.set(cameraFor(m.at.y, size.h, size.w));
-  }, [size, m.at.y, camY]);
-
-  useEffect(() => {
-    if (!size || !local.loaded || !m.meta) return;
-    const seen = getQuestLocal().seen;
-    const cur = { global: pos.global, hp };
-    const settle = () => {
-      timers.current.forEach(clearTimeout);
-      timers.current = [];
-      finish.current = null;
-      cancelAnimation(avatarX);
-      cancelAnimation(avatarY);
-      avatarX.set(m.at.x);
-      avatarY.set(m.at.y);
-      avatarMode.set(0);
-      updateQuestLocal((s) => ({ ...s, seen: cur }));
-      ceremonyHost.evaluate();
-    };
-    const plan = seen ? planReveal(m.maps, seen.global, cur.global) : null;
-    if (!seen || !plan || reduced) {
-      // First visit, nothing new, or reduced motion: just be there.
-      camY.set(cameraFor(m.at.y, size.h, size.w));
-      if (seen && cur.global === seen.global && cur.hp < seen.hp && !reduced) {
-        // Same enemy, a bit weaker: a small hit where it stands.
-        const n = nodeAt(pos.global);
-        const node = m.maps[n.biomeIndex].nodes[n.node];
-        setPopSpots([{ x: node.x, y: node.y }]);
-        fx.pops[0].at.set(clock.value);
-        shake.set(shakeOnce(1.5));
-      }
-      settle();
-      return;
-    }
-    // Walk it.
-    const start = plan.points[0];
-    avatarX.set(start.x);
-    avatarY.set(start.y);
-    camY.set(cameraFor(start.y, size.h, size.w));
-    setPopSpots(plan.pops.slice(0, POPS).map((p) => ({ x: p.x, y: p.y })));
-    finish.current = () => {
-      settle();
-      camY.set(withTiming(cameraFor(m.at.y, size.h, size.w), { duration: QUEST_MS.camera }));
-    };
-    const step = plan.stepMs;
-    plan.points.slice(1).forEach((pt, i) => {
-      timers.current.push(
-        setTimeout(() => {
-          avatarMode.set(1);
-          avatarX.set(withTiming(pt.x, { duration: step, easing: Easing.linear }));
-          avatarY.set(withTiming(pt.y, { duration: step, easing: Easing.linear }));
-          camY.set(withTiming(cameraFor(pt.y, size.h, size.w), { duration: step, easing: Easing.inOut(Easing.quad) }));
-          fx.dust.x.set(plan.points[i].x);
-          fx.dust.y.set(plan.points[i].y);
-          fx.dust.at.set(clock.value);
-          const pop = plan.pops.findIndex((p) => p.at === i);
-          if (pop >= 0 && pop < POPS) fx.pops[pop].at.set(clock.value + step * 0.6);
-        }, 350 + i * step)
-      );
-    });
-    timers.current.push(setTimeout(() => finish.current?.(), 350 + (plan.points.length - 1) * step + 80));
-    return () => {
-      timers.current.forEach(clearTimeout);
-      timers.current = [];
-    };
-    // Re-run when progress changes (a claimed chest, a synced session).
-  }, [size, local.loaded, !!m.meta, pos.global, hp, reduced]);
+    if (!size || !layout) return;
+    avatarX.set(layout.camp.x);
+    avatarY.set(layout.camp.y);
+    const key = `${map.id}:${size.w}x${size.h}`;
+    if (placedFor.current === key) return;
+    placedFor.current = key;
+    camY.set(realmCameraFor(map, layout.camp.y, size.w, size.h));
+  }, [size, layout, map, camY, avatarX, avatarY]);
 
   // ---- taps ----
-  const scale = size ? pixelScale(size.w) : 3;
+  const scale = size ? realmCamera(map, size.w, size.h).scale : 3;
   const targets = useMemo(() => {
+    if (!layout) return [];
     const min = 44 / scale;
     const out: Target[] = [];
-    const bi = pos.biomeIndex;
-    for (const map of m.maps.filter((x) => Math.abs(x.index - bi) <= 1)) {
-      for (const n of map.nodes) {
-        if (n.kind === 'mob') out.push(targetAt('node', `${map.id}:${n.index}`, n.x, n.y, 16, 16, min, { biome: map.index, node: n.index }));
-      }
-      out.push(targetAt('gate', `${map.id}:gate`, map.gate.x, map.gate.y - 14, 60, 64, min, { biome: map.index }));
-      map.critters.forEach((c, i) => out.push(targetAt('critter', `${map.id}:c${i}`, c.x, c.y, c.wander * 2 + 10, 10, min)));
-      map.villagers.forEach((v, i) => out.push(targetAt('villager', `${map.id}:v${i}`, v.x, v.y, 14, 22, min, v.line)));
-    }
-    for (const c of campLayout(m.at)) {
+    for (const n of layout.nodes) out.push(targetAt('node', n.node.quest.id, n.x, n.y, 16, 16, min));
+    if (layout.lair) out.push(targetAt('gate', layout.lair.node.quest.id, layout.lair.x, layout.lair.y, 60, 64, min));
+    out.push(targetAt('plus', 'plus', layout.plus.x, layout.plus.y + 7, 14, 14, min));
+    map.critters.forEach((c, i) => out.push(targetAt('critter', `c${i}`, c.x, c.y, c.wander * 2 + 10, 10, min)));
+    for (const c of campLayout(layout.camp)) {
       const kind = c.thing === 'sage' || c.thing === 'merchant' || c.thing === 'scribe' ? 'npc' : c.thing;
       if (c.thing === 'chests' && !m.chests) continue;
       if (c.thing === 'pet' && !m.pet) continue;
       out.push(targetAt(kind, c.thing, c.x, c.y, 16, 16, min));
     }
-    out.push(targetAt('avatar', 'avatar', m.at.x, m.at.y, 14, 24, min));
+    out.push(targetAt('avatar', 'avatar', layout.camp.x, layout.camp.y, 14, 24, min));
     return out;
-  }, [m.maps, m.at, m.chests, m.pet, pos.biomeIndex, scale]);
+  }, [layout, map, m.chests, m.pet, scale]);
 
   const onTap = useCallback(
     (wx: number, wy: number, sx: number, sy: number) => {
-      if (finish.current) return;
       const t = hitTest(targets, wx, wy);
-      if (!t) {
-        setPanel(null);
-        return;
-      }
-      const g = m.game.journey;
+      setPanel(null);
+      if (!t) return;
       switch (t.kind) {
-        case 'node': {
-          const { biome, node } = t.data as { biome: number; node: number };
-          const map = m.maps[biome];
-          const here = biome * 8 + node;
-          const cur = g.position.biomeIndex * 8 + g.position.node;
-          const mob = ROSTER[map.id].mobs[Math.max(0, NODE_MOBS[node] as number)];
-          const max = mobHp(biome);
-          // `cur` and `here` count within this loop; `global` counts every node since the first.
-          const ahead = g.softened.find((x) => x.global === g.position.global - cur + here)?.hp ?? max;
-          setPanel({ kind: 'mob', sprite: here < cur ? `prop.${map.id}.grave` : `${mobId(map.id, mob.key)}.idle`, name: mob.name, hp: here < cur ? 0 : here === cur ? g.hp : ahead, max, x: sx, y: sy });
+        case 'node':
+        case 'gate':
+          setNodeId(t.key);
           break;
-        }
-        case 'gate': {
-          const { biome } = t.data as { biome: number };
-          const map = m.maps[biome];
-          const active = biome === g.position.biomeIndex && g.position.node === 7;
-          const beaten = biome < g.position.biomeIndex;
-          // The boss you face speaks a pre-fight line each tap (the Hollow Echo also quotes you).
-          const line = active ? bossLine(m.game, map.id, bossTaps.current++) : undefined;
-          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, x: sx, y: sy });
-          break;
-        }
-        case 'villager':
-          setPanel({ kind: 'say', text: String(t.data), x: sx, y: sy });
+        case 'plus':
+          setTitle('');
+          setAdding(true);
           break;
         case 'critter':
           setPanel({ kind: 'emote', x: sx, y: sy });
           break;
         case 'npc':
-          setPanel(null);
           setSheet(t.key as SheetId);
           break;
         case 'chests':
-          setPanel(null);
           setSheet('chests');
           break;
         case 'avatar':
         case 'pet':
-          setPanel(null);
           setSheet('character');
           break;
         case 'fire':
@@ -262,62 +189,149 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           break;
       }
     },
-    [targets, m]
+    [targets, m.fireLit]
   );
 
-  const newcomer = m.game.sessions.length === 0;
+  const nodeFull = (view && nodeId && view.path.find((n) => n.quest.id === nodeId)) || null;
+  const spotOf = (questId: string) => {
+    const n = layout?.nodes.find((x) => x.node.quest.id === questId || x.node.phases.some((p) => p.quest.id === questId));
+    if (n) return n;
+    return layout?.lair ?? layout?.plus ?? { x: -99, y: -99 };
+  };
+  const markDone = (questId: string, label: string) => {
+    const id = world.markDone(questId);
+    if (!id) return;
+    const at = spotOf(questId);
+    setPopAt({ x: at.x, y: at.y });
+    pop.at.set(clock.value);
+    feedback.sfx('hit', 'loot');
+    setUndo({ resultId: id, title: label });
+  };
+  const addQuest = () => {
+    if (!realm || !title.trim()) return;
+    world.addQuest(realm.id, title);
+    setTitle('');
+    setAdding(false);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: QUI.night }} onLayout={onLayout}>
-      {size && (
-        <JourneyMap
+      {size && layout && view && (
+        <RealmMap
           width={size.w}
           height={size.h}
-          maps={m.maps}
-          journey={m.game.journey}
+          map={map}
+          below={m.maps[(realm?.slot ?? 0) - 1]}
+          above={m.maps[(realm?.slot ?? 0) + 1]}
+          layout={layout}
+          conquered={view.conquered}
+          empty={view.empty}
           phase={m.phase}
           camY={camY}
           clock={clock}
           reduced={reduced}
-          camp={{ at: m.at, fireLit: m.fireLit, fireStyle: m.fireStyle, chests: m.chests, pet: m.pet }}
+          camp={{ fireLit: m.fireLit, fireStyle: m.fireStyle, chests: m.chests, pet: m.pet }}
           look={m.look}
           avatarX={avatarX}
           avatarY={avatarY}
           avatarMode={avatarMode}
-          fx={mapFx}
-          shake={shake}
+          pop={{ ...popAt, at: pop.at }}
           onTap={onTap}
-          onTouch={skip}
         />
       )}
       <View style={{ position: 'absolute', top: 8, left: 8, right: 8 }}>
         <Hud game={m.game} look={m.look} width={size?.w ?? 360} onAvatar={() => setSheet('character')} onLongPress={__DEV__ ? onPlayground : undefined} />
       </View>
-      {newcomer && !panel && (
-        <View style={[PE.none, { position: 'absolute', left: 16, right: 16, bottom: 16 }]}>
+
+      {/* An empty realm: only the pulsing "+" on the map, and this line. */}
+      {view?.empty && !adding && !panel && (
+        <View style={[PE.none, { position: 'absolute', left: 16, right: 16, top: 84, alignItems: 'center' }]}>
           <PixelPanel tone="parchment" padding={2}>
-            <PixelText size="sm">{npcName('sage', m.meta?.props.settings)}: Start a session to strike your first foe.</PixelText>
+            <PixelText size="md">What do you want to beat?</PixelText>
           </PixelPanel>
         </View>
       )}
-      {!newcomer && !panel && (
+      {!view?.empty && !adding && !panel && !undo && (
         <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
           <PixelButton small tone="parchment" icon={<SpriteView id="icon.quill" scale={2} />} accessibilityLabel="Quick log: record something you did" onPress={() => setSheet('quicklog')} />
         </View>
       )}
+      {undo && !adding && (
+        <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, alignItems: 'center' }}>
+          <PixelPanel tone="parchment" padding={2}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <PixelText size="sm" numberOfLines={1} style={{ maxWidth: 200 }}>{undo.title}: cleared</PixelText>
+              <PixelButton small tone="parchment" label="Undo" accessibilityLabel={`Undo: ${undo.title} is not done`} onPress={() => {
+                world.undoResult(undo.resultId);
+                setUndo(null);
+              }} />
+            </View>
+          </PixelPanel>
+        </View>
+      )}
+
+      {/* Add a quest: one field; Enter makes a mob. */}
+      {adding && (
+        <View style={{ position: 'absolute', left: 12, right: 12, bottom: 12 }}>
+          <PixelPanel tone="parchment" padding={2}>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              autoFocus
+              maxLength={QUEST_TITLE_MAX}
+              returnKeyType="done"
+              onSubmitEditing={addQuest}
+              onBlur={() => !title.trim() && setAdding(false)}
+              placeholder="What do you want to beat?"
+              placeholderTextColor={QUI.muted}
+              accessibilityLabel="A new quest: what do you want to beat?"
+              style={{ minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink }}
+            />
+          </PixelPanel>
+        </View>
+      )}
+
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}
       {screenReader && Platform.OS !== 'web' && (
         <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          <PixelButton small tone="gold" label="+" accessibilityLabel="Add a quest" onPress={() => setAdding(true)} />
+          {layout?.lair && <PixelButton small tone="night" label="Boss" accessibilityLabel={`Boss: ${layout.lair.node.quest.title}`} onPress={() => setNodeId(layout.lair!.node.quest.id)} />}
+          {layout?.nodes.map((n) => (
+            <PixelButton key={n.node.quest.id} small tone="parchment" label={n.node.quest.title.slice(0, 12)} accessibilityLabel={`Quest: ${n.node.quest.title}, ${n.node.hearts} hearts`} onPress={() => setNodeId(n.node.quest.id)} />
+          ))}
           {(['sage', 'merchant', 'scribe'] as SheetId[]).map((id) => (
             <PixelButton key={id} small tone="parchment" label={npcName(id as NpcId, m.meta?.props.settings)} accessibilityLabel={npcTitle(id as NpcId, m.meta?.props.settings)} onPress={() => setSheet(id)} />
           ))}
           {m.chests > 0 && <PixelButton small tone="gold" label={`${m.chests}`} accessibilityLabel={`${m.chests} unopened chests`} onPress={() => setSheet('chests')} />}
-          <PixelButton small tone="night" label="Enemy" accessibilityLabel={`Current enemy, ${Math.ceil(hp)} of ${m.game.journey.maxHp} health`} onPress={() => {
-            const at = spotFor(m.maps, pos.global);
-            onTap(at.x, at.y - 14, (size?.w ?? 0) / 2, (size?.h ?? 0) / 2);
-          }} />
         </View>
       )}
+
+      {nodeFull && (
+        <QuestNodeSheet
+          node={nodeFull}
+          reduced={reduced}
+          onClose={() => setNodeId(null)}
+          onStart={(questId) => {
+            // The timer takes the quest as a param only (it targets quests in world-4).
+            setTimerQuest(questId);
+            setNodeId(null);
+            setTimeout(() => actions.openStartSheet(), MODAL_GAP_MS);
+          }}
+          onMarkDone={(questId) => {
+            const phase = nodeFull.phases.find((p) => p.quest.id === questId);
+            const isPhase = !!phase;
+            markDone(questId, phase?.quest.title ?? nodeFull.quest.title);
+            if (!isPhase) setNodeId(null);
+          }}
+          onRename={(questId, t) => world.renameQuest(questId, t)}
+          onAddPhase={(questId, t) => world.addPhase(questId, t)}
+          onDelete={(questId) => {
+            world.softDeleteQuest(questId);
+            setNodeId(null);
+          }}
+        />
+      )}
+
       {!m.meta && local.loaded && (
         <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={leaveQuest}>
           <Onboarding
