@@ -32,7 +32,7 @@ export function twistDamage(biome: BiomeId, c: TwistCtx): number {
     case 'swamp':
       return c.unbroken && c.minutes >= B.SWAMP_UNBROKEN_MIN ? e * B.SWAMP_MULT : e;
     case 'desert':
-      // TEMP(world-2): replaced by results. The weak-point twist is gone; the desert deals focused time as it is.
+      // The weak-point twist is gone; the desert deals focused time as it is (journey history only).
       return e;
     case 'frost':
       return c.firstOfDay ? e + Math.min(B.FROST_FIRST_MIN, e) * (B.FROST_MULT - 1) : e;

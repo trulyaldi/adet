@@ -588,3 +588,30 @@ test('quick logs: an amount alone (no line) earns nothing; amounts never add rew
   assert.equal(run([], { items: lined.items }).xp.total, B.QUICK_LOG_XP, 'a huge amount is worth the same as none');
 });
 
+
+test('world-4: from the first realm on, time no longer damages the journey; history and rewards are untouched', () => {
+  const realmAt = at(20, 0);
+  const realm = (when: number): Item => ({ id: 'realm:0', type: 'realm', title: 'Databases', body: '', props: { slot: 0, icon: 'code' }, habitId: null, createdAt: when });
+  // A veteran: 20 days of history, enough to fell mobs and a boss.
+  const history = Array.from({ length: 20 }, (_, d) => s(at(d, 6), 240));
+  const before = run(history);
+  const after = run(history, { items: [meta(), realm(realmAt)] });
+  assert.ok(before.journey.defeated.length > 0, 'the fixture beats a boss');
+  assert.equal(after.xp.level, before.xp.level);
+  assert.equal(after.credits.earned, before.credits.earned);
+  assert.deepEqual(after.journey.defeated, before.journey.defeated);
+  assert.deepEqual(after.journey.position, before.journey.position);
+  assert.equal(after.journey.hp, before.journey.hp);
+  // A session after the realm: no damage, but XP, credits and its chest as before.
+  const later = s(at(21, 6), 90);
+  const free = run([...history, later], { items: [meta(), realm(realmAt)] });
+  const old = run([...history, later]);
+  const r = free.sessions.find((x) => x.sessionId === later.id)!;
+  const o = old.sessions.find((x) => x.sessionId === later.id)!;
+  assert.equal(r.damage, 0);
+  assert.ok(o.damage > 0, 'without a realm the same session would have hit');
+  assert.equal(r.xp, o.xp);
+  assert.equal(r.credits, o.credits);
+  assert.deepEqual(free.journey.position, after.journey.position);
+  assert.ok(free.chests.unopened.some((c) => c.sessionId === later.id));
+});
