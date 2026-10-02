@@ -1,6 +1,6 @@
 # Handoff 6: clouds, boss moments, polish (final)
 
-Branch `feat/world-6-polish`, stacked on `feat/world-5-overworld` (#34). No migration, no sync change, no new dependency. Screenshots: `media/s6-*.png`.
+Branch `feat/world-6-polish` (PR #35, on main after #34 merged). No migration, no sync change, no new dependency. Screenshots: `media/s6-*.png`.
 
 - **Transition** (`overworld/transitionModel.ts` pure + tested, `CloudCurtain.tsx`, `useRealmTransition.ts`): one UI-thread `t`, 720 ms in 14 steps. The map scales 1 → 1.6 about the tapped slot while three cloud walls close; the screens swap under full cover, then the walls part. The zoom out is the reverse. Reduced motion: a 150 ms crossfade. Taps and Back are blocked while it runs.
 - **Moments:** a claimed slot's clouds lift and drift (560 ms), then the zoom. The boss intro card (`session/BossIntro.tsx`) lasts 1.5 s, tap to skip, once per boss per app session (`game/state/bossIntro.ts`). KO is a stamped pixel splash (`WorldMoment`, `game/ui/PixelSplash.tsx`). Then a newly conquered realm's flag rises on the map (`overworld/flagMemory.ts`, seeded after sync settles; undo + re-conquer raises it again).
