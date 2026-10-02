@@ -11,9 +11,12 @@ import { Icon } from '../components/Icon';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
 import { ProgressRing } from '../components/motion/ProgressRing';
 import { ScenePreview } from '../components/ScenePreview';
+import { SkinPreview } from '../components/SkinPreview';
 import { targetCheck } from '../domain/capacity';
 import { ICONS } from '../domain/constants';
+import { TIMER_SKINS } from '../domain/game/timerSkin';
 import { projectLook, SCENES } from '../domain/look';
+import { QUEST_ENABLED } from '../game/enabled';
 import { activeProjects } from '../domain/projects';
 import { fmtDur } from '../domain/time';
 import { useActions, useData, useReady, useSettings, useUi } from '../store/StreakStore';
@@ -65,14 +68,14 @@ function Pages({ hasProjects }: { hasProjects: boolean }) {
         <Page width={width} label="Time is flexible: every minute counts, and going past the target is bonus">
           <FlexibleTime />
         </Page>
-        <Page width={width} label="Every project has its color and its own focus scene">
+        <Page width={width} label={QUEST_ENABLED ? 'Every project has its color, and the timer is a little world that moves with your time' : 'Every project has its color and its own focus scene'}>
           <ColorfulProjects />
         </Page>
         <Page width={width} label="Wins get celebrated, big ones with badges">
           <Celebrations />
         </Page>
         {hasProjects && (
-          <Page width={width} group={false} label="Your projects, their colors and scenes, and the week's targets against your time">
+          <Page width={width} group={false} label={QUEST_ENABLED ? "Your projects, their colors, and the week's targets against your time" : "Your projects, their colors and scenes, and the week's targets against your time"}>
             <Rebalance />
           </Page>
         )}
@@ -120,6 +123,16 @@ function FlexibleTime() {
 function ColorfulProjects() {
   const t = useTheme();
   const colorsFor = ['green', 'purple', 'teal', 'orange'] as const;
+  if (QUEST_ENABLED)
+    return (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, maxWidth: 300 }}>
+        {TIMER_SKINS.map((k, i) => (
+          <View key={k} style={{ padding: 8, borderRadius: t.radius.lg, backgroundColor: t.swatch(colorsFor[i]).light }}>
+            <SkinPreview skin={k} width={124} />
+          </View>
+        ))}
+      </View>
+    );
   return (
     <View style={{ gap: 16, alignItems: 'center' }}>
       <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -159,7 +172,7 @@ function Rebalance() {
         const sw = t.swatch(look.color);
         return (
           <View key={p.id} style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderRadius: radius.xl, padding: 10 }, t.shadow]}>
-            <ScenePreview kind={look.scene} swatch={sw} width={52} height={60} />
+            {!QUEST_ENABLED && <ScenePreview kind={look.scene} swatch={sw} width={52} height={60} />}
             <View style={{ width: 36, height: 36, borderRadius: radius.sm, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
               <Icon path={ICONS[look.icon]} size={18} color={sw.on} />
             </View>
