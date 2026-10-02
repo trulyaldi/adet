@@ -11,19 +11,11 @@ import { PALETTES } from '../../../../game/content/palettes';
 import { Particles } from '../../../../game/render/Particles';
 import { SpriteBatch } from '../../../../game/render/SpriteBatch';
 import { mix } from '../../../../theme/palette';
-import { gridCells, Pixels, scatter, SkinProps, SkinRenderer, Sky } from './common';
+import { Pixels, scatter, SkinProps, SkinRenderer, Sky } from './common';
 
-// Placeholder art (P9 art pass): drawn here as pixel grids.
-const LOGS = ['.r.......r.', 'rbaa...aabr', '.rbbaaabbr.', '..rrrrrrr..'];
-const FLAMES = [
-  ['...y...', '...yy..', '..yoy..', '..ooy..', '.yoLoy.', '.oLLLo.', 'ooLLLoo', 'oLLLLLo', '.oLLLo.'],
-  ['...y...', '..yy...', '..yoy..', '..yoo..', '.yoLoy.', '.oLLLo.', 'ooLLLoo', 'oLLLLLo', '.oLLLo.'],
-  ['.......', '...y...', '..yoy..', '.yooy..', '.yoLoo.', '.oLLLo.', 'ooLLLoo', 'oLLLLLo', '.oLLLo.'],
-];
-const FLAME_H = FLAMES[0].length;
 const STARS = 14;
-/** Flames step at about 6 fps. */
-const FLAME_MS = 166;
+/** The camp's fire (a stand-in sprite until the P9 art pass; animated in the atlas at 7 fps). */
+const FIRE = 'prop.campfire.default.lit';
 
 /** The fire's spot on the ground, between you and the enemy. */
 const fireX = (worldW: number) => Math.round(worldW * 0.44);
@@ -50,31 +42,17 @@ function Back({ biome, worldW, horizon, progress, clock, reduced }: SkinProps) {
   );
 }
 
-function Front({ biome, worldW, worldH, progress, clock, reduced }: SkinProps) {
-  const pal = PALETTES[biome];
+function Front({ worldW, worldH, progress, clock, reduced }: SkinProps) {
   const level = fireLevel(progress);
   const cx = fireX(worldW);
-  const feet = worldH - 4;
-  const logs = useMemo(() => gridCells(LOGS, { a: pal.trunk[1], b: pal.trunk[0], r: pal.rock[1] }, cx - 5, feet - LOGS.length + 1), [pal, cx, feet]);
-  // Livelier with time: more of the flame shows (never fewer than five rows).
-  const rows = Math.max(5, Math.ceil(level * FLAME_H));
-  const frames = useMemo(
-    () => FLAMES.map((f) => gridCells(f.slice(FLAME_H - rows), { L: pal.light, o: pal.accentB[1], y: pal.accentB[0] }, cx - 3, feet - LOGS.length - rows + 2)),
-    [pal, cx, feet, rows],
-  );
-  const frame = useDerivedValue(() => (reduced ? 0 : Math.floor(clock.value / FLAME_MS) % FLAMES.length));
-  const o0 = useDerivedValue<number>(() => (frame.value === 0 ? 1 : 0));
-  const o1 = useDerivedValue<number>(() => (frame.value === 1 ? 1 : 0));
-  const o2 = useDerivedValue<number>(() => (frame.value === 2 ? 1 : 0));
+  const feet = worldH - 3;
   return (
     <Group>
+      {/* Livelier with time: a warmer glow and more embers (the fire itself never shrinks). */}
       <Group opacity={0.25 + 0.25 * level}>
         <SpriteBatch atlas="shared" items={[{ id: 'fx.glow.warm', x: cx, y: feet - 6 }]} additive />
       </Group>
-      <Pixels cells={frames[0]} opacity={o0} />
-      <Pixels cells={frames[1]} opacity={o1} />
-      <Pixels cells={frames[2]} opacity={o2} />
-      <Pixels cells={logs} />
+      <SpriteBatch atlas="shared" items={[{ id: FIRE, x: cx, y: feet }]} clock={reduced ? undefined : clock} />
       {!reduced && <Particles kind="embers" x={cx - 4} y={feet - 26} w={8} h={18} count={Math.round(3 + level * 5)} clock={clock} intensity={level} />}
     </Group>
   );
