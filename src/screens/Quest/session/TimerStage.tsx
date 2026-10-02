@@ -6,7 +6,8 @@
 // Two signals, one each: the skin shows the target, the hearts show the
 // enemy. Time never damages it: only the result told after the session
 // does (world-4). The result sheet draws this same Stage to play it: Done,
-// a swing and the enemy falls; Partly, a swing, a flash and one heart pops.
+// a swing and the enemy falls (a boss only at its last phase; before that
+// its next pip lights); Partly, a swing, a flash and one heart pops.
 //
 // Calm: no sound, no haptics, nothing white or flashing, nothing red. The
 // world runs on a stepped ~8 fps clock that stops while paused, dimmed, in
@@ -26,7 +27,7 @@ import { nodeAt } from '../../../domain/game/derive';
 import { gameStateOf } from '../../../domain/game/fromData';
 import { encounterOf, SceneState, STAGE_TIMING, stageStep, StageState, TimerState } from '../../../domain/game/stage';
 import type { TimerSkin } from '../../../domain/game/timerSkin';
-import type { ResultEffect } from '../../../domain/world/target';
+import type { StageReaction } from '../../../domain/world/target';
 import { sprite } from '../../../game/assets/manifest';
 import { avatarLayers, AvatarLook } from '../../../game/avatar';
 import { BIOMES } from '../../../game/content/biomes';
@@ -87,7 +88,7 @@ export interface TimerStageProps {
   /** The quest's enemy on stage (null: a free session, no enemy). */
   target?: StageTarget | null;
   /** The result sheet: what the told result does, played once. */
-  reaction?: ResultEffect | null;
+  reaction?: StageReaction | null;
   /** QA: hold one scene. */
   force?: SceneState;
 }
@@ -132,7 +133,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   // Done on the result sheet: the swing lands, then the enemy falls.
   const [ko, setKo] = useState(false);
   useEffect(() => {
-    if (reaction !== 'cleared') return;
+    if (reaction !== 'ko') return;
     const t = setTimeout(() => setKo(true), reduced ? 0 : KO_AFTER_MS);
     return () => clearTimeout(t);
   }, [reaction, reduced]);
@@ -156,7 +157,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
 
   // A swing for a Done or a Partly (time alone never hits).
   useEffect(() => {
-    if (reduced || (reaction !== 'cleared' && reaction !== 'heart')) return;
+    if (reduced || !reaction || reaction === 'none') return;
     attackAt.value = clock.value;
   }, [reaction, reduced, clock, attackAt]);
 
@@ -227,7 +228,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
           <StageAvatar look={look} x={heroX} y={worldH - 4} clock={clock} scene={sceneCode} since={since} attackAt={attackAt} cheerAt={cheerAt} />
           {scene === 'nap' && <SpriteBatch atlas="shared" items={[{ id: 'fx.zzz', x: heroX + 8, y: worldH - 24 }]} clock={reduced ? undefined : clock} />}
           {!reduced && <Particles kind="sparkle" x={heroX - 8} y={worldH - 40} w={16} h={14} count={10} clock={clock} startAt={cheerAt} />}
-          {fight && target && !(reduced && ko) && <Enemy id={target.enemyId} boss={boss} worldW={worldW} worldH={worldH} scene={scene} clock={clock} since={since} attackAt={attackAt} reduced={reduced} biome={b} hearts={target.hearts} popped={reaction === 'heart'} phases={target.phases} />}
+          {fight && target && !(reduced && ko) && <Enemy id={target.enemyId} boss={boss} worldW={worldW} worldH={worldH} scene={scene} clock={clock} since={since} attackAt={attackAt} reduced={reduced} biome={b} hearts={target.hearts} popped={reaction === 'pop'} phases={target.phases} />}
           {!reduced && <Owl worldW={worldW} y={Math.max(18, Math.round(horizon * 0.5))} clock={clock} owlAt={owlAt} />}
           <Rect x={0} y={0} width={worldW} height={worldH} color="#2a2350" opacity={dusk} />
           <Rect x={0} y={0} width={worldW} height={worldH} color="#ffb46a" opacity={0.05} />

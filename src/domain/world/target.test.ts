@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { deriveGameState } from '../game/derive';
 import * as B from '../game/balance';
 import * as ops from '../items/ops';
-import { afterSession, effectOf, liveWorld, targetOf, worldMoments, worldOps } from '.';
+import { afterSession, effectOf, liveWorld, stageReactionOf, targetOf, worldMoments, worldOps } from '.';
 
 const T0 = Date.UTC(2026, 9, 2, 9);
 const empty: ops.QuestSlice = { items: [], links: [] };
@@ -117,4 +117,16 @@ test('a free session stays free: no result asked, its chest as before', () => {
   assert.deepEqual(afterSession(long, 'm', w, true), { lootFor: null, target: null });
   // Cleared meanwhile: a free session.
   assert.equal(afterSession(long, 'm', liveWorld(worldOps.markDone(realm(), 'm', T0 + 5).items), false).target, null);
+});
+
+test('on the Stage: a boss stands until its last phase falls', () => {
+  let q = boss();
+  assert.equal(stageReactionOf('done', target(q, 'm')!), 'phaseHit', 'phase 1 of 2: the boss stands');
+  q = worldOps.recordResult(q, 'p1', 'done', T0 + 10, 'a');
+  assert.equal(stageReactionOf('done', target(q, 'm')!), 'ko', 'the last phase: the boss falls');
+  const mob = target(realm(), 'm')!;
+  assert.equal(stageReactionOf('done', mob), 'ko');
+  assert.equal(stageReactionOf('partly', mob), 'pop');
+  assert.equal(stageReactionOf('partly', { ...mob, hearts: 1 }), 'hit', 'the last heart holds, but the enemy still flashes');
+  assert.equal(stageReactionOf('not_yet', mob), 'none');
 });

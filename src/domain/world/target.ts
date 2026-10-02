@@ -49,6 +49,21 @@ export function effectOf(kind: ResultKind, hearts: number): { effect: ResultEffe
   return { effect: 'none', hearts };
 }
 
+/**
+ * How a told result plays on the Stage. ko: the enemy falls (a mob, or a
+ * boss's last phase). phaseHit: a phase falls but the boss stands (a swing,
+ * a flash, its next pip lights). pop: a swing, a flash and one heart pops.
+ * hit: a Partly at the last heart (a swing and a flash only). none: Not yet.
+ */
+export type StageReaction = 'ko' | 'phaseHit' | 'pop' | 'hit' | 'none';
+
+export function stageReactionOf(kind: ResultKind, target: Pick<SessionTarget, 'boss' | 'hearts' | 'phases'>): StageReaction {
+  const { effect } = effectOf(kind, target.hearts);
+  if (effect === 'cleared') return target.boss && target.phases && target.phases.cleared + 1 < target.phases.total ? 'phaseHit' : 'ko';
+  if (effect === 'heart') return 'pop';
+  return kind === 'partly' ? 'hit' : 'none';
+}
+
 /** Bosses that fell and realms that are conquered: what the ceremony host announces. */
 export function worldMoments(world: World): { bosses: { id: string; title: string }[]; realms: { id: string; name: string }[] } {
   const bosses = world.quests.filter((q) => isBoss(q, world.quests) && isCleared(q, world.results, world.quests)).map((q) => ({ id: q.id, title: q.title }));

@@ -17,7 +17,7 @@ import { useWorldWrites } from '../../../data/worldRepo';
 import { RESULT_UNDO_MS } from '../../../domain/game/balance';
 import { resolveTimerSkin } from '../../../domain/game/timerSkin';
 import type { ResultKind } from '../../../domain/items/types';
-import { effectOf, ResultEffect } from '../../../domain/world/target';
+import { StageReaction, stageReactionOf } from '../../../domain/world/target';
 import { sprite } from '../../../game/assets/manifest';
 import { ceremonyHost } from '../../../game/ceremonies/host';
 import { loadStage } from '../../../game/render/screens';
@@ -40,7 +40,7 @@ const STAGE_H = 132;
 interface Told {
   kind: ResultKind;
   resultId: string | null;
-  effect: ResultEffect;
+  reaction: StageReaction;
 }
 
 /** Close once: after the sheet has gone, the chest opens, or the ceremony host looks. */
@@ -61,14 +61,16 @@ export default function ResultSheet({ req, reduced }: { req: ResultRequest; redu
   // One result per tap burst, and one close.
   const [answer] = useState(createLatch);
   const [closing] = useState(createLatch);
-  const target = useMemo(() => stageTargetOf(req.target), [req.target]);
+  const base = useMemo(() => stageTargetOf(req.target), [req.target]);
+  // A phase that fell lights its pip; the boss stands.
+  const target = told?.reaction === 'phaseHit' && base.phases ? { ...base, phases: { ...base.phases, cleared: base.phases.cleared + 1 } } : base;
   const quest = req.target.quest;
 
   const tell = (kind: ResultKind) => {
     if (!answer.take()) return;
     const resultId = world.recordResult(quest.id, kind, req.sessionId);
     // Rejected (the quest fell meanwhile on another device): nothing happens, calmly.
-    setTold({ kind, resultId, effect: resultId ? effectOf(kind, req.target.hearts).effect : 'none' });
+    setTold({ kind, resultId, reaction: resultId ? stageReactionOf(kind, req.target) : 'none' });
   };
   /** Away without an answer: that's Not yet, and the sheet simply goes. */
   const dismiss = () => {
@@ -128,9 +130,9 @@ export default function ResultSheet({ req, reduced }: { req: ResultRequest; redu
                       live: appActive,
                       battle: true,
                       payoff: 0,
-                      victory: told?.effect === 'cleared',
+                      victory: told?.reaction === 'ko',
                       target,
-                      reaction: told?.effect ?? null,
+                      reaction: told?.reaction ?? null,
                     }}
                     fallback={blank}
                     errorFallback={blank}
