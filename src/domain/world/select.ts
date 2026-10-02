@@ -42,6 +42,9 @@ export interface SlotView {
   slot: number;
   realm: Realm | null;
   conquered: boolean;
+  /** Top-level quests cleared, and all of them (the Overworld's glance). */
+  cleared: number;
+  total: number;
 }
 
 /** The world with only live quests (deleted ones and their phases dropped). */
@@ -75,7 +78,10 @@ export function slotsView(items: readonly Item[]): SlotView[] {
   const w = liveWorld(items);
   return Array.from({ length: MAX_REALMS }, (_, slot) => {
     const realm = w.realms.find((r) => r.slot === slot) ?? null;
-    return { slot, realm, conquered: realm ? isRealmConquered(realm, w.quests, w.results) : false };
+    if (!realm) return { slot, realm, conquered: false, cleared: 0, total: 0 };
+    const top = w.quests.filter((q) => q.realmId === realm.id && !q.parentQuestId);
+    const cleared = top.filter((q) => isCleared(q, w.results, w.quests)).length;
+    return { slot, realm, conquered: isRealmConquered(realm, w.quests, w.results), cleared, total: top.length };
   });
 }
 

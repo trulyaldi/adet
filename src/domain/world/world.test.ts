@@ -172,6 +172,14 @@ test('at most 7 realms, one per slot', () => {
   assert.equal(slotsView(oneMob().items).filter((s) => s.realm).length, 1);
 });
 
+test('the Overworld glance counts top-level quests cleared', () => {
+  let q = worldOps.addQuest(oneMob(), 'realm:0', 'Index the joins', T0 + 2, 'n');
+  q = worldOps.markDone(q, 'm', T0 + 3, 'r1');
+  const [s0, s1] = slotsView(q.items);
+  assert.deepEqual([s0.cleared, s0.total, s0.conquered], [1, 2, false]);
+  assert.deepEqual([s1.realm, s1.cleared, s1.total], [null, 0, 0]);
+});
+
 test('rename a realm; quests need a realm', () => {
   const q = worldOps.renameRealm(oneMob(), 'realm:0', '  SQL  ');
   assert.equal(view(q).realms[0].name, 'SQL');
