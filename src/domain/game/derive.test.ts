@@ -615,3 +615,14 @@ test('world-4: from the first realm on, time no longer damages the journey; hist
   assert.deepEqual(free.journey.position, after.journey.position);
   assert.ok(free.chests.unopened.some((c) => c.sessionId === later.id));
 });
+
+test('world-5: once the journey left the screen, time never damages it, even with no realm claimed', () => {
+  const hidden = B.JOURNEY_HIDDEN_AT;
+  const before = s(hidden - 2 * 24 * HOUR, 120);
+  const after = s(hidden + 24 * HOUR, 120);
+  const g = run([before, after], { items: [meta(hidden - 3 * 24 * HOUR)] });
+  assert.ok(g.sessions.find((x) => x.sessionId === before.id)!.damage > 0, 'history still hits');
+  const r = g.sessions.find((x) => x.sessionId === after.id)!;
+  assert.equal(r.damage, 0);
+  assert.ok(r.xp > 0 && g.chests.unopened.some((c) => c.sessionId === after.id), 'time still earns');
+});
