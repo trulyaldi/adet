@@ -24,7 +24,7 @@ import { QUI } from '../../../game/ui/theme';
 import { MODAL_GAP_MS } from '../../../theme/motion';
 import { OverworldMap } from './OverworldMap';
 import { along, nextClaimable, OW_H, overworldLayout, route, SLOT_H, travelMs } from './overworldModel';
-import { focalShift, LIFT_MS, mapOpacityOf, quantize, zoomOf, ZOOM_STEPS } from './transitionModel';
+import { focalShift, LIFT_MS, mapOpacityOf, quantize, RAISE_MS, zoomOf, ZOOM_MS, ZOOM_STEPS } from './transitionModel';
 
 /** Pips past this many would crowd the label: they scale down to it. */
 const MAX_PIPS = 8;
@@ -44,6 +44,8 @@ export function Overworld({
   focus,
   lift,
   onLifted,
+  raise,
+  onRaised,
 }: {
   width: number;
   height: number;
@@ -63,6 +65,9 @@ export function Overworld({
   /** A slot just claimed: its clouds lift, then `onLifted` (straight away with reduced motion). */
   lift: number | null;
   onLifted(slot: number): void;
+  /** Realms newly conquered: their flags rise once the map is back, then `onRaised`. */
+  raise: readonly string[];
+  onRaised(): void;
 }) {
   const layout = useMemo(() => overworldLayout(), []);
   const scale = pixelScale(width);
@@ -168,6 +173,20 @@ export function Overworld({
     return () => cancelAnimation(liftT);
   }, [lift, reduced, onLifted, liftT]);
 
+  const raiseT = useSharedValue(0);
+  const raiseKey = raise.join(',');
+  useEffect(() => {
+    if (!raiseKey) return;
+    if (reduced) {
+      onRaised();
+      return;
+    }
+    raiseT.set(0);
+    // After the zoom out that brought the map back.
+    raiseT.set(withDelay(ZOOM_MS, withTiming(1, { duration: RAISE_MS, easing: Easing.linear }, () => scheduleOnRN(onRaised))));
+    return () => cancelAnimation(raiseT);
+  }, [raiseKey, reduced, onRaised, raiseT]);
+
   const next = nextClaimable(slots);
   return (
     <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width, height }, zoomStyle]}>
@@ -187,6 +206,8 @@ export function Overworld({
         heroMode={heroMode}
         lift={lift}
         liftT={liftT}
+        raising={raise}
+        raiseT={raiseT}
       />
       <Animated.ScrollView
         ref={scroller}

@@ -49,6 +49,7 @@ import { realmLayout } from './realm/realmModel';
 import { ClaimSheet } from './overworld/ClaimSheet';
 import { CloudCurtain } from './overworld/CloudCurtain';
 import { Overworld } from './overworld/Overworld';
+import { newlyConquered } from './overworld/flagMemory';
 import { currentSlot } from './overworld/overworldModel';
 import { useRealmTransition } from './overworld/useRealmTransition';
 import { QuestSheets, SheetId } from './sheets';
@@ -103,6 +104,16 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
     },
     [openRealm]
   );
+  // A realm conquered since the map was last seen: its flag rises there (world-6).
+  const conquered = slots.flatMap((s) => (s.conquered && s.realm ? [s.realm.id] : [])).join(',');
+  const [raise, setRaise] = useState<string[]>([]);
+  useEffect(() => {
+    if (!local.loaded) return;
+    const fresh = newlyConquered(conquered ? conquered.split(',') : []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (fresh.length) setRaise((r) => [...r, ...fresh]);
+  }, [conquered, local.loaded]);
+  const onRaised = useCallback(() => setRaise([]), []);
   const closeRealm = useCallback(() => {
     if (open === null || moving) return;
     setOpen(null);
@@ -304,6 +315,8 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           focus={moving?.slot ?? current}
           lift={lift}
           onLifted={onLifted}
+          raise={raise}
+          onRaised={onRaised}
         />
       )}
       {moving && size && !reduced && <CloudCurtain t={zoomT} width={size.w} height={size.h} scale={pixelScale(size.w)} biome={BIOME_IDS[moving.slot]} />}
