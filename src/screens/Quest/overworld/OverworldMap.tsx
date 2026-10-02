@@ -6,7 +6,7 @@
 
 import { Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 import React, { memo, useMemo } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+import { SharedValue, useDerivedValue } from 'react-native-reanimated';
 
 import type { SlotView } from '../../../domain/world/select';
 import type { AvatarLook } from '../../../game/avatar';
@@ -15,6 +15,7 @@ import { SHARED } from '../../../game/content/palettes';
 import { AvatarSprite } from '../../../game/render/Avatar';
 import { Camera, PixelStage } from '../../../game/render/PixelStage';
 import { BatchItem, SpriteBatch } from '../../../game/render/SpriteBatch';
+import { LIFT_STEPS, quantize } from './transitionModel';
 import { CELL, islandCells, islandClouds, islandDecor, OW_H, OW_HEAD, OverworldLayout, SLOT_H, SlotSpot, skySteps } from './overworldModel';
 
 export interface OverworldMapProps {
@@ -32,6 +33,9 @@ export interface OverworldMapProps {
   heroX: SharedValue<number>;
   heroY: SharedValue<number>;
   heroMode: SharedValue<number>;
+  /** The slot just claimed: its clouds lift and drift off as `liftT` runs 0 → 1. */
+  lift: number | null;
+  liftT: SharedValue<number>;
 }
 
 export const OverworldMap = memo(function OverworldMap(p: OverworldMapProps) {
@@ -43,7 +47,7 @@ export const OverworldMap = memo(function OverworldMap(p: OverworldMapProps) {
         <Sky layout={p.layout} x0={camX - 8} w={viewW + 16} />
         <PathDots layout={p.layout} />
         {p.layout.slots.map((s) => (
-          <Island key={s.slot} spot={s} view={p.slots[s.slot]} clock={p.clock} reduced={p.reduced} />
+          <Island key={s.slot} spot={s} view={p.slots[s.slot]} clock={p.clock} reduced={p.reduced} liftT={p.lift === s.slot ? p.liftT : null} />
         ))}
         {p.hero && <AvatarSprite look={p.look} x={p.heroX} y={p.heroY} mode={p.heroMode} clock={p.clock} />}
       </Camera>
@@ -84,7 +88,7 @@ const PathDots = memo(function PathDots({ layout }: { layout: OverworldLayout })
   );
 });
 
-const Island = memo(function Island({ spot, view, clock, reduced }: { spot: SlotSpot; view: SlotView; clock: SharedValue<number>; reduced: boolean }) {
+const Island = memo(function Island({ spot, view, clock, reduced, liftT }: { spot: SlotSpot; view: SlotView; clock: SharedValue<number>; reduced: boolean; liftT: SharedValue<number> | null }) {
   const ground = useMemo(
     () =>
       islandCells(spot).map(({ color, xy }) => {
@@ -110,6 +114,29 @@ const Island = memo(function Island({ spot, view, clock, reduced }: { spot: Slot
         ))}
       </Group>
       <SpriteBatch atlas={spot.biome} items={items} clock={reduced ? undefined : clock} />
+      {claimed && liftT && <LiftingClouds spot={spot} t={liftT} />}
     </Group>
   );
 });
+
+/** A claimed slot's clouds rise and part, left ones to the left and right ones to the right, fading as they go. */
+function LiftingClouds({ spot, t }: { spot: SlotSpot; t: SharedValue<number> }) {
+  const { left, right } = useMemo(() => {
+    const all = islandClouds(spot);
+    return { left: all.filter((c) => c.x < spot.x - 10), right: all.filter((c) => c.x >= spot.x - 10) };
+  }, [spot]);
+  const q = useDerivedValue(() => quantize(t.value, LIFT_STEPS));
+  const opacity = useDerivedValue(() => 1 - q.value);
+  const leftT = useDerivedValue(() => [{ translateX: -Math.round(q.value * 22) }, { translateY: -Math.round(q.value * 18) }]);
+  const rightT = useDerivedValue(() => [{ translateX: Math.round(q.value * 22) }, { translateY: -Math.round(q.value * 14) }]);
+  return (
+    <Group opacity={opacity}>
+      <Group transform={leftT}>
+        <SpriteBatch atlas={spot.biome} items={left} />
+      </Group>
+      <Group transform={rightT}>
+        <SpriteBatch atlas={spot.biome} items={right} />
+      </Group>
+    </Group>
+  );
+}
