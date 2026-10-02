@@ -30,6 +30,7 @@ import { QuestWatcher } from './src/game/state/QuestWatcher';
 import { QUEST_ENABLED } from './src/game/enabled';
 import { RootCeremonyHost } from './src/game/ceremonies/host';
 import { LootHost } from './src/screens/Quest/session/LootHost';
+import { ResultHost } from './src/screens/Quest/session/ResultHost';
 import { CelebrationHost } from './src/overlays/CelebrationHost';
 import { WelcomeFlow } from './src/overlays/WelcomeFlow';
 import { RewardChipHost } from './src/components/RewardChipHost';
@@ -90,6 +91,7 @@ const Root = memo(function Root() {
       {QUEST_ENABLED && (
         <>
           <QuestWatcher />
+          <ResultHost />
           <LootHost />
           <RootCeremonyHost />
         </>

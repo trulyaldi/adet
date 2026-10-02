@@ -112,10 +112,9 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   // The scene (nap, wake…) only; the legacy journey no longer moves, so its encounter stays put.
   const game = gameStateOf(data);
   const enc = encounterOf(game);
-  const at = active?.startedAt ?? Date.now();
 
   // The scene machine: stepped when its inputs change and when a timed scene ends.
-  const [stage, setStage] = useState<StageState>(() => stageStep(null, timer, enc, at));
+  const [stage, setStage] = useState<StageState>(() => stageStep(null, timer, enc, Date.now()));
   const [tick, setTick] = useState(0);
   const encKey = `${enc.global}:${enc.hp}`;
   useEffect(() => {

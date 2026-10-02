@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { deriveGameState } from '../game/derive';
 import * as B from '../game/balance';
 import * as ops from '../items/ops';
-import { effectOf, liveWorld, targetOf, worldMoments, worldOps } from '.';
+import { afterSession, effectOf, liveWorld, targetOf, worldMoments, worldOps } from '.';
 
 const T0 = Date.UTC(2026, 9, 2, 9);
 const empty: ops.QuestSlice = { items: [], links: [] };
@@ -100,4 +100,21 @@ test('moments: a fallen boss and a conquered realm', () => {
   q = worldOps.recordResult(q, 'p1', 'done', T0 + 10, 'a');
   q = worldOps.recordResult(q, 'p2', 'done', T0 + 11, 'b');
   assert.deepEqual(worldMoments(liveWorld(q.items)), { bosses: ['m'], realms: ['realm:0'] });
+});
+
+test('a free session stays free: no result asked, its chest as before', () => {
+  const w = liveWorld(realm().items);
+  const long = { id: 's1', duration: B.MIN_SESSION_MIN * 60 };
+  const short = { id: 's2', duration: (B.MIN_SESSION_MIN - 1) * 60 };
+  assert.deepEqual(afterSession(long, null, w, false), { lootFor: 's1', target: null });
+  assert.deepEqual(afterSession(short, null, w, false), { lootFor: null, target: null });
+  // With a quest: the result is asked, short or long; the chest still comes from time.
+  assert.equal(afterSession(long, 'm', w, false).target!.quest.id, 'm');
+  assert.equal(afterSession(long, 'm', w, false).lootFor, 's1');
+  assert.equal(afterSession(short, 'm', w, false).lootFor, null);
+  assert.equal(afterSession(short, 'm', w, false).target!.quest.id, 'm');
+  // Editing the times first: no sheet, the chest waits at camp.
+  assert.deepEqual(afterSession(long, 'm', w, true), { lootFor: null, target: null });
+  // Cleared meanwhile: a free session.
+  assert.equal(afterSession(long, 'm', liveWorld(worldOps.markDone(realm(), 'm', T0 + 5).items), false).target, null);
 });

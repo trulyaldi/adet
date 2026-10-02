@@ -2,8 +2,9 @@
 // target is the quest the timer was started for; for a boss, that's its
 // oldest uncleared phase (a boss takes no results of its own). All derived.
 
-import { BOSS_MIN_PHASES } from '../game/balance';
+import { BOSS_MIN_PHASES, MIN_SESSION_MIN } from '../game/balance';
 import type { ResultKind } from '../items/types';
+import type { Session } from '../types';
 import { bossProgress, isBoss, isCleared, isRealmConquered, heartsOf, phasesOf, World } from './rules';
 import type { Quest, Realm } from './types';
 
@@ -53,4 +54,15 @@ export function worldMoments(world: World): { bosses: string[]; realms: string[]
   const bosses = world.quests.filter((q) => isBoss(q, world.quests) && isCleared(q, world.results, world.quests)).map((q) => q.id);
   const realms = world.realms.filter((r) => isRealmConquered(r, world.quests, world.results)).map((r) => r.id);
   return { bosses, realms };
+}
+
+/**
+ * After a saved session: its chest (MIN_SESSION_MIN or more) and, if it
+ * targeted a quest still there to fight, the result to ask for. A session
+ * without one stays a free session. Editing the times first: the chest waits
+ * at camp and no result is asked (Mark done is on the Realm).
+ */
+export function afterSession(saved: Pick<Session, 'id' | 'duration'>, questId: string | null, world: World, editAfter: boolean): { lootFor: string | null; target: SessionTarget | null } {
+  const loot = !editAfter && saved.duration / 60 >= MIN_SESSION_MIN;
+  return { lootFor: loot ? saved.id : null, target: editAfter ? null : targetOf(world, questId) };
 }
