@@ -4,12 +4,15 @@ import { Alert, Modal, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph, GlyphName, IconButton } from '../components/Glyph';
+import { SkinPreview } from '../components/SkinPreview';
 import { SyncIndicator } from '../components/SyncIndicator';
 import { CAPACITY_MAX_MIN, CAPACITY_STEP_MIN, weekCapacityMin } from '../domain/capacity';
 import { DOWS } from '../domain/constants';
+import { TIMER_SKINS, TimerSkin } from '../domain/game/timerSkin';
 import { MAX_REMINDER_HOURS } from '../domain/reminder';
 import { fmtDur, sayDur } from '../domain/time';
 import { feedback } from '../feedback/feedback';
+import { QUEST_ENABLED } from '../game/enabled';
 import { Appearance, MotionPref, useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useClearLocalData, useData, useSettings, useSyncStatus, useUi } from '../store/StreakStore';
 import { useAuth } from '../sync/AuthProvider';
@@ -39,6 +42,7 @@ export function SettingsSheet() {
           <WeekStartCard />
           <AppearanceCard />
           <MotionCard />
+          {QUEST_ENABLED && <TimerSkinCard />}
           <ReminderCard />
           <AccountCard />
         </ScrollView>
@@ -237,6 +241,36 @@ function MotionCard() {
       ]}
       onChange={(motion) => setPrefs({ motion })}
     />
+  );
+}
+
+const SKIN_NAMES: Record<TimerSkin, string> = { sun: 'Sun arc', campfire: 'Campfire', hourglass: 'Hourglass', trail: 'Trail to the landmark' };
+
+/** The Quest timer's skin: four pixel previews. None is marked until one is chosen (each project keeps its old scene's match). */
+function TimerSkinCard() {
+  const { colors, radius } = useTheme();
+  const { prefs, setPrefs } = useDevicePrefs();
+  return (
+    <Card>
+      <Glyph name="scene" size={22} color={colors.sub} label={prefs.timerSkin ? 'Timer skin' : "Timer skin: each project's own until you choose"} />
+      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+        {TIMER_SKINS.map((k) => {
+          const on = prefs.timerSkin === k;
+          return (
+            <IconButton
+              key={k}
+              label={`Timer skin: ${SKIN_NAMES[k]}`}
+              selected={on}
+              onPress={() => setPrefs({ timerSkin: k })}
+              bg={on ? colors.brand : colors.well}
+              style={{ width: 52, height: 46, borderRadius: radius.md }}
+            >
+              <SkinPreview skin={k} width={36} />
+            </IconButton>
+          );
+        })}
+      </View>
+    </Card>
   );
 }
 
