@@ -25,10 +25,12 @@ export function openLoot(req: LootRequest): void {
  * the hand-off: a long session can beat a boss before its chest is opened,
  * and iOS must never present that scene while a modal animates in or out.
  */
-export function handOffAfterStop(lootFor: string | null, gapMs: number): void {
+export function handOffAfterStop(lootFor: string | null, gapMs: number, ask?: (lootFor: string | null) => void): void {
   const release = holdCeremonies();
   setTimeout(() => {
-    if (lootFor) openLoot({ sessionId: lootFor, fresh: true });
+    // A session that targeted a quest asks for its result first; the chest follows it.
+    if (ask) ask(lootFor);
+    else if (lootFor) openLoot({ sessionId: lootFor, fresh: true });
     release();
   }, gapMs);
 }

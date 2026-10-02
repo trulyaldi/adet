@@ -1,7 +1,7 @@
 // Every tunable number in Quest Mode. Bump BALANCE_VERSION when a change
 // alters derived results; stored achievements keep progress from going back.
 
-export const BALANCE_VERSION = 4;
+export const BALANCE_VERSION = 5;
 
 // ---- Sessions ---------------------------------------------------------------
 /** Shorter sessions deal no damage, grant nothing and spawn no chest. */
@@ -111,6 +111,12 @@ export const RANKS = [
 export type RankTitle = (typeof RANKS)[number]['title'];
 
 // ---- World Mode: realms, quests and results (world-2) -----------------------
+/**
+ * When the legacy journey left the screen (world-3 replaced its map with the
+ * Realm screen; 2026-10-02 14:00 UTC). From then on time never damages it,
+ * even before a realm is claimed (world-5 dropped the auto-claim).
+ */
+export const JOURNEY_HIDDEN_AT = Date.UTC(2026, 9, 2, 14, 0, 0);
 /** Biome slots a realm can claim (one realm each). */
 export const MAX_REALMS = 7;
 /** Every quest's hearts (fixed). Partly takes one, never the last; only Done clears. */

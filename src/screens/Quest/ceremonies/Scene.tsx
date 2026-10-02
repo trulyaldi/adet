@@ -14,6 +14,9 @@ export default function CeremonyScene({ event, game, onDone, reduced }: { event:
     case 'boss_defeated': return <BossDefeat refId={`${event.biomeId}:${event.loop}`} game={game} onDone={onDone} reduced={reduced} settings={meta?.props.settings} />;
     case 'ascension': return <Ascension loop={event.loop} look={look} onDone={onDone} reduced={reduced} />;
     case 'rank_up': return <RankUp tier={event.rankIndex} level={game.xp.level} look={look} onDone={onDone} reduced={reduced} />;
-    case 'level_up': return null;
+    case 'level_up':
+    case 'world_boss':
+    case 'realm_conquered':
+      return null; // drawn by the host without Skia
   }
 }

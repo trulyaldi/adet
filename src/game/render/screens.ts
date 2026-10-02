@@ -19,5 +19,7 @@ export const loadPlayground = __DEV__ ? (): PlaygroundModule => require('../../s
 export const loadScene = (): SceneModule => require('../../screens/Quest/ceremonies/Scene');
 export const loadLootSheet = (): LootSheetModule => require('../../screens/Quest/session/LootSheet');
 export const loadStage = (): StageModule => require('../../screens/Quest/session/TimerStage');
+type ResultSheetModule = typeof import('../../screens/Quest/session/ResultSheet');
+export const loadResultSheet = (): ResultSheetModule => require('../../screens/Quest/session/ResultSheet');
 type CharacterArtModule = typeof import('./CharacterArt');
 export const loadCharacterArt = (): CharacterArtModule => require('./CharacterArt');

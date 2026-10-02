@@ -32,7 +32,7 @@ export function Hearts({ n, size = 2 }: { n: number; size?: number }) {
   );
 }
 
-const inputStyle = { flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink };
+export const inputStyle = { flex: 1, minHeight: 44, paddingHorizontal: 10, backgroundColor: QUI.white, color: QUI.ink, ...PIXEL_TEXT, fontFamily: PIXEL_FONT, fontSize: 16, borderWidth: 2, borderColor: QUI.ink };
 
 export function QuestNodeSheet({
   node,

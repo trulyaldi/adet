@@ -11,6 +11,7 @@ import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { SessionClock } from '../components/SessionClock';
+import { createLatch } from '../game/state/latch';
 import { useActions } from '../store/StreakStore';
 import { useStopTimer } from '../store/useStopTimer';
 import { springs } from '../theme/motion';
@@ -24,7 +25,7 @@ export function useFocusShell() {
   const stop = useStopTimer();
   const [dimOffer, setDimOffer] = useState(false);
   const [dimmed, setDimmed] = useState(false);
-  const finishing = useRef(false);
+  const [finishing] = useState(createLatch);
   useEffect(() => {
     const tm = setTimeout(() => setDimOffer(true), DIM_OFFER_MS);
     return () => clearTimeout(tm);
@@ -51,12 +52,11 @@ export function useFocusShell() {
 
   /** Done: `before` plays its moment, then the session saves after `delayMs`. False if a save is already on its way. */
   const finish = (delayMs: number, before?: () => void): boolean => {
-    if (finishing.current) return false;
-    finishing.current = true;
+    if (!finishing.take()) return false;
     before?.();
     setTimeout(stop, delayMs);
     // A long-session question may be cancelled; allow another try.
-    setTimeout(() => (finishing.current = false), Math.max(1500, delayMs + 500));
+    setTimeout(finishing.release, Math.max(1500, delayMs + 500));
     return true;
   };
 

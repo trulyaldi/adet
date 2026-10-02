@@ -240,6 +240,11 @@ export function deriveGameState(input: DeriveInput): GameState {
   // ---- stored actions ----
   const meta = itemsOfType(input.items, 'quest_meta')[0] ?? null;
   const startedAt = meta ? parseIso(meta.props.startedAt) : null;
+  // World Mode: from the first realm on, time no longer damages the journey's
+  // enemies; only results do (world-4). Nor after the journey left the screen,
+  // realm or not (world-5). History before either derives as it did.
+  const realms = itemsOfType(input.items, 'realm');
+  const worldFrom = Math.min(B.JOURNEY_HIDDEN_AT, ...realms.map((r) => r.createdAt));
   const claims = new Set<string>();
   for (const c of itemsOfType(input.items, 'chest_claim')) claims.add(c.props.sessionId);
   const logs = new Map<string, string>();
@@ -385,8 +390,8 @@ export function deriveGameState(input: DeriveInput): GameState {
       biome = pos.biome;
       loop = pos.loop;
       let felled = false;
-      // TEMP(world-2): replaced by results. Damage is focused time (with the biome twists) until World Mode's results land.
-      baseDamage = Math.round(
+      const timeHits = s.end < worldFrom;
+      baseDamage = !timeHits ? 0 : Math.round(
         twistDamage(pos.biome, {
           effMin: eff,
           minutes: s.duration / 60,

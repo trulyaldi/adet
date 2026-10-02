@@ -30,7 +30,7 @@ const view = (q: ops.QuestSlice) => liveWorld(q.items);
 const quest = (q: ops.QuestSlice, id: string) => view(q).quests.find((x) => x.id === id)!;
 const hearts = (q: ops.QuestSlice, id: string) => heartsOf(quest(q, id), view(q).results, view(q).quests);
 const cleared = (q: ops.QuestSlice, id: string) => isCleared(quest(q, id), view(q).results, view(q).quests);
-const tell = (q: ops.QuestSlice, id: string, kind: 'done' | 'partly' | 'not_yet', at: number, rid?: string) => worldOps.recordResult(q, id, kind, at, 's1', rid);
+const tell = (q: ops.QuestSlice, id: string, kind: 'done' | 'partly' | 'not_yet', at: number, rid?: string) => worldOps.recordResult(q, id, kind, at, `s${at}`, rid);
 
 test('every quest starts with 3 hearts', () => {
   assert.equal(B.QUEST_HEARTS, 3);
@@ -170,6 +170,14 @@ test('at most 7 realms, one per slot', () => {
   assert.equal(worldOps.claimSlot(empty, 2, '   ', 'target', T0), empty, 'needs a name');
   assert.equal(worldOps.claimSlot(empty, 2, 'X', 'not-an-icon', T0), empty, 'needs a known icon');
   assert.equal(slotsView(oneMob().items).filter((s) => s.realm).length, 1);
+});
+
+test('the Overworld glance counts top-level quests cleared', () => {
+  let q = worldOps.addQuest(oneMob(), 'realm:0', 'Index the joins', T0 + 2, 'n');
+  q = worldOps.markDone(q, 'm', T0 + 3, 'r1');
+  const [s0, s1] = slotsView(q.items);
+  assert.deepEqual([s0.cleared, s0.total, s0.conquered], [1, 2, false]);
+  assert.deepEqual([s1.realm, s1.cleared, s1.total], [null, 0, 0]);
 });
 
 test('rename a realm; quests need a realm', () => {

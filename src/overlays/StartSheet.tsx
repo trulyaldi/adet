@@ -9,6 +9,7 @@ import { Sheet } from '../components/Sheet';
 import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { isCheck } from '../domain/marks';
+import { bindTimerQuest, dropTimerQuest } from '../game/state/timerQuest';
 import { activeProjects, projectWeekSec } from '../domain/projects';
 import { useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
 import { MODAL_GAP_MS } from '../theme/motion';
@@ -28,20 +29,30 @@ export function StartSheet() {
   const actions = useActions();
   const projects = activeProjects(data);
   const weekSec = (pid: string) => projectWeekSec(data, pid, now);
+  const close = () => {
+    dropTimerQuest();
+    actions.closeStartSheet();
+  };
   const start = (habitId: string) => {
     const h = data.habits.find((x) => x.id === habitId);
     if (!h) return;
     actions.closeStartSheet();
-    if (isCheck(h)) actions.toggleCheck(h.id);
-    else setTimeout(() => actions.startTimer(h.id), MODAL_GAP_MS); // focus opens once the sheet is gone
+    // A quest picked on the Realm screen goes with the timer it starts (a check has no session).
+    if (isCheck(h)) {
+      dropTimerQuest();
+      actions.toggleCheck(h.id);
+    } else {
+      bindTimerQuest(h.id);
+      setTimeout(() => actions.startTimer(h.id), MODAL_GAP_MS); // focus opens once the sheet is gone
+    }
   };
 
   return (
-    <Sheet visible={open} onClose={actions.closeStartSheet} maxHeightPct={0.85}>
+    <Sheet visible={open} onClose={close} maxHeightPct={0.85}>
       <View style={{ gap: 12, paddingTop: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
           <Glyph name="play" size={22} color={colors.ink} label="Start something" />
-          <CloseButton onPress={actions.closeStartSheet} />
+          <CloseButton onPress={close} />
         </View>
         {projects.map((p) => {
           const look = projectLook(p);
@@ -102,7 +113,7 @@ export function StartSheet() {
               variant="chunky"
               diameter={52}
               onPress={() => {
-                actions.closeStartSheet();
+                close();
                 actions.setScreen('projects');
                 setTimeout(actions.openNewProject, MODAL_GAP_MS);
               }}
