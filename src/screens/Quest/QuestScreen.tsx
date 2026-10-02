@@ -1,4 +1,6 @@
-// The Quest tab: the Realm screen (World Mode, world-3). One realm's path in
+// The Quest tab: the Overworld (world-5) and, opened from it, the Realm
+// screen (world-3). The Overworld shows the 7 slots; tap a realm and the hero
+// walks there, then its Realm opens; Back returns to the map. One realm's path in
 // its slot's biome: the uncleared quests along it, the oldest uncleared boss
 // in the lair at the top, the camp (Sage, Merchant, Scribe) and a "+" at the
 // path's start. Tap a quest for its sheet (Start, Mark done, edit, phases,
@@ -7,7 +9,7 @@
 // credits.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
 import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
 import { TextInput } from '../../components/Text';
@@ -25,7 +27,7 @@ import { NpcId } from '../../game/content/roster';
 import { feedback } from '../../game/feedback';
 import { useGameClock } from '../../game/render/clock';
 import { SpriteView } from '../../game/render/SpriteView';
-import { useQuestLocal } from '../../game/state/local';
+import { setCurrentSlot, useQuestLocal } from '../../game/state/local';
 import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
 import { useQuestReduced, useWorldRunning } from '../../game/state/settings';
 import { setTimerQuest } from '../../game/state/timerQuest';
@@ -35,7 +37,6 @@ import { PixelText } from '../../game/ui/PixelText';
 import { PE } from '../../game/ui/pointer';
 import { QUI } from '../../game/ui/theme';
 import { useActions } from '../../store/StreakStore';
-import { useQuestTables } from '../../sync/questTables';
 import { MODAL_GAP_MS } from '../../theme/motion';
 import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
@@ -43,12 +44,12 @@ import { campLayout, hitTest, Target, targetAt } from './model';
 import { QuestNodeSheet } from './realm/QuestNodeSheet';
 import { RealmMap, realmCamera, realmCameraFor } from './realm/RealmMap';
 import { realmLayout } from './realm/realmModel';
+import { ClaimSheet } from './overworld/ClaimSheet';
+import { Overworld } from './overworld/Overworld';
+import { currentSlot } from './overworld/overworldModel';
 import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
-
-/** TEMP(world-5): until the Overworld lets you claim slots, slot 0 is claimed for you. */
-const FIRST_REALM = { slot: 0, name: 'My first realm', icon: 'target' } as const;
 
 export default function QuestScreen({ onPlayground }: { onPlayground?(): void }) {
   useQuestFonts();
@@ -59,7 +60,6 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const local = useQuestLocal();
   const writes = useQuestWrites();
   const world = useWorldWrites();
-  const tables = useQuestTables();
   const actions = useActions();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -71,12 +71,30 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const [replayIntro, setReplayIntro] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
 
-  // TEMP(world-5): the realm shown is the first claimed slot; slot 0 is claimed once the journey has started.
+  // The Overworld is the root; a realm opens from it. Where the hero stands is kept on this device.
   const slots = useSlots();
-  const realm = slots.find((s) => s.realm)?.realm ?? null;
+  const current = currentSlot(slots, local.slot);
+  const [open, setOpen] = useState<number | null>(null);
+  const [claim, setClaim] = useState<{ slot: number; rename?: string } | null>(null);
+  const realm = open !== null ? slots[open]?.realm ?? null : null;
+  const openRealm = useCallback((slot: number) => {
+    setCurrentSlot(slot);
+    setOpen(slot);
+  }, []);
+  const closeRealm = useCallback(() => {
+    setOpen(null);
+    setNodeId(null);
+    setAdding(false);
+    setPanel(null);
+  }, []);
   useEffect(() => {
-    if (m.meta && tables === 'available' && !realm) world.claimSlot(FIRST_REALM.slot, FIRST_REALM.name, FIRST_REALM.icon);
-  }, [m.meta, tables, realm, world]);
+    if (!realm) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeRealm();
+      return true;
+    });
+    return () => sub.remove();
+  }, [realm, closeRealm]);
   const view = useRealmView(realm?.id ?? null);
   const map = m.maps[realm?.slot ?? 0];
   const layout = useMemo(() => (view ? realmLayout(map, view) : null), [map, view]);
@@ -92,13 +110,13 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   }, []);
   const leaveQuest = useCallback(() => actions.setScreen('today'), [actions]);
   // Ceremonies wait while a sheet, a panel or the intro replay is up.
-  const busy = !!sheet || !!panel || !!nodeId || adding || replayIntro;
+  const busy = !!sheet || !!panel || !!nodeId || adding || replayIntro || !!claim;
   useEffect(() => (busy ? holdCeremonies() : undefined), [busy]);
   useEffect(() => { preloadQuestSounds(); }, []);
   useEffect(() => {
-    feedback.music.setBiome(BIOME_IDS[realm?.slot ?? 0]);
+    feedback.music.setBiome(BIOME_IDS[realm?.slot ?? current ?? 0]);
     return () => feedback.music.setBiome(null);
-  }, [realm?.slot]);
+  }, [realm?.slot, current]);
   useEffect(() => {
     AccessibilityInfo.isScreenReaderEnabled().then(setScreenReader).catch(() => {});
     const sub = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReader);
@@ -245,6 +263,20 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           onTap={onTap}
         />
       )}
+      {size && !realm && (
+        <Overworld
+          width={size.w}
+          height={size.h}
+          slots={slots}
+          current={current}
+          look={m.look}
+          clock={clock}
+          reduced={reduced}
+          onOpen={openRealm}
+          onClaim={(slot) => setClaim({ slot })}
+          onRename={(slot) => setClaim({ slot, rename: slots[slot].realm?.name ?? '' })}
+        />
+      )}
       <View style={{ position: 'absolute', top: 8, left: 8, right: 8 }}>
         <Hud game={m.game} look={m.look} width={size?.w ?? 360} onAvatar={() => setSheet('character')} onLongPress={__DEV__ ? onPlayground : undefined} />
       </View>
@@ -257,7 +289,12 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           </PixelPanel>
         </View>
       )}
-      {!view?.empty && !adding && !panel && !undo && (
+      {realm && !adding && !panel && (
+        <View style={{ position: 'absolute', left: 12, bottom: 12 }}>
+          <PixelButton small tone="parchment" label="‹" accessibilityLabel="Back to the map" onPress={closeRealm} />
+        </View>
+      )}
+      {realm && !view?.empty && !adding && !panel && !undo && (
         <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
           <PixelButton small tone="parchment" icon={<SpriteView id="icon.quill" scale={2} />} accessibilityLabel="Quick log: record something you did" onPress={() => setSheet('quicklog')} />
         </View>
@@ -298,7 +335,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       )}
 
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}
-      {screenReader && Platform.OS !== 'web' && (
+      {realm && screenReader && Platform.OS !== 'web' && (
         <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           <PixelButton small tone="gold" label="+" accessibilityLabel="Add a quest" onPress={() => setAdding(true)} />
           {layout?.lair && <PixelButton small tone="night" label="Boss" accessibilityLabel={`Boss: ${layout.lair.node.quest.title}`} onPress={() => setNodeId(layout.lair!.node.quest.id)} />}
@@ -356,6 +393,25 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => setReplayIntro(false)}>
           <Onboarding game={m.game} look={m.look} sageName={npcName('sage', m.meta.props.settings)} reduced={reduced} replay onBegin={() => setReplayIntro(false)} />
         </Modal>
+      )}
+      {claim && (
+        <ClaimSheet
+          rename={claim.rename}
+          reduced={reduced}
+          onClose={() => setClaim(null)}
+          onDone={(name, icon) => {
+            const r = slots[claim.slot].realm;
+            if (claim.rename !== undefined && r) {
+              world.renameRealm(r.id, name);
+              setClaim(null);
+              return;
+            }
+            if (!world.claimSlot(claim.slot, name, icon)) return;
+            setClaim(null);
+            // The clouds lift (Session 6 animates it) and the new realm opens.
+            setTimeout(() => openRealm(claim.slot), MODAL_GAP_MS);
+          }}
+        />
       )}
       <QuestSheets sheet={sheet} onClose={() => setSheet(null)} onOpen={setSheet} onReplayIntro={() => {
         setSheet(null);
