@@ -104,7 +104,9 @@ export function RootCeremonyHost() {
     return () => { live = false; };
   }, [userId]);
 
-  const revealPending = screen === 'quest' && (!local.loaded || !local.seen || local.seen.global !== game.journey.position.global || local.seen.hp !== game.journey.hp);
+  // The Quest tab waits for this device's state. (The legacy journey's reveal, which wrote
+  // `local.seen`, went with world-3: waiting on it held every ceremony there on a new device.)
+  const revealPending = screen === 'quest' && !local.loaded;
   useEffect(() => {
     if (!loaded || !userId || tables !== 'available' || !game.journey.started) return;
     const stored = marksFor(userId);
@@ -149,8 +151,8 @@ export function RootCeremonyHost() {
   if (!current) return null;
   const shownGame = current.game ?? game;
   if (current.event.kind === 'level_up') return <LevelUp level={current.event.level} game={shownGame} onDone={done} reduced={reduced} />;
-  // Placeholders until Session 6.
-  if (current.event.kind === 'world_boss') return <WorldMoment banner="KO" line={current.event.title} onDone={done} reduced={reduced} />;
+  if (current.event.kind === 'world_boss') return <WorldMoment banner="KO" ko line={current.event.title} onDone={done} reduced={reduced} />;
+  // Its flag rises on the Overworld afterwards.
   if (current.event.kind === 'realm_conquered') return <WorldMoment banner="Conquered" line={current.event.name} onDone={done} reduced={reduced} />;
   return (
     <Modal visible transparent animationType={reduced ? 'fade' : 'none'} onRequestClose={done} statusBarTranslucent>
