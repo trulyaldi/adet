@@ -8,7 +8,7 @@ Branch `feat/world-4-result`, stacked on `feat/world-3-realm` (#32). No migratio
 - **Stage** (`TimerStage.tsx`): the target's enemy (the boss sprite for a boss's phase) with 3 hearts above it and gold phase pips. The time-based HP bar and per-minute swings are gone. Free sessions show no enemy. The `battleStrip` setting hides the enemy only on the timer.
 - **Result sheet** (`ResultHost.tsx` shell, lazy `ResultSheet.tsx`): it opens after the focus view, then the chest follows if the session ran ≥ `MIN_SESSION_MIN`.
   - Buttons: ✓ / ½ heart / hourglass. Swipe, a tap outside, or Back all count as Not yet.
-  - The result plays on the same Stage. Done: a swing and a dissolve. Partly: a swing, a tint flash and one heart pops. Not yet: "See you soon". 6 s Undo, then OK.
+  - The result plays on the same Stage. Done: a swing and a dissolve; on a boss's earlier phase, a flash and its next pip lights, and the boss stands (`stageReactionOf`). Partly: a swing, a tint flash and one heart pops (at 1 heart, the flash only). Not yet: "See you soon". 6 s Undo, then OK.
   - Ceremonies are held from stop until the sheet has gone.
 - **Guards:** `createLatch()` covers the timer's Done (`focusShell`) and the result buttons. `recordResult` rejects a second live result for the same `sessionId` (undo frees it). The 800 ms `VICTORY_MS` is unchanged.
 - **TEMP(world-2) removed** (`derive.ts`): sessions ending after the first realm's `createdAt` deal no journey damage. Earlier history derives exactly as before; a veteran fixture test proves level, credits, defeats and position are identical. XP, credits and chests still come from time, and the Done bounty is still only `worldCredits`.
@@ -24,4 +24,4 @@ Branch `feat/world-4-result`, stacked on `feat/world-3-realm` (#32). No migratio
   2. The sheet shows the enemy even with `battleStrip` off.
   3. A rejected result (the quest fell on another device) plays as "none".
   4. Any boss on the timer uses its biome's boss sprite, even if the map draws it as a mob.
-- `docs/quest/world/PLAN.MD` was committed on this branch (the plan asks for it to be committed; the file name is uppercase `.MD`).
+- `docs/quest/world/PLAN.MD` is still untracked (and named `.MD`, while the prompts say `PLAN.md`). Committing it is the owner's call.
