@@ -221,6 +221,8 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           width={size.w}
           height={size.h}
           map={map}
+          below={m.maps[(realm?.slot ?? 0) - 1]}
+          above={m.maps[(realm?.slot ?? 0) + 1]}
           layout={layout}
           conquered={view.conquered}
           empty={view.empty}
@@ -243,7 +245,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
 
       {/* An empty realm: only the pulsing "+" on the map, and this line. */}
       {view?.empty && !adding && !panel && (
-        <View style={[PE.none, { position: 'absolute', left: 16, right: 16, bottom: 16, alignItems: 'center' }]}>
+        <View style={[PE.none, { position: 'absolute', left: 16, right: 16, top: 84, alignItems: 'center' }]}>
           <PixelPanel tone="parchment" padding={2}>
             <PixelText size="md">What do you want to beat?</PixelText>
           </PixelPanel>

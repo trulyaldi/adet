@@ -30,6 +30,9 @@ export interface RealmMapProps {
   width: number;
   height: number;
   map: BiomeMap;
+  /** The biomes drawn below and above this one (their sky fills the view past the island's ends), if any. */
+  below?: BiomeMap;
+  above?: BiomeMap;
   layout: RealmLayout;
   conquered: boolean;
   /** Nothing on the path yet: the "+" pulses. */
@@ -49,8 +52,9 @@ export interface RealmMapProps {
 }
 
 /** Sky below the island and above the lair the camera may show. */
-const FOOT = 44;
-const HEAD = 24;
+const FOOT = 28;
+/** Room above the lair, clear of the HUD. */
+const HEAD = 40;
 const OVERSCROLL = 60;
 
 /** Camera bounds for one biome. */
@@ -105,6 +109,8 @@ export const RealmMap = memo(function RealmMap(p: RealmMapProps) {
         <PixelStage width={p.width} height={p.height} scale={scale}>
           <Camera x={camX} y={p.camY}>
             <SkyBands map={p.map} x0={camX - 8} width={viewW + 16} />
+            {p.below && <SkyBands map={p.below} x0={camX - 8} width={viewW + 16} />}
+            {p.above && <SkyBands map={p.above} x0={camX - 8} width={viewW + 16} />}
           </Camera>
           <SkyParallax map={p.map} camX={camX} camY={p.camY} factors={BIOMES[p.map.id].parallax} clock={p.reduced ? undefined : p.clock} />
           <Camera x={camX} y={p.camY}>
