@@ -22,6 +22,8 @@ import {
 import { BiomeId, biomeAt, BIOME_COUNT, BIOME_IDS, biomeRef, parseBiomeRef } from './biomes';
 import { LevelInfo, levelFromXp, RankInfo, rankForLevel, skillLevel } from './level';
 import { twistDamage } from './twists';
+import { worldCredits } from '../world/rules';
+import { liveWorld } from '../world/select';
 import { DEVICE_TZ, GameTz, prevDayKey } from './tz';
 
 export interface DeriveInput {
@@ -486,6 +488,8 @@ export function deriveGameState(input: DeriveInput): GameState {
   const defeated = [...defeats.values()].sort((a, b) => a.at - b.at || a.loop - b.loop);
   xpTotal += BOSS_XP * defeated.length;
   if (startedAt !== null) earned += BOSS_CREDITS * defeated.length;
+  // World Mode: a bounty per quest cleared and per boss felled, from result rows.
+  earned += worldCredits(liveWorld(input.items), startedAt);
 
   // ---- levels, rank, skills ----
   const lv = levelFromXp(xpTotal);

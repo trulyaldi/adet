@@ -1,7 +1,7 @@
 // Every tunable number in Quest Mode. Bump BALANCE_VERSION when a change
 // alters derived results; stored achievements keep progress from going back.
 
-export const BALANCE_VERSION = 3;
+export const BALANCE_VERSION = 4;
 
 // ---- Sessions ---------------------------------------------------------------
 /** Shorter sessions deal no damage, grant nothing and spawn no chest. */
@@ -109,3 +109,17 @@ export const RANKS = [
   { title: 'Legend', fromLevel: 27 },
 ] as const;
 export type RankTitle = (typeof RANKS)[number]['title'];
+
+// ---- World Mode: realms, quests and results (world-2) -----------------------
+/** Biome slots a realm can claim (one realm each). */
+export const MAX_REALMS = 7;
+/** Every quest's hearts (fixed). Partly takes one, never the last; only Done clears. */
+export const QUEST_HEARTS = 3;
+/** Phases that make a quest a boss (fewer: it fights as a mob). */
+export const BOSS_MIN_PHASES = 2;
+/** A result can be taken back for this long. */
+export const RESULT_UNDO_MS = 6000;
+/** Credits when a mob or a phase is cleared (once per quest, on the journey). */
+export const CLEAR_CREDITS = 5;
+/** Credits when a boss falls (its last phase cleared), on top of that phase's. */
+export const BOSS_DEFEAT_CREDITS = 25;
