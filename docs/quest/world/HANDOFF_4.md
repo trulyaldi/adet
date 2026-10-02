@@ -13,7 +13,7 @@ Branch `feat/world-4-result`, stacked on `feat/world-3-realm` (#32). No migratio
 - **Guards:** `createLatch()` covers the timer's Done (`focusShell`) and the result buttons. `recordResult` rejects a second live result for the same `sessionId` (undo frees it). The 800 ms `VICTORY_MS` is unchanged.
 - **TEMP(world-2) removed** (`derive.ts`): sessions ending after the first realm's `createdAt` deal no journey damage. Earlier history derives exactly as before; a veteran fixture test proves level, credits, defeats and position are identical. XP, credits and chests still come from time, and the Done bounty is still only `worldCredits`.
 - **Ceremonies:** new `world_boss` and `realm_conquered` events go through `ceremonyHost`, shown as placeholder `WorldMoment` banners ("KO", "Conquered"). Marks gain optional `worldBosses` and `realms`. Marks saved before world-4 seed them silently. A realm plays once per id. Realm Mark done holds ceremonies through its undo chip.
-- **Checks:** tsc clean. Lint 0 errors, 81 warnings (same as #32). Tests 536/536. Bundle (iOS Hermes) 5,075.2 → 5,097.3 KB (+22.1 KB, +0.44%), within budget.
+- **Checks:** tsc clean. Lint 0 errors, 81 warnings (same as #32). Tests 537/537. Bundle (iOS Hermes) 5,075.2 → 5,097.3 KB (+22.1 KB, +0.44%), within budget.
 
 ## Left / must know
 - **Not run on web or a device:** no screenshots, no device QA. The Stage hearts layout and the result sheet are unverified visually.
