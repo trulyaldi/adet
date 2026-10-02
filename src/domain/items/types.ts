@@ -10,11 +10,14 @@
 //   purchase      a shop purchase                  { sku, cost, month? }
 //   achievement   an append-only milestone         { kind, ref, at }
 //   quest_meta    the quest's singleton            { startedAt, avatar, companion?, campfire?, settings }
+//   realm         a World Mode goal area on a biome slot (title = name)   { slot, icon }   (id `realm:<slot>`)
+//   quest         a mob, or a phase of a boss (title = what to beat)      { realmId, parentQuestId? }
+//   result        what a session (or Mark done) did to a quest            { questId, sessionId?, kind, at }
 //
 // Link kinds: task → session `planned_for` / `completed_in`; log → session `chronicles`.
 
-export type ItemType = 'task' | 'log' | 'chest_claim' | 'purchase' | 'achievement' | 'quest_meta' | 'metric_def';
-export const ITEM_TYPES: readonly ItemType[] = ['task', 'log', 'chest_claim', 'purchase', 'achievement', 'quest_meta', 'metric_def'];
+export type ItemType = 'task' | 'log' | 'chest_claim' | 'purchase' | 'achievement' | 'quest_meta' | 'metric_def' | 'realm' | 'quest' | 'result';
+export const ITEM_TYPES: readonly ItemType[] = ['task', 'log', 'chest_claim', 'purchase', 'achievement', 'quest_meta', 'metric_def', 'realm', 'quest', 'result'];
 
 export interface TaskProps {
   status: 'open' | 'done';
@@ -112,6 +115,31 @@ export interface QuestMetaProps {
   settings: QuestSettings;
 }
 
+/** World Mode: a realm claims one of the 7 biome slots (0–6). `icon` is an IconKey, checked by domain/world. */
+export interface RealmProps {
+  slot: number;
+  icon: string;
+}
+
+/** World Mode: a quest in a realm; with `parentQuestId` it is a phase of that (boss) quest. */
+export interface QuestItemProps {
+  realmId: string;
+  parentQuestId?: string;
+}
+
+export type ResultKind = 'done' | 'partly' | 'not_yet';
+export const RESULT_KINDS: readonly ResultKind[] = ['done', 'partly', 'not_yet'];
+
+/** World Mode: one result told to the game (soft-deleted to undo). */
+export interface ResultProps {
+  questId: string;
+  /** The session it followed; absent for Mark done. */
+  sessionId?: string;
+  kind: ResultKind;
+  /** ISO time it was told. */
+  at: string;
+}
+
 export interface PropsByType {
   task: TaskProps;
   log: LogProps;
@@ -120,6 +148,9 @@ export interface PropsByType {
   achievement: AchievementProps;
   quest_meta: QuestMetaProps;
   metric_def: MetricDefProps;
+  realm: RealmProps;
+  quest: QuestItemProps;
+  result: ResultProps;
 }
 
 interface ItemBase<T extends ItemType> {
@@ -143,8 +174,11 @@ export type PurchaseItem = ItemBase<'purchase'>;
 export type AchievementItem = ItemBase<'achievement'>;
 export type QuestMetaItem = ItemBase<'quest_meta'>;
 export type MetricDefItem = ItemBase<'metric_def'>;
+export type RealmItem = ItemBase<'realm'>;
+export type QuestItem = ItemBase<'quest'>;
+export type ResultItem = ItemBase<'result'>;
 
-export type Item = TaskItem | LogEntryItem | ChestClaimItem | PurchaseItem | AchievementItem | QuestMetaItem | MetricDefItem;
+export type Item = TaskItem | LogEntryItem | ChestClaimItem | PurchaseItem | AchievementItem | QuestMetaItem | MetricDefItem | RealmItem | QuestItem | ResultItem;
 export type ItemOf<T extends ItemType> = Extract<Item, { type: T }>;
 
 export type LinkEnd = 'item' | 'session' | 'habit';
@@ -276,6 +310,23 @@ export function parseProps<T extends ItemType>(type: T, raw: unknown): PropsByTy
       if (companion) out.companion = companion;
       const campfire = str(p.campfire);
       if (campfire) out.campfire = campfire;
+      return out as PropsByType[T];
+    }
+    case 'realm': {
+      const slot = Math.round(num(p.slot, -1));
+      return { slot, icon: str(p.icon) ?? '' } as PropsByType[T];
+    }
+    case 'quest': {
+      const out: QuestItemProps = { realmId: str(p.realmId) ?? '' };
+      const parent = str(p.parentQuestId);
+      if (parent) out.parentQuestId = parent;
+      return out as PropsByType[T];
+    }
+    case 'result': {
+      const kind = (RESULT_KINDS as readonly unknown[]).includes(p.kind) ? (p.kind as ResultKind) : 'not_yet';
+      const out: ResultProps = { questId: str(p.questId) ?? '', kind, at: str(p.at) ?? new Date(0).toISOString() };
+      const sessionId = str(p.sessionId);
+      if (sessionId) out.sessionId = sessionId;
       return out as PropsByType[T];
     }
   }
