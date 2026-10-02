@@ -111,22 +111,42 @@ when a lazily loaded Quest screen was first fetched after the dev connection had
 - [ ] Start a timer, stop Metro (Ctrl-C) mid-session, finish the session: the Loot sheet
       still opens and the chest can be opened or sent to camp. Restart Metro afterwards.
 
-## 15. The timer Stage (v2 N6)
-- [ ] Start a timer after onboarding: under the ring, a small warm scene: your character on
-      the left, the current enemy on the right, its HP bar (and seal icons for a boss) below.
-      The timer digits stay fully visible; nothing jumps when the scene changes.
-- [ ] Every 4–6 s your character swings gently; the enemy recoils a pixel with a warm tint.
-      No white flash, no sound, no vibration.
-- [ ] Pause: your character sits down and naps (slow breathing, floating "z"s); the light
-      dims slightly. Resume: it wakes, gets up and fights again.
-- [ ] Once a mob's HP runs out in the preview: it dissolves into warm petals, a coin
-      sparkles, your character cheers, and the next enemy walks in from the right.
-- [ ] Against a boss whose seals aren't filled, at 0 HP it kneels with dazed stars instead.
-- [ ] Tap the scene: the enemy's name (and a boss's seal counts) for a moment.
-- [ ] iPhone SE or another short screen: a slim 72 pt strip instead.
-- [ ] Quest settings → "Scene on the timer" off: your character alone in the corner.
-- [ ] Reduce Motion on: a still scene (a sleeping character when paused).
-- [ ] QA panel → Timer Stage: fight, defeat, walkIn, stagger, nap and wake all draw.
+## 15. The pixel focus screen (timer redesign)
+Four zones: a slim header, the clock plate, the Stage, Pause / Done. Check on an iPhone SE
+and a Pro Max.
+- [ ] Header: habit icon and name; the sword chip with a count (after the journey starts);
+      the dim button after 2 min; sound; minimize. Tap the sword: the weak-points list drops
+      down over the plate; picks and quick add work; tap again to close.
+- [ ] Clock plate: the count-up in the pixel font (no "S0": a 5 is a 5); the digits don't
+      jitter as they tick; under it a pixel clock and the target (`35m`, or `1h 10m / 1h 45m`
+      after an earlier session today; a sparkle once past the target).
+- [ ] The Stage takes about half the screen. No ring, no separate HP bar under it, no thin
+      bar or sprout behind the buttons.
+- [ ] Sun Arc (default): the sun rises from the left over the session, is highest at half the
+      target and sets on the right at the target; the sky warms at dawn and dusk and never
+      goes dark. Past the target, a few soft stars.
+- [ ] Settings → Timer skin: four pixel previews. Campfire: a fire between you and the enemy
+      that stays lit, a warmer glow and more embers with time, stars coming out. Hourglass:
+      the top drains, the bottom fills, a few grains falling. Trail: the far hills scroll and
+      the biome's landmark comes in from the right, arriving at the target.
+- [ ] Before choosing a skin, each project shows its old scene's match (orbit → Sun Arc,
+      constellation → Campfire, fill → Hourglass, plant → Trail).
+- [ ] With the journey started: the enemy on the right, its HP as a pink segmented bar above
+      it (seal icons top right for a boss). Once a focused minute, your character swings and
+      the enemy loses its share; it never heals. No red, no white flash, no sound.
+- [ ] A beaten enemy dissolves into warm petals and the next walks in; a boss without its
+      seals kneels, dazed. Tap the Stage: the enemy's name for a moment.
+- [ ] Pause: your character sits and rests with a "z"; the world dims and stands still.
+      Resume: it gets up and stretches.
+- [ ] Reaching the target: a small cheer. Done: a short victory hop, then the Loot sheet.
+- [ ] Twenty minutes into a session, the Sage flies across the sky once.
+- [ ] Background the app for a few minutes and return: the sun, sand and landmark sit where
+      the time says (nothing replays or jumps back).
+- [ ] Reduce Motion on: a still scene; the sun (sand, landmark) moves once a minute.
+- [ ] Quest settings → "Battle on the timer" off: the skin and your character, no enemy.
+- [ ] `EXPO_PUBLIC_QUEST_ENABLED=false`: the old focus screen (ring, project scene, your
+      character in a corner) works as before.
+- [ ] QA panel → Timer Stage: each scene state, each skin, at 0 / 35 / 70 / 100 / 120%.
 
 ## 16. v2: seals, the Trail, the pixel look
 - [ ] Against a boss: its seal icons (calendar, sword, quill) sit under its HP bar on the map,

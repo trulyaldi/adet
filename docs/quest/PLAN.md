@@ -78,7 +78,7 @@ web index 2,690,049 → 2,671,082 B (−19 KB).
 
 ### N6 result
 
-`Stage` (`src/screens/Quest/session/Stage.tsx`) replaces the battle strip and the timer's corner character:
+`Stage` (`src/screens/Quest/session/Stage.tsx`; since the timer redesign `TimerStage.tsx`, see `docs/TIMER_AUDIT.md`) replaces the battle strip and the timer's corner character:
 one canvas (sky, slow far parallax and clouds, ground, 6 ambient particles, your layered character, the enemy),
 then the HP bar and a seal row at fixed heights. Scene logic is pure (`domain/game/stage.ts`: `stageStep`,
 `STAGE_TIMING`, `stageSize`, `previewGame` = the running session through `deriveGameState`, re-derived once a

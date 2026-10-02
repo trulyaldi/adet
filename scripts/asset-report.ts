@@ -15,6 +15,23 @@ import type { MappedSprite } from './art-sources';
 import { loadRegistry } from './packs';
 
 const ROOT = path.resolve(__dirname, '..');
+// The timer skins (the pixel redesign) draw a few things in code, not from the atlas:
+// placeholders for the P9 art pass, listed here so they get real art.
+const TIMER_SKIN_ART = [
+  '## Timer skins: code-drawn placeholders (P9 art pass)',
+  '',
+  'Drawn as pixel grids or rects in `src/screens/Quest/session/skins/` and `src/components/skinPreviews.ts`;',
+  'no external art. Each wants a real sprite (or sheet) in the atlas.',
+  '',
+  '- **Sun Arc:** the sun disk and its halo (`SUN`, `HALO` in SunArc.tsx); the evening stars (single pixels).',
+  '- **Campfire:** the stars (single pixels). The fire reuses `prop.campfire.default.lit` (a needs-art stand-in).',
+  '- **Hourglass:** the whole hourglass: wooden caps and posts, glass, sand and falling grains (built from `CHAMBER`).',
+  '- **Trail:** the dirt path and its dashes (rects). The landmark reuses `decor.<biome>.landmark`.',
+  '- **The Sage flying over:** reuses `npc.sage.idle@flip` (a sitting pose); wants a 2–4 frame flight cycle.',
+  '- **Enemy HP:** a segmented bar (rects), fine as UI; pixel hearts are an option.',
+  '- **Settings previews:** four 12×10 grids (`SKIN_PREVIEWS`).',
+];
+
 const NEEDS_ART: Record<string, string> = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/game/needs-art.json'), 'utf8'));
 
 const CATEGORIES: [string, RegExp][] = [
@@ -96,7 +113,9 @@ function main() {
     '',
     `**Pixel (${pixel.length}):** ${pixel.map((g) => '`' + g + '`').join(', ')}`,
     '',
-    `**Stroke, no pixel version yet (${stroke.length}):** ${stroke.map((g) => '`' + g + '`').join(', ')}`
+    `**Stroke, no pixel version yet (${stroke.length}):** ${stroke.map((g) => '`' + g + '`').join(', ')}`,
+    '',
+    ...TIMER_SKIN_ART
   );
   fs.writeFileSync(path.join(ROOT, 'docs/quest/art/INVENTORY.md'), lines.join('\n') + '\n');
   console.log(`docs/quest/art/INVENTORY.md: ${ids.length} ids (${[...total].map(([k, v]) => `${k} ${v}`).join(', ')})`);
