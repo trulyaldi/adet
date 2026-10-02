@@ -107,7 +107,7 @@ export function spline(pts: { x: number; y: number }[]): { x: number; y: number 
 }
 
 /** Points `n` evenly spaced by arc length along a polyline, excluding the ends' margins. */
-function alongPath(path: { x: number; y: number }[], n: number, from: number, to: number) {
+export function alongPath(path: { x: number; y: number }[], n: number, from: number, to: number) {
   const cum = [0];
   for (let i = 1; i < path.length; i++) cum.push(cum[i - 1] + Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y));
   const total = cum[cum.length - 1];
