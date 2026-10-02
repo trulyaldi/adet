@@ -81,6 +81,8 @@ export function recordResult(q: QuestSlice, questId: string, kind: ResultKind, n
   const w = live(q);
   const quest = w.quests.find((x) => x.id === questId);
   if (!quest || isBoss(quest, w.quests) || isCleared(quest, w.results, w.quests)) return q;
+  // One result per session: a second tap (or a remount) can't record twice. An undone one frees it.
+  if (sessionId && w.results.some((r) => r.sessionId === sessionId)) return q;
   const result: ResultItem = { id, type: 'result', title: '', body: '', props: { questId, kind, at: iso(now), ...(sessionId ? { sessionId } : {}) }, habitId: null, createdAt: now };
   return { ...q, items: [...q.items, result] };
 }
