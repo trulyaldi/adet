@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AccessibilityInfo, BackHandler, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
 import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
+import { Glyph } from '../../components/Glyph';
 import { TextInput } from '../../components/Text';
 import { useQuestWrites } from '../../data/itemsRepo';
 import { useRealmView, useSlots, useWorldWrites } from '../../data/worldRepo';
@@ -263,7 +264,8 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           onTap={onTap}
         />
       )}
-      {size && !realm && (
+      {/* Only once this device's state has loaded, so the map opens on the hero's realm. */}
+      {size && !realm && local.loaded && (
         <Overworld
           width={size.w}
           height={size.h}
@@ -289,9 +291,9 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           </PixelPanel>
         </View>
       )}
-      {realm && !adding && !panel && (
+      {realm && !adding && !panel && !undo && !(screenReader && Platform.OS !== 'web') && (
         <View style={{ position: 'absolute', left: 12, bottom: 12 }}>
-          <PixelButton small tone="parchment" label="‹" accessibilityLabel="Back to the map" onPress={closeRealm} />
+          <PixelButton small tone="parchment" icon={<Glyph name="chevronLeft" size={20} color={QUI.ink} />} accessibilityLabel="Back to the map" onPress={closeRealm} />
         </View>
       )}
       {realm && !view?.empty && !adding && !panel && !undo && (
@@ -337,6 +339,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}
       {realm && screenReader && Platform.OS !== 'web' && (
         <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          <PixelButton small tone="parchment" label="‹" accessibilityLabel="Back to the map" onPress={closeRealm} />
           <PixelButton small tone="gold" label="+" accessibilityLabel="Add a quest" onPress={() => setAdding(true)} />
           {layout?.lair && <PixelButton small tone="night" label="Boss" accessibilityLabel={`Boss: ${layout.lair.node.quest.title}`} onPress={() => setNodeId(layout.lair!.node.quest.id)} />}
           {layout?.nodes.map((n) => (
@@ -406,8 +409,10 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
               setClaim(null);
               return;
             }
-            if (!world.claimSlot(claim.slot, name, icon)) return;
+            const claimed = world.claimSlot(claim.slot, name, icon);
             setClaim(null);
+            // Taken on another device meanwhile: the map shows whose it is.
+            if (!claimed) return;
             // The clouds lift (Session 6 animates it) and the new realm opens.
             setTimeout(() => openRealm(claim.slot), MODAL_GAP_MS);
           }}

@@ -18,7 +18,7 @@ export const OW_H = OW_HEAD + SLOT_H * BIOME_IDS.length + OW_FOOT;
 const ISLAND_RX = 30;
 const ISLAND_RY = 13;
 /** Procedural tile size. */
-export const CELL = 4;
+export const CELL = 2;
 /** The walk between realms never takes longer than this. */
 export const TRAVEL_MAX_MS = 850;
 
@@ -121,7 +121,7 @@ export function islandCells(s: SlotSpot): Cells[] {
     for (let c = 0; c < cols; c++) {
       const cx = x0 + c * CELL + CELL / 2;
       const cy = y0 + r * CELL + CELL / 2;
-      inside[r].push(onIsland(s, cx, cy, rand() < 0.3 ? 2 : -1));
+      inside[r].push(onIsland(s, cx, cy, rand() < 0.3 ? 1 : -1));
     }
   }
   const at = (r: number, c: number) => r >= 0 && r < rows && c >= 0 && c < cols && inside[r][c];
@@ -131,26 +131,33 @@ export function islandCells(s: SlotSpot): Cells[] {
       const y = y0 + r * CELL;
       if (!at(r, c)) {
         if (at(r - 1, c)) {
-          // Under the rim: a rock cliff two cells deep, then the outline.
-          put(pal.rock[1], x, y);
-          put(at(r - 2, c) ? pal.rock[0] : pal.outline, x, y + CELL);
-          put(pal.outline, x, y + CELL * 2);
+          // Under the rim: a rock cliff (deeper in the middle), then the outline.
+          const deep = at(r - 3, c) ? 3 : 2;
+          for (let k = 0; k < deep; k++) put(k === 0 ? pal.rock[2] : k === deep - 1 ? pal.rock[0] : pal.rock[1], x, y + k * CELL);
+          put(pal.outline, x, y + deep * CELL);
         } else if (at(r + 1, c) || at(r, c - 1) || at(r, c + 1)) put(pal.outline, x, y);
         continue;
       }
       const rim = !at(r - 1, c);
+      const low = !at(r + 1, c);
       const n = rand();
-      const color = rim ? pal.ground[3] : n < 0.18 ? pal.ground[1] : n < 0.8 ? pal.ground[2] : pal.ground[3];
+      const color = rim ? pal.ground[3] : low ? pal.ground[0] : n < 0.15 ? pal.ground[1] : n < 0.85 ? pal.ground[2] : pal.ground[3];
       put(color, x, y);
     }
   }
   return [...by].map(([color, xy]) => ({ color, xy }));
 }
 
-/** The band's sky, top → bottom, in four steps between the palette's two sky colours. */
-export function skySteps(b: BiomeId): string[] {
+/**
+ * The band's sky, top → bottom, in flat steps between the palette's two sky
+ * colours; the end steps lean halfway to the neighbouring bands, so biomes meet softly.
+ */
+export function skySteps(b: BiomeId, above?: BiomeId, below?: BiomeId): string[] {
   const [a, c] = PALETTES[b].sky;
-  return [0, 1 / 3, 2 / 3, 1].map((t) => mix(a, c, t));
+  const steps = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => mix(a, c, t));
+  if (above) steps[0] = mix(steps[0], PALETTES[above].sky[1], 0.5);
+  if (below) steps[5] = mix(steps[5], PALETTES[below].sky[0], 0.5);
+  return steps;
 }
 
 function mix(a: string, b: string, t: number): string {

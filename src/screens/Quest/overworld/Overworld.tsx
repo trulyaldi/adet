@@ -22,7 +22,7 @@ import { PixelText } from '../../../game/ui/PixelText';
 import { PE } from '../../../game/ui/pointer';
 import { QUI } from '../../../game/ui/theme';
 import { OverworldMap } from './OverworldMap';
-import { along, OW_H, overworldLayout, route, SLOT_H, travelMs } from './overworldModel';
+import { along, nextClaimable, OW_H, overworldLayout, route, SLOT_H, travelMs } from './overworldModel';
 
 /** Pips past this many would crowd the label: they scale down to it. */
 const MAX_PIPS = 8;
@@ -132,7 +132,7 @@ export function Overworld({
     );
   };
 
-  const next = slots.find((s) => !s.realm)?.slot ?? null;
+  const next = nextClaimable(slots);
   return (
     <View style={{ width, height }}>
       <OverworldMap
@@ -177,7 +177,7 @@ export function Overworld({
               style={{ position: 'absolute', left: 0, right: 0, top, height: SLOT_H * scale }}
             >
               {r ? (
-                <View style={[PE.none, { position: 'absolute', left: cx - 90, width: 180, top: (spot.y - spot.top + 18) * scale, alignItems: 'center' }]}>
+                <View style={[PE.none, { position: 'absolute', left: cx - 90, width: 180, top: (spot.y - spot.top + 22) * scale, alignItems: 'center' }]}>
                   <PixelPanel tone="parchment" padding={1}>
                     <View style={{ alignItems: 'center', gap: 3 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -193,7 +193,7 @@ export function Overworld({
               ) : (
                 spot.slot === next && (
                   <View style={[PE.none, { position: 'absolute', left: cx - 22, top: (spot.y - spot.top) * scale - 22, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }]}>
-                    <PixelPanel tone="gold" padding={1}>
+                    <PixelPanel tone="gold" padding={1} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                       <PixelText size="lg" bold>
                         +
                       </PixelText>
@@ -220,7 +220,7 @@ function Pips({ cleared, total }: { cleared: number; total: number }) {
   return (
     <View style={{ flexDirection: 'row', gap: 2 }}>
       {Array.from({ length: n }, (_, i) => (
-        <View key={i} style={{ width: 6, height: 6, borderWidth: 1, borderColor: QUI.ink, backgroundColor: i < lit ? QUI.goldLight : QUI.parchmentShade }} />
+        <View key={i} style={{ width: 6, height: 6, borderWidth: 1, borderColor: QUI.ink, backgroundColor: i < lit ? QUI.gold : QUI.parchment }} />
       ))}
     </View>
   );

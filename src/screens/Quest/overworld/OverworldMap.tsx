@@ -53,15 +53,15 @@ export const OverworldMap = memo(function OverworldMap(p: OverworldMapProps) {
 
 /** Each band's sky in four flat steps; the top and bottom bands run on past the ends. */
 const Sky = memo(function Sky({ layout, x0, w }: { layout: OverworldLayout; x0: number; w: number }) {
-  const step = SLOT_H / 4;
-  const last = layout.slots.length - 1;
+  const { slots } = layout;
+  const last = slots.length - 1;
+  const bands = useMemo(() => slots.map((s) => skySteps(s.biome, slots[s.slot + 1]?.biome, slots[s.slot - 1]?.biome)), [slots]);
+  const step = SLOT_H / bands[0].length;
   return (
     <Group>
-      <Rect x={x0} y={-OW_H} width={w} height={OW_H + OW_HEAD} color={skySteps(layout.slots[last].biome)[0]} />
-      <Rect x={x0} y={layout.slots[0].top + SLOT_H} width={w} height={OW_H} color={skySteps(layout.slots[0].biome)[3]} />
-      {layout.slots.map((s) =>
-        skySteps(s.biome).map((c, i) => <Rect key={`${s.slot}.${i}`} x={x0} y={s.top + i * step} width={w} height={step} color={c} />)
-      )}
+      <Rect x={x0} y={-OW_H} width={w} height={OW_H + OW_HEAD} color={bands[last][0]} />
+      <Rect x={x0} y={slots[0].top + SLOT_H} width={w} height={OW_H} color={bands[0][bands[0].length - 1]} />
+      {slots.map((s) => bands[s.slot].map((c, i) => <Rect key={`${s.slot}.${i}`} x={x0} y={s.top + i * step} width={w} height={step} color={c} />))}
     </Group>
   );
 });
