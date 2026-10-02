@@ -27,7 +27,7 @@ afterEach(() => {
   process.env.TZ = 'UTC';
 });
 
-const W = (p: Partial<WindowStats>): WindowStats => ({ minutes: 0, sessions: 0, weakPoints: 0, measure: null, perHour: null, levelsGained: 0, ...p });
+const W = (p: Partial<WindowStats>): WindowStats => ({ minutes: 0, sessions: 0, measure: null, perHour: null, levelsGained: 0, ...p });
 
 test('no data: a friendly empty trail, no NaN anywhere', () => {
   const t = trail([]);
@@ -81,8 +81,8 @@ test('DST: a week that loses an hour still starts at local midnight', () => {
 
 test('verdicts: two signals rise; minutes down with nothing else rests; the rest is steady', () => {
   assert.equal(verdictOf(W({ minutes: 115 }), W({ minutes: 100 })).verdict, 'steady', 'one signal (+15% time) alone');
-  assert.deepEqual(verdictOf(W({ minutes: 115, weakPoints: 2 }), W({ minutes: 100, weakPoints: 1 })), { verdict: 'rising', reasons: ['time', 'weakPoints'] });
-  assert.equal(verdictOf(W({ minutes: 114, weakPoints: 2 }), W({ minutes: 100, weakPoints: 1 })).verdict, 'steady', '+14% is not enough');
+  assert.deepEqual(verdictOf(W({ minutes: 115, levelsGained: 1 }), W({ minutes: 100 })), { verdict: 'rising', reasons: ['time', 'level'] });
+  assert.equal(verdictOf(W({ minutes: 114, levelsGained: 1 }), W({ minutes: 100 })).verdict, 'steady', '+14% is not enough');
   assert.equal(verdictOf(W({ minutes: 80 }), W({ minutes: 100 })).verdict, 'resting');
   assert.equal(verdictOf(W({ minutes: 80, levelsGained: 1 }), W({ minutes: 100 })).verdict, 'steady', 'a level gained is progress');
   assert.deepEqual(verdictOf(W({ minutes: 60, perHour: 22, levelsGained: 1 }), W({ minutes: 100, perHour: 20 })).reasons, ['perHour', 'level']);
@@ -94,7 +94,7 @@ test('a measure: total and per focused hour; no minutes means no per-hour (never
   let q: ops.QuestSlice = { items: [], links: [] };
   q = ops.setMetric(q, 'h1', 'Pages', 'pages', MON);
   const a = s(MON + HOUR, 120);
-  q = ops.claimChest(q, { sessionId: a.id, habitId: 'h1', doneTaskIds: [], text: '', amount: { value: 40, metricId: 'metric:h1' }, now: NOW });
+  q = ops.claimChest(q, { sessionId: a.id, habitId: 'h1', text: '', amount: { value: 40, metricId: 'metric:h1' }, now: NOW });
   q = ops.addQuickLog(q, { habitId: 'h1', text: '', amount: { value: 10, metricId: 'metric:h1' }, now: MON + 5 * HOUR });
   const h = trail([a], q.items).habits[0];
   assert.deepEqual(h.metric, { id: 'metric:h1', label: 'Pages', unit: 'pages' });
@@ -109,16 +109,9 @@ test('a measure: total and per focused hour; no minutes means no per-hour (never
   assert.equal(only.empty, false);
 });
 
-test('weak points count by when they were done; skill levels by effective minutes', () => {
-  let q: ops.QuestSlice = { items: [], links: [] };
-  q = ops.addTask(q, 'h1', 'a', MON - DAY, 't1');
-  q = ops.setTaskStatus(q, 't1', 'done', MON + HOUR);
-  q = ops.addTask(q, 'h1', 'b', MON - DAY, 't2');
-  q = ops.setTaskStatus(q, 't2', 'done', MON - 6 * DAY); // last Tuesday, before the same moment
+test('skill levels by effective minutes', () => {
   // 20 min (skill 1) → 25 needed for level 2: one session this week crosses it.
-  const h = trail([s(MON - 2 * DAY, 20), s(MON + 2 * HOUR, 30)], q.items).habits[0];
-  assert.equal(h.thisWeek.weakPoints, 1);
-  assert.equal(h.lastWeek.weakPoints, 1);
+  const h = trail([s(MON - 2 * DAY, 20), s(MON + 2 * HOUR, 30)], []).habits[0];
   assert.equal(h.thisWeek.levelsGained, 1);
   assert.equal(h.lastWeek.levelsGained, 0);
 });

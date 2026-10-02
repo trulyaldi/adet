@@ -6,7 +6,7 @@ import { Item, itemsOfType, Link } from '../items/types';
 import { Session } from '../types';
 import * as B from './balance';
 import { BIOME_IDS, BiomeId, biomeRef } from './biomes';
-import { bossGlobal, bossHp, DeriveInput, deriveGameState, mobHp, nodeAt, sealTargets } from './derive';
+import { bossGlobal, bossHp, DeriveInput, deriveGameState, mobHp, nodeAt } from './derive';
 import { boughtFreezes } from './freezes';
 import { levelFromXp, rankForLevel, skillLevel, xpForLevel } from './level';
 import { fixedTz, prevDayKey } from './tz';
@@ -52,16 +52,8 @@ function arriveAt(biome: BiomeId, when = META_START + 1): Item[] {
 }
 
 /** Items + links for a claimed chest. */
-function claimed(base: Item[], links: Link[], sessionId: string, opts: { tasks?: number; text?: string } = {}) {
-  let q: ops.QuestSlice = { items: base, links };
-  const ids: string[] = [];
-  for (let i = 0; i < (opts.tasks ?? 0); i++) {
-    const id = `${sessionId}-t${i}`;
-    q = ops.addTask(q, 'h1', `task ${i}`, D0, id);
-    ids.push(id);
-  }
-  q = ops.claimChest(q, { sessionId, habitId: 'h1', doneTaskIds: ids, text: opts.text ?? '', now: D0 });
-  return q;
+function claimed(base: Item[], links: Link[], sessionId: string, opts: { text?: string } = {}) {
+  return ops.claimChest({ items: base, links }, { sessionId, habitId: 'h1', text: opts.text ?? '', now: D0 });
 }
 
 /** Six 90-minute sessions, one a day from `day`: each fells one forest mob, with nothing over. */
@@ -71,14 +63,14 @@ function forestMobs(day = 0): Session[] {
 
 /**
  * The whole forest: its mobs, then three 150-minute days at the Fog Wisp (420 HP),
- * two of them claimed with a chronicle line (Insight 2), all deep (Depth ≥ 1).
- * The third fells it; 30 carries into the swamp's first mob.
+ * two of them claimed with a chronicle line. The third fells it; 30 carries
+ * into the swamp's first mob.
  */
 function forestCleared(opts: { claims?: boolean } = {}) {
   const mobs = forestMobs(0);
   const boss = [s(at(6, 9), 150), s(at(7, 9), 150), s(at(8, 9), 150)];
   let q: ops.QuestSlice = { items: [meta()], links: [] };
-  if (opts.claims !== false) for (const b of boss.slice(0, 2)) q = ops.claimChest(q, { sessionId: b.id, habitId: 'h1', doneTaskIds: [], text: 'a line', now: D0 });
+  if (opts.claims !== false) for (const b of boss.slice(0, 2)) q = ops.claimChest(q, { sessionId: b.id, habitId: 'h1', text: 'a line', now: D0 });
   return { sessions: [...mobs, ...boss], mobs, boss, items: q.items, links: q.links };
 }
 
@@ -95,7 +87,6 @@ test('empty history: level 1 Wanderer, journey at the first mob, nothing else', 
   assert.equal(g.journey.position.global, 0);
   assert.equal(g.journey.position.kind, 'mob');
   assert.equal(g.journey.hp, mobHp(0));
-  assert.equal(g.journey.staggered, false);
   assert.deepEqual(g.chests, { unopened: [], hasFreshChest: false });
   assert.deepEqual(g.credits, { earned: 0, welcome: 0, spent: 0, balance: 0 });
   assert.deepEqual(g.newAchievements, []);
@@ -190,9 +181,8 @@ test('R1: the camp is walked past; surplus reaches the far side of it', () => {
 test('R1: every journey session lands all of its damage, however large', () => {
   // 1440 minutes a day for a week into a path that is soon all 1 HP: it keeps flowing forward.
   const g = run(Array.from({ length: 7 }, (_, i) => s(at(i, 0), 1440)));
-  for (const r of g.sessions) assert.equal(sumHits(r), r.baseDamage + r.critDamage, r.sessionId);
+  for (const r of g.sessions) assert.equal(sumHits(r), r.baseDamage, r.sessionId);
   for (const r of g.sessions) assert.ok(r.hits.filter((h) => h.defeated).length <= 1);
-  assert.ok(g.journey.defeated.length === 0, 'no seals yet: the Wisp is at most staggered');
 });
 
 test('R2: mob HP grows ×1.15 by biome; the tutorial boss is 420', () => {
@@ -226,54 +216,6 @@ test('beating the forest boss unlocks the swamp and is reported once as new', ()
   // Stored: nothing new next time.
   const stored = ops.addAchievements({ items: f.items, links: f.links }, g.newAchievements, D0).items;
   assert.deepEqual(run(f.sessions, { items: stored, links: f.links }).newAchievements, []);
-});
-
-test('R3/R4: a boss at 0 HP without its seals is staggered, never heals, and falls once they fill', () => {
-  const f = forestCleared({ claims: false }); // no chronicle lines: Insight 0 of 2
-  const g = run(f.sessions, { items: f.items, links: f.links });
-  assert.equal(g.journey.position.kind, 'boss');
-  assert.equal(g.journey.hp, 0);
-  assert.equal(g.journey.staggered, true);
-  assert.equal(g.journey.defeated.length, 0);
-  assert.deepEqual(g.journey.seals.map((x) => [x.kind, x.have, x.need]), [['days', 3, 3], ['depth', 3, 1], ['insight', 0, 2]]);
-  const last = g.sessions.at(-1)!;
-  assert.ok(last.hits.some((h) => h.staggered), 'the hit that emptied it is marked');
-  assert.equal(sumHits(last), last.baseDamage, 'the surplus walked on into the swamp');
-  // More days don't heal it; a session with a weak point and a line fills Insight and fells it.
-  const later = s(at(9, 9), 20);
-  let q: ops.QuestSlice = { items: f.items, links: f.links };
-  q = ops.addTask(q, 'h1', 'wp', D0, 'wp1');
-  q = ops.claimChest(q, { sessionId: later.id, habitId: 'h1', doneTaskIds: ['wp1'], text: 'done', now: D0 });
-  const fell = run([...f.sessions, later], { items: q.items, links: q.links });
-  assert.equal(fell.journey.defeated.length, 1);
-  assert.equal(fell.journey.defeated[0].sessionId, later.id);
-  assert.equal(fell.journey.position.biome, 'swamp');
-  // It used the session's one defeat: the swamp mob it hit next only softens.
-  assert.ok(fell.journey.hp >= 1);
-  assert.equal(fell.sessions.at(-1)!.hits.filter((h) => h.defeated).length, 1);
-});
-
-test('R3: seals count days, deep sessions and insight, only from sessions fought against the boss', () => {
-  // Mob sessions (days 0–5) count for nothing; at the boss: two sessions on one day, one short.
-  const mobs = forestMobs(0);
-  const a = s(at(6, 8), 44); // not deep
-  const b = s(at(6, 14), 45); // deep; same day as a
-  let q: ops.QuestSlice = { items: [meta()], links: [] };
-  q = ops.addTask(q, 'h1', 't1', D0, 't1');
-  q = ops.addTask(q, 'h1', 't2', D0, 't2');
-  q = ops.claimChest(q, { sessionId: a.id, habitId: 'h1', doneTaskIds: ['t1', 't2'], text: '   ', now: D0 }); // 2 weak points, empty line
-  q = ops.claimChest(q, { sessionId: mobs[0].id, habitId: 'h1', doneTaskIds: [], text: 'vs a mob', now: D0 }); // not at the boss
-  const g = run([...mobs, a, b], { items: q.items, links: q.links });
-  assert.deepEqual(g.journey.seals.map((x) => [x.kind, x.have]), [['days', 1], ['depth', 1], ['insight', 2]]);
-  assert.deepEqual(sealTargets(0), { days: 3, depth: 1, insight: 2 });
-});
-
-test('R3: the Days seal counts local days (timezone decides)', () => {
-  const mobs = forestMobs(0);
-  const x = s(at(6, 22), 30); // 22:00 UTC
-  const y = s(at(7, 2), 30); // 02:00 UTC next day
-  assert.equal(run([...mobs, x, y]).journey.seals[0].have, 2);
-  assert.equal(run([...mobs, x, y], { tz: fixedTz(-180) }).journey.seals[0].have, 1, 'both on one local day at UTC−3');
 });
 
 test('R5: a boss never un-defeats: a recorded defeat keeps progress when balance or targets drop damage', () => {
@@ -334,7 +276,7 @@ test('a veteran starting today: full XP and rank, no chests, only the welcome cr
   assert.ok(g.xp.level > 20, 'history still levels the character');
   assert.ok(g.rank.tier >= 5);
   // A claim written for a pre-journey session (another build, a stray write) adds nothing.
-  const q = claimed([meta()], [], history[0].id, { tasks: 3, text: 'old work' });
+  const q = claimed([meta()], [], history[0].id, { text: 'old work' });
   const c = run(history, { items: q.items, links: q.links });
   assert.equal(c.xp.total, g.xp.total);
   assert.equal(c.credits.balance, B.WELCOME_CREDITS);
@@ -344,27 +286,16 @@ test('chest bonuses wait for the claim; base damage and XP apply right away', ()
   const x = s(at(0, 9), 30);
   const open = run([x]);
   assert.equal(open.sessions[0].baseDamage, 30);
-  assert.equal(open.sessions[0].critDamage, 0);
   assert.equal(open.xp.total, 30);
   assert.equal(open.credits.earned, 3);
   assert.equal(open.chests.unopened.length, 1);
 
-  const q = claimed([meta()], [], x.id, { tasks: 2, text: 'shipped the OTP flow' });
+  const q = claimed([meta()], [], x.id, { text: 'shipped the OTP flow' });
   const done = run([x], { items: q.items, links: q.links });
   assert.equal(done.chests.unopened.length, 0);
-  assert.equal(done.sessions[0].critDamage, 2 * B.CRIT_DAMAGE);
-  assert.equal(done.journey.totalDamage, 30 + 20);
-  assert.equal(done.xp.total, 30 + Math.round(30 * B.REFLECTION_XP_SHARE) + 2 * B.TASK_XP);
+  assert.equal(done.journey.totalDamage, 30, 'a claim adds no damage');
+  assert.equal(done.xp.total, 30 + Math.round(30 * B.REFLECTION_XP_SHARE));
   assert.equal(done.credits.earned, 3 + B.CHRONICLE_CREDITS);
-});
-
-test('crits cap at three per session; an empty chronicle earns no reflection bonus', () => {
-  const x = s(at(0, 9), 30);
-  const q = claimed([meta()], [], x.id, { tasks: 5, text: '' });
-  const g = run([x], { items: q.items, links: q.links });
-  assert.equal(g.sessions[0].critDamage, 3 * B.CRIT_DAMAGE);
-  assert.equal(g.xp.total, 30 + 5 * B.TASK_XP);
-  assert.equal(g.credits.earned, 3);
 });
 
 test('credits: floor(eff/10) per session, balance after purchases never below zero', () => {
@@ -485,14 +416,19 @@ test('twist — swamp: 25+ unbroken minutes deal ×1.2, only in the swamp', () =
   assert.equal(inBiome('forest', [s(at(1, 9), 25)]).sessions[0].baseDamage, 25);
 });
 
-test('twist — desert: ×1.5 with a completed weak point, ×0.75 without', () => {
+test('twist — desert: none for now (TEMP until World Mode results): focused time deals as it is', () => {
   const x = s(at(0, 9), 40);
-  const without = inBiome('desert', [x]);
-  assert.equal(without.sessions[0].baseDamage, 30);
-  const q = claimed([], [], x.id, { tasks: 1, text: '' });
-  const withTask = inBiome('desert', [x], { items: q.items, links: q.links });
-  assert.equal(withTask.sessions[0].baseDamage, 60);
-  assert.equal(withTask.sessions[0].critDamage, 10);
+  assert.equal(inBiome('desert', [x]).sessions[0].baseDamage, 40);
+  const q = claimed([], [], x.id, { text: 'a line' });
+  assert.equal(inBiome('desert', [x], { items: q.items, links: q.links }).sessions[0].baseDamage, 40);
+});
+
+test('bosses fall at 0 HP like any enemy: no seals, no stagger', () => {
+  const f = forestCleared({ claims: false });
+  const g = run(f.sessions, { items: f.items, links: f.links });
+  assert.equal(g.journey.defeated.length, 1, 'the Wisp fell on its third day, with no chronicle lines');
+  assert.equal(g.journey.position.biome, 'swamp');
+  assert.ok(g.sessions.at(-1)!.hits.some((h) => h.defeated && h.node.kind === 'boss'));
 });
 
 test("twist — frost: the first 10 minutes of each day's first session deal ×2", () => {
@@ -528,7 +464,7 @@ test('twist — volcano: the Burnout Drake takes at most a third of its HP per d
   const g = inBiome('volcano', sess);
   const perDay = new Map<string, number>();
   for (const r of g.sessions) {
-    assert.equal(sumHits(r), r.baseDamage + r.critDamage, 'no damage is dropped at the Drake');
+    assert.equal(sumHits(r), r.baseDamage, 'no damage is dropped at the Drake');
     for (const h of r.hits) if (h.node.global === drake) perDay.set(r.day, (perDay.get(r.day) ?? 0) + h.damage);
   }
   assert.ok(perDay.size >= 3, 'it takes three days or more');
@@ -587,11 +523,11 @@ test('derivation is deterministic and ignores input order', () => {
 test('benchmark: 5,000 sessions derive in under 50 ms', () => {
   const sess: Session[] = [];
   for (let i = 0; i < 5000; i++) sess.push(s(at(Math.floor(i / 3), 6 + (i % 3) * 4), 20 + (i % 9) * 10, i % 4 ? 'h1' : 'h2'));
-  // Half the chests claimed with an entry, a completed weak point on every tenth.
+  // Half the chests claimed with an entry.
   const items: Item[] = [meta()];
   const links: Link[] = [];
   for (let i = 0; i < 5000; i += 2) {
-    const q = claimed([], [], sess[i].id, { tasks: i % 10 ? 0 : 1, text: 'x' });
+    const q = claimed([], [], sess[i].id, { text: 'x' });
     items.push(...q.items);
     links.push(...q.links);
   }
@@ -611,7 +547,7 @@ test('benchmark: 5,000 sessions derive in under 50 ms', () => {
 
   // The dev QA panel derives the same history with a what-if overlay on top.
   let qa = Infinity;
-  const overlay = { sessions: [{ habitId: 'h1', minutes: 60, weakPoint: true }, { habitId: 'h2', minutes: 240 }], bossHp: 0.5 };
+  const overlay = { sessions: [{ habitId: 'h1', minutes: 60 }, { habitId: 'h2', minutes: 240 }], bossHp: 0.5 };
   for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
     whatIfGame(input, overlay);
@@ -652,16 +588,3 @@ test('quick logs: an amount alone (no line) earns nothing; amounts never add rew
   assert.equal(run([], { items: lined.items }).xp.total, B.QUICK_LOG_XP, 'a huge amount is worth the same as none');
 });
 
-test('quick logs count toward Insight only while a boss is the front enemy, and can fell a staggered one', () => {
-  const f = forestCleared({ claims: false }); // staggered: Insight 0 of 2
-  // One quick log while fighting mobs (day 2), two after the Wisp is staggered (day 9).
-  const q = quickLogs({ items: f.items, links: f.links }, [{ at: at(2, 20) }, { at: at(9, 9) }, { at: at(9, 10) }]);
-  const g = run(f.sessions, { items: q.items, links: q.links });
-  assert.equal(g.journey.defeated.length, 1);
-  assert.equal(g.journey.defeated[0].sessionId, 'ql2', 'the second quick log at the boss fills the last seal');
-  assert.deepEqual(g.newAchievements.map((a) => a.ref), ['forest:0']);
-  const one = quickLogs({ items: f.items, links: f.links }, [{ at: at(2, 20) }, { at: at(9, 9) }]);
-  const still = run(f.sessions, { items: one.items, links: one.links });
-  assert.equal(still.journey.staggered, true);
-  assert.equal(still.journey.seals.find((x) => x.kind === 'insight')?.have, 1);
-});

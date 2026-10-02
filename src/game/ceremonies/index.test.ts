@@ -10,5 +10,5 @@ test('battle report counts sessions in the defeated biome', () => {
   const meta = ops.startQuest({ items: [], links: [] }, at - 1).items;
   const session = { id: 's1', habitId: 'h1', start: at, end: at + 160 * 60_000, duration: 160 * 60 };
   const game = deriveGameState({ sessions: [session], habits: [{ id: 'h1', weeklyTargetMin: 300 }], items: meta, links: [], now: at });
-  assert.deepEqual(bossRun(game, 'forest:0'), { sessions: 1, tasks: 0, entries: [] });
+  assert.deepEqual(bossRun(game, 'forest:0'), { sessions: 1, entries: [] });
 });

@@ -124,8 +124,7 @@ function Chronicle({ model }: { model: QuestModel }) {
       renderItem={({ item: l }) => {
         const habit = data.habits.find((h) => h.id === l.habitId);
         const enemy = enemyOf(l.props.sessionId);
-        const tasks = data.links.filter((k) => k.kind === 'completed_in' && k.toId === l.props.sessionId).length;
-        const text = l.body || (tasks ? `${tasks} weak point${tasks === 1 ? '' : 's'} done` : '');
+        const text = l.body;
         if (editing === l.id) {
           return (
             <View style={{ gap: 6, marginVertical: 4 }}>

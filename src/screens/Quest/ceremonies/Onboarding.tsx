@@ -96,7 +96,7 @@ export function Onboarding({ game, look, sageName, onBegin, reduced, replay = fa
           </PixelText>
         )}
         {panel === 1 && (
-          <DialogBox name={sageName} portrait="npc.sage" lines={['Focus is your blade.', 'After a session, open your chest: tick a task, or write a line.']} onDone={next} reduced={reduced} />
+          <DialogBox name={sageName} portrait="npc.sage" lines={['Focus is your blade.', 'After a session, write one line and open your chest.']} onDone={next} reduced={reduced} />
         )}
         {panel === 2 && (
           <View style={{ gap: 14, alignItems: 'center' }}>

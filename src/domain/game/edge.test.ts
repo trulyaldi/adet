@@ -50,7 +50,7 @@ test('a balance change that lowers the level replays nothing and un-defeats noth
   // The forest's six mobs, then three deep days at the Wisp, two with a chronicle line (its seals).
   const sessions = [...Array.from({ length: 6 }, (_, i) => sess(`s${i}`, 'h1', D0 + i * DAY, 90)), ...Array.from({ length: 3 }, (_, i) => sess(`b${i}`, 'h1', D0 + (6 + i) * DAY, 150))];
   let q: ops.QuestSlice = { items: started, links: [] };
-  for (const id of ['b0', 'b1']) q = ops.claimChest(q, { sessionId: id, habitId: 'h1', doneTaskIds: [], text: 'a line', now: D0 });
+  for (const id of ['b0', 'b1']) q = ops.claimChest(q, { sessionId: id, habitId: 'h1', text: 'a line', now: D0 });
   const before = derive(sessions, q.items);
   assert.ok(before.journey.defeated.length >= 1);
   const recorded = ops.addAchievements(q, before.newAchievements, D0).items;

@@ -19,7 +19,7 @@ export const forest: BiomeDef = {
     'The fog lifts a little every time you begin.',
     'Small sessions count. Moss grows one sprout at a time.',
     'Rest by the fire. The path will wait for you.',
-    'Name one weak point. Strike it first.',
+    'Begin small. The fog lifts as you go.',
     'Rabbits never rush, and they still get everywhere.',
     'A quiet mind is a sharp blade.',
     'Write one line after. Future you will thank you.',

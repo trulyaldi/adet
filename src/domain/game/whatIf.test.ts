@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import * as ops from '../items/ops';
-import * as B from './balance';
 import { DeriveInput, deriveGameState } from './derive';
 import { fixedTz } from './tz';
 import { isWhatIfOff, NO_WHAT_IF, whatIfGame, withWhatIf } from './whatIf';
@@ -22,7 +21,7 @@ test('off: the what-if game is exactly the real game, and the input is untouched
   assert.ok(isWhatIfOff(NO_WHAT_IF));
   assert.deepEqual(whatIfGame(real, NO_WHAT_IF), deriveGameState(real));
   assert.equal(withWhatIf(real, NO_WHAT_IF), real);
-  whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30, weakPoint: true }], bossHp: 0.5 });
+  whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30 }], bossHp: 0.5 });
   assert.equal(JSON.stringify(real), before);
 });
 
@@ -31,13 +30,6 @@ test('a synthetic session adds its minutes as XP and damage', () => {
   const g = whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30 }] });
   assert.equal(g.xp.total - base.xp.total, 30);
   assert.equal(g.journey.totalDamage - base.journey.totalDamage, 30);
-});
-
-test('a completed weak point adds a crit and task XP through a claimed chest', () => {
-  const plain = whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30 }] });
-  const withTask = whatIfGame(real, { sessions: [{ habitId: 'h1', minutes: 30, weakPoint: true }] });
-  assert.equal(withTask.journey.totalDamage - plain.journey.totalDamage, B.CRIT_DAMAGE);
-  assert.equal(withTask.xp.total - plain.xp.total, B.TASK_XP);
 });
 
 test('before onboarding, what-if sessions still move a (synthetic) journey', () => {
@@ -66,11 +58,3 @@ test('a synthetic week: sessions placed days back; quick logs in memory; the rea
   assert.equal(JSON.stringify(real), before);
 });
 
-test('seal overrides are a view patch: counts change, and a boss at 0 HP staggers or not', () => {
-  const g = whatIfGame(real, { sessions: [], bossHp: 0, seals: { days: 99, depth: 99, insight: 0 } });
-  const byKind = Object.fromEntries(g.journey.seals.map((s) => [s.kind, s.have]));
-  assert.equal(byKind.insight, 0);
-  assert.equal(g.journey.staggered, true);
-  const full = whatIfGame(real, { sessions: [], bossHp: 0, seals: { days: 99, depth: 99, insight: 99 } });
-  assert.equal(full.journey.staggered, false);
-});

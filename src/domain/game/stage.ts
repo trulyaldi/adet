@@ -1,14 +1,14 @@
 // The timer Stage's scene logic, pure (v2 N6). The Stage only presents: what
 // the enemy shows comes from a live preview of the running session through
 // deriveGameState (the same rules the saved session will get), and the scene
-// moves between fight, defeat, walk-in, stagger, nap and wake on its own clock.
+// moves between fight, defeat, walk-in, nap and wake on its own clock.
 
 import { sessionFromTimer } from '../sessions';
 import type { ActiveTimer, Session } from '../types';
-import { DeriveInput, deriveGameState, GameState, NodeKind, SealState } from './derive';
+import { DeriveInput, deriveGameState, GameState, NodeKind } from './derive';
 
-export type SceneState = 'fight' | 'defeat' | 'walkIn' | 'stagger' | 'nap' | 'wake' | 'ended';
-export const SCENE_STATES: readonly SceneState[] = ['fight', 'defeat', 'walkIn', 'stagger', 'nap', 'wake', 'ended'];
+export type SceneState = 'fight' | 'defeat' | 'walkIn' | 'nap' | 'wake' | 'ended';
+export const SCENE_STATES: readonly SceneState[] = ['fight', 'defeat', 'walkIn', 'nap', 'wake', 'ended'];
 
 /** Slow, calm timings (milliseconds). */
 export const STAGE_TIMING = {
@@ -30,9 +30,6 @@ export interface Encounter {
   kind: NodeKind;
   hp: number;
   maxHp: number;
-  /** A boss at 0 HP waiting for its seals. */
-  staggered: boolean;
-  seals: SealState[];
 }
 
 export interface StageState {
@@ -45,7 +42,7 @@ export interface StageState {
 
 export function encounterOf(game: GameState): Encounter {
   const j = game.journey;
-  return { global: j.position.global, kind: j.position.kind, hp: j.hp, maxHp: j.maxHp, staggered: j.staggered, seals: j.seals };
+  return { global: j.position.global, kind: j.position.kind, hp: j.hp, maxHp: j.maxHp };
 }
 
 /** The running session as it would be saved now (null before it counts). */
@@ -58,7 +55,6 @@ export function previewGame(input: DeriveInput, live: Session | null): GameState
   return deriveGameState(live ? { ...input, sessions: [...input.sessions, live] } : input);
 }
 
-const fightOrStagger = (e: Encounter): SceneState => (e.staggered ? 'stagger' : 'fight');
 
 /**
  * One step of the scene. `enc` is the preview's current enemy. A different
@@ -68,7 +64,7 @@ const fightOrStagger = (e: Encounter): SceneState => (e.staggered ? 'stagger' : 
 export function stageStep(prev: StageState | null, timer: TimerState, enc: Encounter, now: number): StageState {
   const keep = (scene: SceneState, enemy = enc): StageState => ({ scene, since: prev && prev.scene === scene ? prev.since : now, enemy });
   if (timer === 'ended') return keep('ended');
-  if (!prev || prev.scene === 'ended') return timer === 'paused' ? keep('nap') : keep(fightOrStagger(enc));
+  if (!prev || prev.scene === 'ended') return timer === 'paused' ? keep('nap') : keep('fight');
   if (timer === 'paused') return { scene: 'nap', since: prev.scene === 'nap' ? prev.since : now, enemy: prev.enemy.global === enc.global ? enc : prev.enemy };
   const elapsed = now - prev.since;
   switch (prev.scene) {
@@ -82,9 +78,9 @@ export function stageStep(prev: StageState | null, timer: TimerState, enc: Encou
       return { scene: 'walkIn', since: now, enemy: enc };
     case 'walkIn':
       if (elapsed < STAGE_TIMING.walkInMs) return { ...prev, enemy: enc };
-      return { scene: fightOrStagger(enc), since: now, enemy: enc };
+      return { scene: 'fight', since: now, enemy: enc };
   }
   if (enc.global !== prev.enemy.global) return { scene: 'defeat', since: now, enemy: { ...prev.enemy, hp: 0 } };
-  const scene = fightOrStagger(enc);
+  const scene: SceneState = 'fight';
   return { scene, since: prev.scene === scene ? prev.since : now, enemy: enc };
 }

@@ -1,7 +1,6 @@
 // The Trail (v2 N8), in the Scribe: is each skill rising, steady or resting?
 // A row per habit: its icon, a neutral verdict icon, four weeks of focused
-// minutes as pixel bars and the reasons (more time, more per hour, more weak
-// points, a level). Tap a row for this week against last week, and to give the
+// minutes as pixel bars and the reasons (more time, more per hour, a level). Tap a row for this week against last week, and to give the
 // habit a measure. The numbers come from domain/progress (pure).
 
 import React, { useMemo, useState } from 'react';
@@ -125,7 +124,6 @@ function Details({ progress: h, habitId, onSetMetric }: { progress: HabitProgres
   const rows: [string, (w: WindowStats) => string][] = [
     ['Minutes', (w) => fmt(w.minutes)],
     ['Sessions', (w) => fmt(w.sessions)],
-    ['Weak points', (w) => fmt(w.weakPoints)],
     ['Levels', (w) => fmt(w.levelsGained)],
   ];
   if (h.metric) {

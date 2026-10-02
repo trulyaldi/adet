@@ -42,14 +42,13 @@ import { AnimatedSprite } from '../../../game/render/Sprite';
 import { SpriteBatch } from '../../../game/render/SpriteBatch';
 import { QUEST_MS } from '../../../game/ui/motion';
 import { PixelText } from '../../../game/ui/PixelText';
-import { SealPips, sealsLabel } from '../../../game/ui/SealPips';
 import { QUI } from '../../../game/ui/theme';
 import { useData } from '../../../store/StreakStore';
 import { mix } from '../../../theme/palette';
 import { SkinProps } from './skins/common';
 import { skinRenderer } from './skins';
 
-const SCENE_CODE: Record<SceneState, number> = { fight: 0, defeat: 1, walkIn: 2, stagger: 3, nap: 4, wake: 5, ended: 6 };
+const SCENE_CODE: Record<SceneState, number> = { fight: 0, defeat: 1, walkIn: 2, nap: 4, wake: 5, ended: 6 };
 /** A soft warm tint for a hit (never white). */
 const WARM: ColorMatrix = [1.18, 0, 0, 0, 0.1, 0, 0.96, 0, 0, 0.04, 0, 0, 0.72, 0, 0, 0, 0, 0, 1, 0];
 /** The world's clock steps at 8 fps. */
@@ -109,7 +108,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   // The scene machine: stepped when its inputs change and when a timed scene ends.
   const [stage, setStage] = useState<StageState>(() => stageStep(null, timer, enc, at));
   const [tick, setTick] = useState(0);
-  const encKey = `${enc.global}:${enc.hp}:${enc.staggered}`;
+  const encKey = `${enc.global}:${enc.hp}`;
   useEffect(() => {
     // Stepping a state machine from new inputs: the one place the scene moves.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -122,9 +121,9 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
     const t = setTimeout(() => setTick((n) => n + 1), Math.max(0, stage.since + left - Date.now()) + 20);
     return () => clearTimeout(t);
   }, [stage]);
-  const scene: SceneState = force ?? (reduced ? (stage.scene === 'nap' || stage.scene === 'stagger' ? stage.scene : timer === 'paused' ? 'nap' : 'fight') : stage.scene);
+  const scene: SceneState = force ?? (reduced ? (timer === 'paused' ? 'nap' : 'fight') : stage.scene);
   // On stage: the machine's enemy (the falling one during a defeat); with reduced motion, simply the current one.
-  const shown = force === 'stagger' ? { ...stage.enemy, hp: 0, staggered: true } : reduced ? enc : stage.enemy;
+  const shown = reduced ? enc : stage.enemy;
 
   // Shared values the canvas reads. The clock runs for a victory even while paused.
   const clock = useGameClock(!reduced && ((live && !paused) || victory), STEP_MS);
@@ -192,7 +191,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   const pose = scene === 'nap' ? 'resting' : scene === 'wake' ? 'stretching' : victory ? 'cheering' : battle ? 'fighting' : 'standing ready';
   const label = [
     renderer.say(progress, past),
-    battle ? `${name}, ${Math.ceil(shown.hp)} of ${shown.maxHp} health${shown.staggered ? ', dazed' : ''}${boss ? `. ${sealsLabel(shown.seals)}` : ''}` : null,
+    battle ? `${name}, ${Math.ceil(shown.hp)} of ${shown.maxHp} health` : null,
     `Your character, ${pose}`,
   ]
     .filter(Boolean)
@@ -224,14 +223,11 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
           <Rect x={0} y={0} width={worldW} height={worldH} color="#ffb46a" opacity={0.05} />
         </Group>
       </Canvas>
-      {battle && (named || boss) && (
+      {battle && named && (
         <View style={{ position: 'absolute', top: 8, right: 10, alignItems: 'flex-end', gap: 4, pointerEvents: 'none' }}>
-          {named && (
-            <PixelText size="tiny" color={QUI.ink} numberOfLines={1}>
-              {name}
-            </PixelText>
-          )}
-          {boss && <SealPips seals={shown.seals} counts={named} />}
+          <PixelText size="tiny" color={QUI.ink} numberOfLines={1}>
+            {name}
+          </PixelText>
         </View>
       )}
     </Pressable>
@@ -337,7 +333,7 @@ function StageAvatar({ look, x, y, clock, scene, since, attackAt, cheerAt }: { l
 function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduced, biome, hp, maxHp }: { id: string; boss: boolean; worldW: number; worldH: number; scene: SceneState; clock: SharedValue<number>; since: SharedValue<number>; attackAt: SharedValue<number>; reduced: boolean; biome: BiomeId; hp: number; maxHp: number }) {
   const home = worldW - (boss ? 30 : 24);
   const feet = worldH - 4;
-  const pose = scene === 'stagger' && boss ? `${id}.low` : `${id}.idle`;
+  const pose = `${id}.idle`;
   const m = sprite(pose);
   const walkMs = STAGE_TIMING.walkInMs;
   const code = SCENE_CODE[scene];
@@ -397,8 +393,7 @@ function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduce
           ))}
         </Group>
       </Group>
-      {scene === 'stagger' && <SpriteBatch atlas="shared" items={[{ id: 'fx.dazed', x: home, y: feet - m.h + 6 }]} clock={reduced ? undefined : clock} />}
-      {!reduced && (scene === 'fight' || scene === 'stagger') && <AnimatedSprite id="fx.hit" x={home - 2} y={feet - Math.round(m.h / 2)} clock={clock} startAt={hitAt} transient />}
+      {!reduced && scene === 'fight' && <AnimatedSprite id="fx.hit" x={home - 2} y={feet - Math.round(m.h / 2)} clock={clock} startAt={hitAt} transient />}
       {!reduced && scene === 'defeat' && (
         <>
           <Particles kind="dissolve" x={home - m.w / 2 + 2} y={feet - m.h + 2} w={m.w - 4} h={m.h - 4} count={boss ? 50 : 24} clock={clock} startAt={petalsAt} tint={embers} />

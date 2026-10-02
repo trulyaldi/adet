@@ -13,7 +13,6 @@ export const WORDS = {
   habit: { game: 'Skill', plain: 'Habit' },
   streak: { game: 'Campfire', plain: 'Streak' },
   weeklyTarget: { game: 'Bounty', plain: 'Weekly target' },
-  task: { game: 'Weak point', plain: 'Task' },
   note: { game: 'Chronicle', plain: 'Session note' },
   stats: { game: 'Almanac', plain: 'Stats' },
   freeze: { game: 'Ember shield', plain: 'Streak freeze' },

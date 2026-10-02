@@ -16,8 +16,6 @@ export interface Profile {
   activeDays: number;
   /** Chests claimed with a chronicle line (share of sessions). */
   chronicleRate: number;
-  /** Sessions whose chest is claimed with one completed weak point. */
-  weakPointRate: number;
 }
 
 export const PROFILES: Profile[] = [60, 120, 180, 240].map((m) => ({
@@ -25,7 +23,6 @@ export const PROFILES: Profile[] = [60, 120, 180, 240].map((m) => ({
   minutesPerDay: m,
   activeDays: 6,
   chronicleRate: 0.4,
-  weakPointRate: 0.3,
 }));
 
 const DAY = 86_400_000;
@@ -47,8 +44,6 @@ export interface SimResult {
   profile: Profile;
   /** Calendar days spent in each biome of the first loop (null: not cleared within `days`). */
   daysPerBiome: (number | null)[];
-  /** Days the boss stood staggered (0 HP, seals unfilled), per biome. */
-  staggeredDays: number[];
   game: GameState;
 }
 
@@ -71,36 +66,23 @@ export function simulate(profile: Profile, seed = 1, days = 400): SimResult {
       sessions.push({ id, habitId: 'h1', start, end: start + min * 60_000, duration: min * 60 });
       hour += Math.ceil(min / 60) + 1;
       const chron = r() < profile.chronicleRate;
-      const wp = r() < profile.weakPointRate;
-      if (chron || wp) {
-        const tasks: string[] = [];
-        if (wp) {
-          q = ops.addTask(q, 'h1', 'wp', start, `${id}t`);
-          tasks.push(`${id}t`);
-        }
-        q = ops.claimChest(q, { sessionId: id, habitId: 'h1', doneTaskIds: tasks, text: chron ? 'a line' : '', now: start });
-      }
+      if (chron) q = ops.claimChest(q, { sessionId: id, habitId: 'h1', text: 'a line', now: start });
     }
   }
   const weekly = profile.minutesPerDay * profile.activeDays;
   const game = deriveGameState({ sessions, habits: [{ id: 'h1', weeklyTargetMin: weekly }], items: q.items, links: q.links, now: D0 + days * DAY, tz: fixedTz(0) });
   const dayOf = (t: number) => Math.floor((t - D0) / DAY);
   const daysPerBiome: (number | null)[] = [];
-  const staggeredDays: number[] = [];
   let prev = 0;
   for (let b = 0; b < BIOME_COUNT; b++) {
     const d = game.journey.defeated.find((x) => x.loop === 0 && x.biome === BIOME_IDS[b]);
     if (!d) {
       daysPerBiome.push(null);
-      staggeredDays.push(0);
       continue;
     }
     const end = dayOf(d.at) + 1;
     daysPerBiome.push(end - prev);
-    // Staggered: sessions against this boss after its HP hit 0, before it fell.
-    const hitZero = game.sessions.find((x) => x.hits.some((h) => h.staggered && h.node.biomeIndex === b && h.node.loop === 0));
-    staggeredDays.push(hitZero ? Math.max(0, end - 1 - dayOf(hitZero.end)) : 0);
     prev = end;
   }
-  return { profile, daysPerBiome, staggeredDays, game };
+  return { profile, daysPerBiome, game };
 }

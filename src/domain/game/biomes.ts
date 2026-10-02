@@ -9,7 +9,7 @@ export const BIOME_COUNT = BIOME_IDS.length;
 export const TWISTS: Record<BiomeId, string> = {
   forest: 'Tutorial: a gentle boss; the fog clears as it weakens.',
   swamp: 'Sessions of 25+ unbroken minutes deal ×1.2.',
-  desert: 'A completed weak point makes a session deal ×1.5; none, ×0.75.',
+  desert: 'No twist for now: focused time deals as it is.',
   frost: "The first 10 minutes of each day's first session deal ×2.",
   iron: 'Sessions started before noon deal ×1.25.',
   volcano: 'Days of 1–4 hours deal ×1.3; a session after a rest day is Rested (×1.2). The Drake can’t be ground down in a day.',

@@ -1,6 +1,6 @@
 // The Trail: per habit, is it rising, steady or resting? Compares this week so
 // far with last week to the same moment (as the Stats hero does), from data the
-// app already has: sessions, weak points done, a habit's measure and its skill
+// app already has: sessions, a habit's measure and its skill
 // level. Pure; weeks follow the app's week-start setting and local days.
 
 import { skillLevel } from '../game/level';
@@ -10,15 +10,14 @@ import type { Habit, Session } from '../types';
 import { RISE_MINUTES, RISE_PER_HOUR, RISE_SIGNALS, SERIES_WEEKS } from './constants';
 
 export type Verdict = 'rising' | 'steady' | 'resting';
-/** Why a habit is rising: more time, more per hour, more weak points, a level gained. */
-export type Reason = 'time' | 'perHour' | 'weakPoints' | 'level';
+/** Why a habit is rising: more time, more per hour, a level gained. */
+export type Reason = 'time' | 'perHour' | 'level';
 
 export interface WindowStats {
   /** Focused minutes (every session, by its start). */
   minutes: number;
   /** Sessions of 10+ minutes. */
   sessions: number;
-  weakPoints: number;
   /** Total of the habit's measure, or null without one. */
   measure: number | null;
   /** Measure per focused hour; null without a measure or without minutes. */
@@ -82,12 +81,6 @@ function stats(
     minutes += s.duration / 60;
     if (s.duration / 60 >= MIN_SESSION_MIN) sessions++;
   }
-  let weakPoints = 0;
-  for (const t of itemsOfType(input.items, 'task')) {
-    if (t.habitId !== habitId || t.props.status !== 'done' || !t.props.doneAt) continue;
-    const at = Date.parse(t.props.doneAt);
-    if (at >= from && at < to) weakPoints++;
-  }
   let measure: number | null = null;
   if (metricId) {
     measure = 0;
@@ -100,7 +93,7 @@ function stats(
   }
   const perHour = measure !== null && minutes > 0 ? measure / (minutes / 60) : null;
   const levelsGained = skillLevel(Math.round(upTo)).level - skillLevel(Math.round(before)).level;
-  return { minutes: Math.round(minutes), sessions, weakPoints, measure, perHour, levelsGained };
+  return { minutes: Math.round(minutes), sessions, measure, perHour, levelsGained };
 }
 
 /** Up by at least `share` (anything is up from nothing). */
@@ -110,7 +103,6 @@ export function verdictOf(cur: WindowStats, prev: WindowStats): { verdict: Verdi
   const reasons: Reason[] = [];
   if (upBy(cur.minutes, prev.minutes, RISE_MINUTES)) reasons.push('time');
   if (cur.perHour !== null && prev.perHour !== null && upBy(cur.perHour, prev.perHour, RISE_PER_HOUR)) reasons.push('perHour');
-  if (cur.weakPoints > prev.weakPoints) reasons.push('weakPoints');
   if (cur.levelsGained > 0) reasons.push('level');
   const verdict: Verdict = reasons.length >= RISE_SIGNALS ? 'rising' : cur.minutes < prev.minutes && reasons.length === 0 ? 'resting' : 'steady';
   return { verdict, reasons };
@@ -135,7 +127,7 @@ export function trailOf(input: ProgressInput): Trail {
       return { weekStart: dkey(start), minutes: win(start.getTime(), end).minutes };
     });
     const { verdict, reasons } = verdictOf(thisWeek, lastWeek);
-    const empty = series.every((w) => w.minutes === 0) && thisWeek.weakPoints === 0 && lastWeek.weakPoints === 0 && !thisWeek.measure && !lastWeek.measure;
+    const empty = series.every((w) => w.minutes === 0) && !thisWeek.measure && !lastWeek.measure;
     return { habitId: h.id, metric, thisWeek, lastWeek, series, verdict: empty ? 'steady' : verdict, reasons: empty ? [] : reasons, empty };
   });
   const shown = habits.filter((h) => !h.empty);

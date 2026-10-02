@@ -1,29 +1,16 @@
 // Quest state that stays on this device (never synced): the journey
-// position last shown (for the reveal) and the weak points picked for the
-// running timer. Kept per account. Ceremony marks have their own v1 key.
+// position last shown (for the reveal). Kept per account. Ceremony marks have
+// their own v1 key. An old `plan` key (weak points, removed) is ignored.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
 
-/**
- * Weak points picked for the running timer. Matched to the saved session at
- * stop by habit and time (a pause/resume changes the timer's start, so its
- * start can't identify it).
- */
-export interface ActivePlan {
-  habitId: string;
-  /** Epoch ms the plan was made. */
-  createdAt: number;
-  taskIds: string[];
-}
-
 export interface QuestLocal {
   /** Journey position when the map was last shown: node index and HP left. */
   seen: { global: number; hp: number } | null;
-  plan: ActivePlan | null;
 }
 
-const EMPTY: QuestLocal = { seen: null, plan: null };
+const EMPTY: QuestLocal = { seen: null };
 
 let user: string | null = null;
 let state: QuestLocal = EMPTY;
@@ -40,14 +27,7 @@ function parse(raw: string | null): QuestLocal {
     const v = raw ? JSON.parse(raw) : null;
     if (!v || typeof v !== 'object') return EMPTY;
     const seen = v.seen && Number.isFinite(v.seen.global) && Number.isFinite(v.seen.hp) ? { global: v.seen.global, hp: v.seen.hp } : null;
-    const plan =
-      v.plan && typeof v.plan.habitId === 'string' && Number.isFinite(v.plan.createdAt) && Array.isArray(v.plan.taskIds)
-        ? { habitId: v.plan.habitId, createdAt: v.plan.createdAt, taskIds: v.plan.taskIds.filter((t: unknown) => typeof t === 'string').slice(0, 3) }
-        : null;
-    return {
-      seen,
-      plan,
-    };
+    return { seen };
   } catch {
     return EMPTY;
   }
@@ -102,23 +82,4 @@ export function useQuestLocal(): QuestLocal & { loaded: boolean } {
   const s = useSyncExternalStore(subscribe, () => state);
   const l = useSyncExternalStore(subscribe, () => loaded);
   return { ...s, loaded: l };
-}
-
-/** The plan that belongs to a just-saved session: same habit, made during it. */
-export function planForSession(plan: ActivePlan | null, session: { habitId: string; start: number; end: number }): string[] {
-  if (!plan || plan.habitId !== session.habitId) return [];
-  if (plan.createdAt < session.start - 60_000 || plan.createdAt > session.end + 1000) return [];
-  return plan.taskIds;
-}
-
-export function setActivePlan(plan: ActivePlan | null): void {
-  updateQuestLocal((s) => ({ ...s, plan }));
-}
-
-/** Pick the weak points for the running timer (a plan keeps the time it was first made). */
-export function pickWeakPoints(habitId: string, taskIds: string[]): void {
-  updateQuestLocal((s) => ({
-    ...s,
-    plan: { habitId, createdAt: s.plan?.habitId === habitId ? s.plan.createdAt : Date.now(), taskIds },
-  }));
 }

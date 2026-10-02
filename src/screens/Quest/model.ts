@@ -49,13 +49,12 @@ export function spotFor(maps: BiomeMap[], global: number): { x: number; y: numbe
 // ---------------------------------------------------------------------------
 // The camp travels with the player.
 
-export type CampThing = 'fire' | 'sage' | 'merchant' | 'scribe' | 'board' | 'chests' | 'pet';
+export type CampThing = 'fire' | 'sage' | 'merchant' | 'scribe' | 'chests' | 'pet';
 
 const CAMP: [CampThing, number, number][] = [
   ['fire', -20, 8],
   ['sage', -34, -2],
   ['scribe', -32, 18],
-  ['board', 24, 16],
   ['merchant', 22, 2],
   ['chests', -8, 20],
   ['pet', 10, 6],
@@ -107,7 +106,7 @@ export function planReveal(maps: BiomeMap[], seen: number, now: number): Reveal 
 // Tap targets (world coordinates, at least 44 pt however small the sprite).
 
 export interface Target {
-  kind: 'node' | 'npc' | 'board' | 'chests' | 'fire' | 'pet' | 'critter' | 'villager' | 'avatar' | 'gate';
+  kind: 'node' | 'npc' | 'chests' | 'fire' | 'pet' | 'critter' | 'villager' | 'avatar' | 'gate';
   key: string;
   x: number;
   y: number;

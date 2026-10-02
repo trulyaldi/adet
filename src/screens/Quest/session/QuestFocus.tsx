@@ -30,7 +30,6 @@ import { useQuestTables } from '../../../sync/questTables';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { useAppActive } from '../../../theme/useMotion';
 import { ClockPlate } from './ClockPlate';
-import { WeakPointsChip, WeakPointsList } from './WeakPointsRow';
 
 /** Done: the victory pose plays this long before the session saves (and the chest opens). */
 const VICTORY_MS = 800;
@@ -52,7 +51,6 @@ export function QuestFocusContent() {
   const started = useQuestStarted();
   const tables = useQuestTables();
   const { battleStrip } = useQuestSettings();
-  const [weakOpen, setWeakOpen] = useState(false);
   const [victory, setVictory] = useState(false);
 
   const habit = data.habits.find((h) => h.id === p?.habitId);
@@ -75,7 +73,7 @@ export function QuestFocusContent() {
   return (
     <GestureDetector gesture={swipe}>
       <Animated.View style={[{ flex: 1, backgroundColor: colors.bg }, sheetStyle]}>
-        {/* 1. Header: what's running; weak points, dim, sound, minimize. */}
+        {/* 1. Header: what's running; dim, sound, minimize. */}
         <View style={{ position: 'absolute', top: l.headerTop, left: 16, right: 16, height: l.headerH, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 5 }}>
           <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: sw.base, alignItems: 'center', justifyContent: 'center' }}>
             <Icon path={ICONS[habit.icon] || ICONS.code} size={22} color={sw.on} />
@@ -83,7 +81,6 @@ export function QuestFocusContent() {
           <Text numberOfLines={1} style={{ flex: 1, fontSize: 17, fontWeight: '800', color: colors.ink }}>
             {habit.name}
           </Text>
-          <WeakPointsChip habitId={habit.id} open={weakOpen} onToggle={() => setWeakOpen(!weakOpen)} />
           {dimOffer && <IconButton label="Dim the screen" name="dim" size={20} color={colors.sub} bg={colors.card} diameter={40} onPress={() => setDimmed(true)} tipBelow />}
           <IconButton
             label={prefs.sound ? 'Sounds off' : 'Sounds on'}
@@ -98,11 +95,6 @@ export function QuestFocusContent() {
           />
           <IconButton label="Minimize" name="chevronDown" size={22} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.closeTimer} tipBelow />
         </View>
-        {weakOpen && (
-          <View style={{ position: 'absolute', top: l.headerTop + l.headerH + 6, left: 16, right: 16, zIndex: 6 }}>
-            <WeakPointsList habitId={habit.id} />
-          </View>
-        )}
 
         {/* 2. The clock plate. */}
         <View style={{ position: 'absolute', top: l.plateTop, left: 16, right: 16, alignItems: 'center' }}>

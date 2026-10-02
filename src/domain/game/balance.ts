@@ -1,7 +1,7 @@
 // Every tunable number in Quest Mode. Bump BALANCE_VERSION when a change
 // alters derived results; stored achievements keep progress from going back.
 
-export const BALANCE_VERSION = 2;
+export const BALANCE_VERSION = 3;
 
 // ---- Sessions ---------------------------------------------------------------
 /** Shorter sessions deal no damage, grant nothing and spawn no chest. */
@@ -13,11 +13,6 @@ export const DAY_FULL_MIN = 240;
 /** Minutes up to this count at HALF_RATE; beyond it, at 0%. */
 export const DAY_HALF_MIN = 360;
 export const HALF_RATE = 0.5;
-
-// ---- Damage -----------------------------------------------------------------
-export const CRIT_DAMAGE = 10;
-/** Most weak points that crit per session. */
-export const MAX_CRITS = 3;
 
 // ---- Journey ----------------------------------------------------------------
 /** Mob HP (effective minutes) = round(MOB_HP_BASE × MOB_HP_GROWTH^biomeIndex). */
@@ -40,14 +35,6 @@ export const BOSS_HP_MAX = 2400;
 /** The tutorial boss (biome 1, first loop). */
 export const FIRST_BOSS_HP = 420;
 
-// ---- Seals: what a boss needs besides HP (0 disables one) --------------------
-/** Distinct local days with a qualifying session against the boss, by biome index. */
-export const SEAL_DAYS = [3, 4, 5, 5, 6, 6, 7] as const;
-/** Sessions of at least DEPTH_MIN focused minutes against the boss. */
-export const SEAL_DEPTH = [1, 2, 2, 3, 3, 4, 4] as const;
-export const DEPTH_MIN = 45;
-/** Completed weak points plus chronicle entries with text, against the boss. */
-export const SEAL_INSIGHT = [2, 3, 4, 5, 6, 7, 8] as const;
 /** Boss HP multiplier per ascension loop. */
 export const ASCENSION_HP_MULT = 1.2;
 
@@ -55,9 +42,6 @@ export const ASCENSION_HP_MULT = 1.2;
 /** Swamp: sessions of this many unbroken minutes… */
 export const SWAMP_UNBROKEN_MIN = 25;
 export const SWAMP_MULT = 1.2;
-/** Desert: with ≥1 completed weak point / without. */
-export const DESERT_WITH_TASK = 1.5;
-export const DESERT_WITHOUT_TASK = 0.75;
 /** Frost: the first minutes of each day's first qualifying session deal double. */
 export const FROST_FIRST_MIN = 10;
 export const FROST_MULT = 2;
@@ -79,23 +63,19 @@ export const ASTRAL_MULT = 1.25;
 export const XP_PER_MIN = 1;
 /** Of the session's XP, when its chest is claimed with a chronicle entry. */
 export const REFLECTION_XP_SHARE = 0.2;
-export const TASK_XP = 15;
-/** A quick log with a line (no session): small XP, and Insight against a boss. */
+/** A quick log with a line (no session): small XP. */
 export const QUICK_LOG_XP = 3;
 /** Quick logs rewarded per local day; more are still saved, without reward. */
 export const QUICK_LOG_DAILY_CAP = 3;
 
 // ---- Activity outside sessions (v2 N7.4; from the journey's start) ----------
-/** A weak point completed outside any session. */
-export const OUTSIDE_TASK_XP = 5;
-export const OUTSIDE_TASK_DAILY_CAP = 5;
 /** The day's plan completed (the Today ring full): once per local day. */
 export const GOAL_DAY_CREDITS = 5;
 /** Every weekly target met (the Stats hero relaxed): once per week. */
 export const BOUNTY_CREDITS = 40;
 export const BOUNTY_XP = 60;
 /**
- * Non-session XP (quick logs and weak points done outside sessions, together)
+ * Non-session XP (quick logs)
  * never exceeds this share of the most XP a day of sessions can earn.
  */
 export const ACTIVITY_XP_SHARE = 0.1;

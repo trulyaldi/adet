@@ -21,7 +21,7 @@ const DAY = 86_400_000;
 // 120 HP left and its seals (3 days counting the next one, a deep session, 2 lines) are met.
 const history = [...Array.from({ length: 6 }, (_, i) => sess(`m${i}`, 'h1', D0 + i * DAY, 90)), sess('b0', 'h1', D0 + 6 * DAY, 150), sess('b1', 'h1', D0 + 7 * DAY, 150)];
 let slice: ops.QuestSlice = ops.startQuest({ items: [], links: [] }, D0 - 1);
-for (const id of ['b0', 'b1']) slice = ops.claimChest(slice, { sessionId: id, habitId: 'h1', doneTaskIds: [], text: 'a line', now: D0 });
+for (const id of ['b0', 'b1']) slice = ops.claimChest(slice, { sessionId: id, habitId: 'h1', text: 'a line', now: D0 });
 const started = slice.items;
 const derive = (min: number, items = started, withLast = true) =>
   deriveGameState({ sessions: withLast ? [...history, sess('s1', 'h1', D0 + 8 * DAY, min)] : history, habits, items, links: slice.links, now: D0 + 9 * DAY, tz: fixedTz(0) });

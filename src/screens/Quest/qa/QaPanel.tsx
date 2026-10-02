@@ -16,7 +16,6 @@ import { DayPhase } from '../../../domain/game/daylight';
 import { gameInput } from '../../../domain/game/fromData';
 import { dkey } from '../../../domain/time';
 import { RANKS } from '../../../domain/game/balance';
-import type { SealKind } from '../../../domain/game/derive';
 import { isWhatIfOff, NO_WHAT_IF, WhatIf, whatIfGame, withWhatIf } from '../../../domain/game/whatIf';
 import { activeHabits } from '../../../domain/projects';
 import { ceremonyHost } from '../../../game/ceremonies/host';
@@ -49,7 +48,6 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
   const { width } = useWindowDimensions();
   const habits = activeHabits(data).filter((h) => h.kind !== 'check');
   const [habitId, setHabitId] = useState(habits[0]?.id ?? 'qa:habit');
-  const [weakPoint, setWeakPoint] = useState(false);
   const [overlay, setOverlay] = useState<WhatIf>(NO_WHAT_IF);
   const [phase, setPhase] = useState<DayPhase>('day');
   const [rank, setRank] = useState(1);
@@ -78,11 +76,10 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
   const fx = useMemo(() => ({ pops: [], dust: { x: dustX, y: dustY, at: dustAt } }), [dustX, dustY, dustAt]);
   const look = { tier: game.rank.tier, gear: meta?.props.avatar.gear ?? {} };
 
-  const add = (minutes: number) => setOverlay((o) => ({ ...o, sessions: [...o.sessions, { habitId, minutes, weakPoint }] }));
+  const add = (minutes: number) => setOverlay((o) => ({ ...o, sessions: [...o.sessions, { habitId, minutes }] }));
   // Two synthetic weeks for the Trail: 40 min a day last week, 60 this week.
   const addWeeks = () =>
-    setOverlay((o) => ({ ...o, sessions: [...o.sessions, ...Array.from({ length: 14 }, (_, d) => ({ habitId, minutes: d < 7 ? 60 : 40, daysAgo: d, weakPoint: d % 3 === 0 }))] }));
-  const setSeal = (kind: SealKind, have: number | undefined) => setOverlay((o) => ({ ...o, seals: { ...o.seals, [kind]: have } }));
+    setOverlay((o) => ({ ...o, sessions: [...o.sessions, ...Array.from({ length: 14 }, (_, d) => ({ habitId, minutes: d < 7 ? 60 : 40, daysAgo: d }))] }));
   const qaData = useMemo(() => {
     const i = withWhatIf(gameInput(data, minute * 60_000), overlay);
     return { ...data, sessions: [...i.sessions], items: [...i.items], links: [...i.links] };
@@ -115,7 +112,6 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
           {habits.slice(0, 4).map((h) => (
             <PixelButton key={h.id} small tone={habitId === h.id ? 'gold' : 'parchment'} label={h.name.slice(0, 10)} accessibilityLabel={`Use habit ${h.name}`} onPress={() => setHabitId(h.id)} />
           ))}
-          <PixelButton small tone={weakPoint ? 'gold' : 'parchment'} label="+task" accessibilityLabel={`With a completed weak point: ${weakPoint ? 'on' : 'off'}`} onPress={() => setWeakPoint(!weakPoint)} />
         </Row>
         <Row>
           {MINUTES.map((m) => (
@@ -130,11 +126,6 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
         <Row>
           <PixelButton small label="+2 weeks" accessibilityLabel="Add two weeks of sessions for the Trail" onPress={addWeeks} />
           <PixelButton small label="+3 logs" accessibilityLabel="Add three quick logs" onPress={() => setOverlay((o) => ({ ...o, quickLogs: (o.quickLogs ?? 0) + 3 }))} />
-        </Row>
-        <Row>
-          {game.journey.seals.map((s) => (
-            <PixelButton key={s.kind} small tone={overlay.seals?.[s.kind] !== undefined ? 'gold' : 'parchment'} label={`${s.kind} ${s.have >= s.need ? 'full' : 'empty'}`} accessibilityLabel={`Seal ${s.kind}: ${s.have >= s.need ? 'empty it' : 'fill it'}`} onPress={() => setSeal(s.kind, s.have >= s.need ? 0 : s.need)} />
-          ))}
         </Row>
         <Row>
           <PixelButton small tone="night" label="Overlay off" accessibilityLabel="Turn the what-if overlay off" onPress={() => setOverlay(NO_WHAT_IF)} />
@@ -210,7 +201,7 @@ export function QaPanel({ reduced }: { reduced: boolean }) {
 
       <Section title="Timer Stage">
         <Row>
-          {(['fight', 'defeat', 'walkIn', 'stagger', 'nap', 'wake'] as const).map((k) => (
+          {(['fight', 'defeat', 'walkIn', 'nap', 'wake'] as const).map((k) => (
             <PixelButton key={k} small tone={scene === k ? 'gold' : 'parchment'} label={k} accessibilityLabel={`Show the Stage in its ${k} state`} onPress={() => setScene(k)} />
           ))}
         </Row>

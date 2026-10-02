@@ -1,5 +1,5 @@
 // "+12 XP" chips (v2 N7.5): when something done outside a session earns XP or
-// credits (a weak point ticked, a quick log, a completed day, a week's bounty),
+// credits (a quick log, a completed day, a week's bounty),
 // a small pixel chip floats up for about a second. Derived: it watches the
 // game's totals. Sessions (the Loot sheet counts those up), open sheets and a
 // running focus view stay quiet. No sound; reduced motion only fades.

@@ -37,7 +37,7 @@ const content = (): [string, string][] => {
   strings(SHOP.map((s) => ({ name: s.name })), 'SHOP', out);
   for (const [id, b] of Object.entries(BIOMES)) strings({ lore: b.lore, boss: b.boss, villagers: (b as { villagerLines?: unknown }).villagerLines }, `BIOMES.${id}`, out);
   // The Sage's local templates, at their longest.
-  out.push(['fallbackRecap', fallbackRecap('The Doomscroll Hydra', 99, 99, 99)], ['fallbackRecap(0)', fallbackRecap('The Fog Wisp', 0, 0, 0)]);
+  out.push(['fallbackRecap', fallbackRecap('The Doomscroll Hydra', 99, 99)], ['fallbackRecap(0)', fallbackRecap('The Fog Wisp', 0, 0)]);
   out.push(['fallbackInsight', fallbackInsight([])]);
   return out;
 };

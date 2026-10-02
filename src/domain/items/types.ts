@@ -2,7 +2,7 @@
 // item type Quest Mode uses. Pure: no React or RN, shared with future builds.
 //
 //   type          purpose                          props
-//   task          a weak point                     { status, order, doneAt? }
+//   task          a weak point (dormant: removed)  { status, order, doneAt? }
 //   log           a chronicle entry (body = text)  { sessionId, amount?, metricId? }
 //                 sessionId '' is a quick log: an activity recorded without a session
 //   metric_def    a habit's one measure            { label, unit }   (id `metric:<habitId>`)
