@@ -114,7 +114,7 @@ export function focusLayout(screenH: number, insetTop: number, insetBottom: numb
   const controlsH = CONTROLS_H;
   const controlsTop = screenH - Math.max(insetBottom, 12) - 8 - controlsH;
   const plateTop = headerTop + HEADER_H + FOCUS_GAP;
-  const plateFor = (d: number) => d + 34;
+  const plateFor = (d: number) => d + 56;
   let digits = 64;
   for (const d of [64, 56, 48, 40]) {
     digits = d;
