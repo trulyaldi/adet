@@ -23,6 +23,7 @@ import { projectLook } from '../../../domain/look';
 import { loadStage } from '../../../game/render/screens';
 import { SkiaGate } from '../../../game/render/SkiaGate';
 import { useQuestReduced, useQuestSettings } from '../../../game/state/settings';
+import { takeBossIntro } from '../../../game/state/bossIntro';
 import { boundQuest, releaseTimerQuest } from '../../../game/state/timerQuest';
 import { DimOverlay, useFocusShell } from '../../../overlays/focusShell';
 import { useDevicePrefs } from '../../../store/devicePrefs';
@@ -32,6 +33,7 @@ import { useQuestTables } from '../../../sync/questTables';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { useAppActive } from '../../../theme/useMotion';
 import { stageTargetOf } from '../realm/realmModel';
+import { BossIntro } from './BossIntro';
 import { ClockPlate } from './ClockPlate';
 
 /** Done: the victory pose plays this long before the session saves (and the chest opens). */
@@ -64,6 +66,14 @@ export function QuestFocusContent() {
   }, [habitId, questId]);
   const sessionTarget = useSessionTarget(questId);
   const target = useMemo(() => (sessionTarget ? stageTargetOf(sessionTarget) : null), [sessionTarget]);
+  // A boss's first session this app session opens on its card (not a ceremony: those wait for the timer to end).
+  const boss = sessionTarget?.boss ?? null;
+  const [intro, setIntro] = useState<string | null>(null);
+  useEffect(() => {
+    // takeBossIntro marks it once; the card's own state holds it up.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (boss && takeBossIntro(boss.id)) setIntro(boss.title);
+  }, [boss]);
 
   const habit = data.habits.find((h) => h.id === p?.habitId);
   if (!p || !habit) return null;
@@ -148,6 +158,7 @@ export function QuestFocusContent() {
         </View>
 
         {dimmed && <DimOverlay onUndim={() => setDimmed(false)} />}
+        {intro !== null && <BossIntro name={intro} width={width} reduced={reduced} onDone={() => setIntro(null)} />}
       </Animated.View>
     </GestureDetector>
   );
