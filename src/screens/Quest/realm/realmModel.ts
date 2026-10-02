@@ -3,8 +3,10 @@
 // first) and the oldest uncleared boss in the lair at the top. Cleared quests
 // leave the path; they're trophies (counted here, listed in the Scribe). Pure.
 
-import type { BiomeId } from '../../../domain/game/biomes';
 import type { BossView, PathNode, RealmView } from '../../../domain/world/select';
+import type { SessionTarget } from '../../../domain/world/target';
+import { BIOME_IDS, BiomeId } from '../../../domain/game/biomes';
+import type { StageTarget } from '../session/TimerStage';
 import { alongPath, BiomeMap } from '../../../game/content/biomes/layout';
 import { bossId, mobId, ROSTER } from '../../../game/content/roster';
 
@@ -56,4 +58,11 @@ export function realmLayout(map: BiomeMap, view: RealmView): RealmLayout {
   });
   const lair = lairNode ? { node: lairNode, x: map.gate.x, y: map.gate.y - 14, sprite: `${bossId(b)}.idle` } : null;
   return { camp: point(map.path, 0.04), plus: point(map.path, 0.13), nodes, lair, hidden: Math.max(0, rest.length - room), trophies: view.cleared };
+}
+
+/** The timer Stage's enemy for a session's target: the boss sprite for a phase of a boss, else the quest's mob from the realm's biome. */
+export function stageTargetOf(t: SessionTarget): StageTarget {
+  const biome = BIOME_IDS[t.realm.slot] ?? 'forest';
+  const enemyId = t.boss ? bossId(biome) : mobSprite(biome, t.quest.parentQuestId ?? t.quest.id).replace(/\.idle$/, '');
+  return { biome, enemyId, boss: !!t.boss, name: t.quest.title, hearts: t.hearts, phases: t.phases };
 }

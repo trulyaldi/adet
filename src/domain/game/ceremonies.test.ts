@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ceremonyMayPlay, ceremonyVisible, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from './ceremonies';
+import { ceremonyMayPlay, ceremonyVisible, detectCeremonies, markCeremonyStarted, seedCeremonyMarks, withWorldMarks } from './ceremonies';
 import type { GameState } from './derive';
 
 const game = (level: number, rank: number, bosses: { biome: string; loop: number }[] = []): GameState => ({
@@ -66,4 +66,29 @@ test('a scene hidden by a session waits for the Loot sheet and other sheets befo
   // The session just ended and its Loot sheet is up: still hidden.
   assert.equal(ceremonyVisible({ ...quiet, lootOpen: true }), false);
   assert.equal(ceremonyVisible({ ...quiet, modalOpen: true }), false);
+});
+
+test('world-4: a fallen boss, then its realm conquered; each once', () => {
+  const g = game(2, 0);
+  const none = { bosses: [], realms: [] };
+  const fell = { bosses: [{ id: 'm', title: 'Ship it' }], realms: [{ id: 'realm:0', name: 'Work' }] };
+  const marks = seedCeremonyMarks(g, none);
+  const events = detectCeremonies(marks, g, fell);
+  assert.deepEqual(events.map((e) => e.kind), ['world_boss', 'realm_conquered']);
+  const after = events.reduce((m, e) => markCeremonyStarted(m, e, g), marks);
+  assert.deepEqual(detectCeremonies(after, g, fell), []);
+  // Reopened by a new quest and conquered again: no replay.
+  assert.deepEqual(detectCeremonies(after, g, { bosses: fell.bosses, realms: fell.realms }), []);
+});
+
+test('world-4: marks saved before World Mode seed silently; nothing already cleared replays', () => {
+  const g = game(2, 0);
+  const old = seedCeremonyMarks(g);
+  const fell = { bosses: [{ id: 'm', title: 'Ship it' }], realms: [] };
+  assert.deepEqual(detectCeremonies(old, g, fell), [], 'unseeded world marks announce nothing');
+  const seeded = withWorldMarks(old, fell);
+  assert.deepEqual(seeded.worldBosses, ['m']);
+  assert.equal(withWorldMarks(seeded, { bosses: [], realms: [] }), seeded, 'seeded once');
+  const later = { bosses: [...fell.bosses, { id: 'b2', title: 'Next' }], realms: [] };
+  assert.deepEqual(detectCeremonies(seeded, g, later).map((e) => e.id), ['world:b2']);
 });

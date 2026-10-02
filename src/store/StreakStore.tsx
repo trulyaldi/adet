@@ -49,6 +49,7 @@ import {
   Session,
 } from '../domain/types';
 import { isLootOpen } from '../game/state/loot';
+import { isResultOpen } from '../game/state/result';
 import { requestReminderPermission, syncReminder } from '../notifications/reminder';
 import { SyncStatus, useSync } from '../sync/useSync';
 import { MODAL_GAP_MS } from '../theme/motion';
@@ -200,7 +201,7 @@ const INITIAL_UI: UIState = {
 /** Whether any sheet or the focus view is up (full-screen celebrations wait for them). */
 export function anyModalOpen(ui: UIState): boolean {
   return (
-    isLootOpen() ||
+    isLootOpen() || isResultOpen() ||
     ui.timerOpen || ui.settingsOpen || ui.weekOpen || ui.startSheet || ui.capacityFix ||
     !!ui.habitSheet || !!ui.projectSheet || !!ui.logSheet || !!ui.sessionSheet || !!ui.recapSheet || !!ui.stageSheet
   );

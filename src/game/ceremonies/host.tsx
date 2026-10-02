@@ -1,11 +1,13 @@
 // One app-root ceremony host. evaluate() is a request to inspect derived
 // state; the host owns the mutex, per-user marks and ordered presentation.
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Modal } from 'react-native';
 
-import { ceremonyMayPlay, ceremonyVisible, CeremonyEvent, CeremonyMarks, detectCeremonies, markCeremonyStarted, seedCeremonyMarks } from '../../domain/game/ceremonies';
+import { ceremonyMayPlay, ceremonyVisible, CeremonyEvent, CeremonyMarks, detectCeremonies, markCeremonyStarted, seedCeremonyMarks, withWorldMarks } from '../../domain/game/ceremonies';
 import type { GameState } from '../../domain/game/derive';
 import { gameStateOf } from '../../domain/game/fromData';
+import { liveWorld } from '../../domain/world/select';
+import { worldMoments } from '../../domain/world/target';
 import { useLootRequest } from '../state/loot';
 import { useQuestLocal } from '../state/local';
 import { useQuestReduced } from '../state/settings';
@@ -20,6 +22,7 @@ import { coverWorld } from '../state/focus';
 import { setCeremonyPlaying, useCeremoniesHeld } from './gate';
 import { clearCeremonyMarks, loadCeremonyMarks, saveCeremonyMarks } from './marks';
 import { LevelUp } from '../../screens/Quest/ceremonies/LevelUp';
+import { WorldMoment } from '../../screens/Quest/ceremonies/WorldMoment';
 
 interface Handlers {
   evaluate(): void;
@@ -47,6 +50,8 @@ export function RootCeremonyHost() {
   const userId = session?.user.id ?? null;
   const data = useData();
   const game = gameStateOf(data);
+  // World Mode: fallen bosses and conquered realms, from result rows.
+  const moments = useMemo(() => worldMoments(liveWorld(data.items)), [data.items]);
   const screen = useUi((u) => u.screen);
   const { settled } = useSyncStatus();
   const tables = useQuestTables();
@@ -70,10 +75,10 @@ export function RootCeremonyHost() {
   const bump = useCallback(() => setRequest((n) => n + 1), []);
   const seed = useCallback((g: GameState) => {
     if (!userId) return;
-    const seeded = seedCeremonyMarks(g);
+    const seeded = seedCeremonyMarks(g, moments);
     marksRef.current = { userId, marks: seeded };
     saveCeremonyMarks(userId, seeded);
-  }, [userId]);
+  }, [userId, moments]);
   const preview = useCallback((event: CeremonyEvent, g?: GameState) => setPlaying({ event, game: g, preview: true }), []);
   const forgetMarks = useCallback(() => {
     if (!userId) return;
@@ -102,14 +107,20 @@ export function RootCeremonyHost() {
   const revealPending = screen === 'quest' && (!local.loaded || !local.seen || local.seen.global !== game.journey.position.global || local.seen.hp !== game.journey.hp);
   useEffect(() => {
     if (!loaded || !userId || tables !== 'available' || !game.journey.started) return;
-    const marks = marksFor(userId);
-    if (!marks) {
+    const stored = marksFor(userId);
+    if (!stored) {
       // A veteran, a new device, or first onboarding: silently seed history.
       if (settled) seed(game);
       return;
     }
+    // Marks from before World Mode: what has already fallen is seen.
+    const marks = settled ? withWorldMarks(stored, moments) : stored;
+    if (marks !== stored) {
+      marksRef.current = { userId, marks };
+      saveCeremonyMarks(userId, marks);
+    }
     if (playing || cooldown || !ceremonyMayPlay({ timerActive: !!data.active, lootOpen: !!loot, modalOpen, revealPending, appActive: active })) return;
-    const next = detectCeremonies(marks, game)[0];
+    const next = detectCeremonies(marks, game, moments)[0];
     if (!next) return;
     // Mark at start, before showing the Modal. Skip can never replay it.
     const updated = markCeremonyStarted(marks, next, game);
@@ -119,7 +130,7 @@ export function RootCeremonyHost() {
     // derived during render: this effect is the one transition into "playing".
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlaying({ event: next });
-  }, [loaded, userId, tables, settled, game, playing, cooldown, data.active, loot, modalOpen, revealPending, active, request, seed]);
+  }, [loaded, userId, tables, settled, game, moments, playing, cooldown, data.active, loot, modalOpen, revealPending, active, request, seed]);
 
   // A session starting mid-scene hides it; it comes back when the session has
   // ended and the Loot sheet (and anything else) is closed: one modal at a time.
@@ -138,6 +149,9 @@ export function RootCeremonyHost() {
   if (!current) return null;
   const shownGame = current.game ?? game;
   if (current.event.kind === 'level_up') return <LevelUp level={current.event.level} game={shownGame} onDone={done} reduced={reduced} />;
+  // Placeholders until Session 6.
+  if (current.event.kind === 'world_boss') return <WorldMoment banner="KO" line={current.event.title} onDone={done} reduced={reduced} />;
+  if (current.event.kind === 'realm_conquered') return <WorldMoment banner="Conquered" line={current.event.name} onDone={done} reduced={reduced} />;
   return (
     <Modal visible transparent animationType={reduced ? 'fade' : 'none'} onRequestClose={done} statusBarTranslucent>
       <SkiaGate load={loadScene} props={{ event: current.event, game: shownGame, onDone: done, reduced }} onError={done} />

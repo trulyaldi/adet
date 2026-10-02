@@ -3,3 +3,4 @@ export * from './types';
 export * from './rules';
 export * as worldOps from './ops';
 export * from './select';
+export * from './target';

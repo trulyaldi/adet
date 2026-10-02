@@ -3,7 +3,7 @@
 // clock plate, the Stage (the world as the clock, your character and the
 // enemy) and the controls. With Quest Mode off, FocusView keeps its ring.
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -16,12 +16,14 @@ import { Icon } from '../../../components/Icon';
 import { Text } from '../../../components/Text';
 import { MessageToast } from '../../../components/UndoToast';
 import { useQuestStarted } from '../../../data/itemsRepo';
+import { useSessionTarget } from '../../../data/worldRepo';
 import { focusLayout, resolveTimerSkin, skinProgress } from '../../../domain/game/timerSkin';
 import { ICONS } from '../../../domain/constants';
 import { projectLook } from '../../../domain/look';
 import { loadStage } from '../../../game/render/screens';
 import { SkiaGate } from '../../../game/render/SkiaGate';
 import { useQuestReduced, useQuestSettings } from '../../../game/state/settings';
+import { boundQuest, releaseTimerQuest } from '../../../game/state/timerQuest';
 import { DimOverlay, useFocusShell } from '../../../overlays/focusShell';
 import { useDevicePrefs } from '../../../store/devicePrefs';
 import { useActions, useData, useUi } from '../../../store/StreakStore';
@@ -29,6 +31,7 @@ import { TIMER_FRAME_MS, useActiveProgress } from '../../../store/useActiveProgr
 import { useQuestTables } from '../../../sync/questTables';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { useAppActive } from '../../../theme/useMotion';
+import { stageTargetOf } from '../realm/realmModel';
 import { ClockPlate } from './ClockPlate';
 
 /** Done: the victory pose plays this long before the session saves (and the chest opens). */
@@ -52,6 +55,15 @@ export function QuestFocusContent() {
   const tables = useQuestTables();
   const { battleStrip } = useQuestSettings();
   const [victory, setVictory] = useState(false);
+  // The quest this session fights (World Mode); none: a free session.
+  const habitId = data.active?.habitId ?? null;
+  const questId = boundQuest(habitId);
+  useEffect(() => {
+    // Another habit took the timer: the quest went with the old session.
+    if (habitId && !questId) releaseTimerQuest();
+  }, [habitId, questId]);
+  const sessionTarget = useSessionTarget(questId);
+  const target = useMemo(() => (sessionTarget ? stageTargetOf(sessionTarget) : null), [sessionTarget]);
 
   const habit = data.habits.find((h) => h.id === p?.habitId);
   if (!p || !habit) return null;
@@ -61,7 +73,8 @@ export function QuestFocusContent() {
   // The skin chosen in Settings, else the project's old focus scene mapped (read only).
   const skin = resolveTimerSkin(prefs.timerSkin, project?.scene);
   const { progress, past } = skinProgress(p.sec, p.targetSec, reduced);
-  const battle = started && tables === 'available' && battleStrip;
+  // The setting hides the enemy only; the session still targets its quest.
+  const battle = started && tables === 'available' && battleStrip && !!target;
   const stageW = width - 32;
   // Without Skia (still loading on web, or a failed draw): your character alone; the plate still shows the target.
   const portrait = (
@@ -105,7 +118,7 @@ export function QuestFocusContent() {
         <View style={{ position: 'absolute', top: l.stageTop, left: 16, width: stageW, height: l.stageH }}>
           <SkiaGate
             load={loadStage}
-            props={{ width: stageW, height: l.stageH, skin, progress, past, sessionSec: p.sessionSec, paused: p.paused, reduced, live: appActive && !dimmed, battle, payoff: targetHits, victory }}
+            props={{ width: stageW, height: l.stageH, skin, progress, past, sessionSec: p.sessionSec, paused: p.paused, reduced, live: appActive && !dimmed, battle, payoff: targetHits, victory, target }}
             fallback={portrait}
             errorFallback={portrait}
           />

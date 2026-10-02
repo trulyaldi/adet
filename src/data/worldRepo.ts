@@ -8,7 +8,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { newId, QuestSlice } from '../domain/items/ops';
 import type { ResultKind } from '../domain/items/types';
 import { worldOps } from '../domain/world';
-import { questById, realmView, RealmView, SlotView, slotsView } from '../domain/world/select';
+import { liveWorld, questById, realmView, RealmView, SlotView, slotsView } from '../domain/world/select';
+import { SessionTarget, targetOf } from '../domain/world/target';
 import { realmIdFor } from '../domain/world/types';
 import { useActions, useData } from '../store/StreakStore';
 import { questTablesReady } from '../sync/questTables';
@@ -89,4 +90,10 @@ export function useRealmView(realmId: string | null): RealmView | null {
 export function useWorldQuest(questId: string | null): ReturnType<typeof questById> {
   const { items } = useData();
   return useMemo(() => (questId ? questById(items, questId) : null), [items, questId]);
+}
+
+/** What a session for `questId` fights right now (null: a free session, or nothing left to fight). */
+export function useSessionTarget(questId: string | null): SessionTarget | null {
+  const { items } = useData();
+  return useMemo(() => (questId ? targetOf(liveWorld(items), questId) : null), [items, questId]);
 }

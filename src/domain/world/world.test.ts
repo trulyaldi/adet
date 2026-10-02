@@ -30,7 +30,7 @@ const view = (q: ops.QuestSlice) => liveWorld(q.items);
 const quest = (q: ops.QuestSlice, id: string) => view(q).quests.find((x) => x.id === id)!;
 const hearts = (q: ops.QuestSlice, id: string) => heartsOf(quest(q, id), view(q).results, view(q).quests);
 const cleared = (q: ops.QuestSlice, id: string) => isCleared(quest(q, id), view(q).results, view(q).quests);
-const tell = (q: ops.QuestSlice, id: string, kind: 'done' | 'partly' | 'not_yet', at: number, rid?: string) => worldOps.recordResult(q, id, kind, at, 's1', rid);
+const tell = (q: ops.QuestSlice, id: string, kind: 'done' | 'partly' | 'not_yet', at: number, rid?: string) => worldOps.recordResult(q, id, kind, at, `s${at}`, rid);
 
 test('every quest starts with 3 hearts', () => {
   assert.equal(B.QUEST_HEARTS, 3);
