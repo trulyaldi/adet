@@ -26,7 +26,7 @@ const STARS = 14;
 const FLAME_MS = 166;
 
 /** The fire's spot on the ground, between you and the enemy. */
-export const fireX = (worldW: number) => Math.round(worldW * 0.47);
+const fireX = (worldW: number) => Math.round(worldW * 0.44);
 
 function Back({ biome, worldW, horizon, progress, clock, reduced }: SkinProps) {
   const pal = PALETTES[biome];
@@ -68,7 +68,9 @@ function Front({ biome, worldW, worldH, progress, clock, reduced }: SkinProps) {
   const o2 = useDerivedValue<number>(() => (frame.value === 2 ? 1 : 0));
   return (
     <Group>
-      <SpriteBatch atlas="shared" items={[{ id: 'fx.glow.warm', x: cx, y: feet - 6 }]} additive />
+      <Group opacity={0.25 + 0.25 * level}>
+        <SpriteBatch atlas="shared" items={[{ id: 'fx.glow.warm', x: cx, y: feet - 6 }]} additive />
+      </Group>
       <Pixels cells={frames[0]} opacity={o0} />
       <Pixels cells={frames[1]} opacity={o1} />
       <Pixels cells={frames[2]} opacity={o2} />

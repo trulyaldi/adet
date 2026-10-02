@@ -169,7 +169,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   const node = nodeAt(shown.global);
   const b: BiomeId = node.biome;
   const boss = node.kind === 'boss';
-  const scale = Math.max(2, Math.min(5, Math.floor(Math.min(height / 64, width / 112))));
+  const scale = Math.max(2, Math.min(5, Math.floor(Math.min(height / 64, width / 96))));
   const worldW = Math.floor(width / scale);
   const worldH = Math.floor(height / scale);
   const horizon = Math.round(worldH * 0.62);
@@ -219,7 +219,7 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
           {scene === 'nap' && <SpriteBatch atlas="shared" items={[{ id: 'fx.zzz', x: heroX + 8, y: worldH - 24 }]} clock={reduced ? undefined : clock} />}
           {!reduced && <Particles kind="sparkle" x={heroX - 8} y={worldH - 40} w={16} h={14} count={10} clock={clock} startAt={cheerAt} />}
           {battle && <Enemy id={enemyBase} boss={boss} worldW={worldW} worldH={worldH} scene={scene} clock={clock} since={since} attackAt={attackAt} reduced={reduced} biome={b} hp={shown.hp} maxHp={shown.maxHp} />}
-          {!reduced && <Owl worldW={worldW} y={Math.max(8, Math.round(horizon * 0.3))} clock={clock} owlAt={owlAt} />}
+          {!reduced && <Owl worldW={worldW} y={Math.max(18, Math.round(horizon * 0.5))} clock={clock} owlAt={owlAt} />}
           <Rect x={0} y={0} width={worldW} height={worldH} color="#2a2350" opacity={dusk} />
           <Rect x={0} y={0} width={worldW} height={worldH} color="#ffb46a" opacity={0.05} />
         </Group>
@@ -373,7 +373,7 @@ function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduce
   // HP: a chunky segmented bar anchored above the enemy (follows it in, fades with it).
   const pal = PALETTES[biome];
   const segments = boss ? 16 : 10;
-  const segW = boss ? 2 : 3;
+  const segW = 2;
   const barW = segments * (segW + 1) + 1;
   const pips = hpPips(hp, maxHp, segments);
   const barT = useDerivedValue(() => [{ translateX: x.value - home }]);

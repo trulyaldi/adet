@@ -129,6 +129,7 @@ export function QuestFocusContent() {
           <Button
             icon="done"
             label="Done"
+            swatch={sw}
             quiet
             style={{ flex: 1 }}
             onPress={() =>

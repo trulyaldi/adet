@@ -124,8 +124,8 @@ export function focusLayout(screenH: number, insetTop: number, insetBottom: numb
   const plateH = plateFor(digits);
   const room = Math.max(0, controlsTop - FOCUS_GAP - (plateTop + plateH + FOCUS_GAP));
   const stageH = Math.floor(Math.min(room, screenH * STAGE_MAX_SHARE));
-  // Spare room above a capped Stage goes to the plate's breathing space.
+  // Spare room around a capped Stage splits evenly over the three gaps.
   const spare = room - stageH;
-  const stageTop = plateTop + plateH + FOCUS_GAP + Math.floor(spare / 2);
-  return { headerTop, headerH: HEADER_H, plateTop: plateTop + Math.floor(spare / 4), plateH, digits, stageTop, stageH, controlsTop, controlsH };
+  const stageTop = plateTop + plateH + FOCUS_GAP + Math.floor((spare * 2) / 3);
+  return { headerTop, headerH: HEADER_H, plateTop: plateTop + Math.floor(spare / 3), plateH, digits, stageTop, stageH, controlsTop, controlsH };
 }
