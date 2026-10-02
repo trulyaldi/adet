@@ -50,9 +50,9 @@ export function effectOf(kind: ResultKind, hearts: number): { effect: ResultEffe
 }
 
 /** Bosses that fell and realms that are conquered: what the ceremony host announces. */
-export function worldMoments(world: World): { bosses: string[]; realms: string[] } {
-  const bosses = world.quests.filter((q) => isBoss(q, world.quests) && isCleared(q, world.results, world.quests)).map((q) => q.id);
-  const realms = world.realms.filter((r) => isRealmConquered(r, world.quests, world.results)).map((r) => r.id);
+export function worldMoments(world: World): { bosses: { id: string; title: string }[]; realms: { id: string; name: string }[] } {
+  const bosses = world.quests.filter((q) => isBoss(q, world.quests) && isCleared(q, world.results, world.quests)).map((q) => ({ id: q.id, title: q.title }));
+  const realms = world.realms.filter((r) => isRealmConquered(r, world.quests, world.results)).map((r) => ({ id: r.id, name: r.name }));
   return { bosses, realms };
 }
 

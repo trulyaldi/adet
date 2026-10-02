@@ -2,26 +2,43 @@
 // values; deriving a lower level after a balance change never replays a scene.
 import type { GameState } from './derive';
 
-export interface CeremonyMarks { level: number; rank: number; bosses: string[]; ascensions: number }
+/** World Mode's fallen bosses and seen realms are absent from marks saved before world-4: they're seeded silently. */
+export interface CeremonyMarks { level: number; rank: number; bosses: string[]; ascensions: number; worldBosses?: string[]; realms?: string[] }
+/** What World Mode has to announce (domain/world worldMoments). */
+export interface WorldMoments { bosses: { id: string; title: string }[]; realms: { id: string; name: string }[] }
 export type CeremonyEvent =
   | { id: string; kind: 'boss_defeated'; biomeId: string; loop: number }
+  | { id: string; kind: 'world_boss'; questId: string; title: string }
+  | { id: string; kind: 'realm_conquered'; realmId: string; name: string }
   | { id: string; kind: 'ascension'; loop: number }
   | { id: string; kind: 'rank_up'; rankIndex: number }
   | { id: string; kind: 'level_up'; level: number };
 
 const ref = (biome: string, loop: number) => `${biome}:${loop}`;
 
-export function seedCeremonyMarks(game: GameState): CeremonyMarks {
+export function seedCeremonyMarks(game: GameState, world?: WorldMoments): CeremonyMarks {
   const bosses = game.journey.defeated.map((d) => ref(d.biome, d.loop));
-  return {
+  const marks: CeremonyMarks = {
     level: game.xp.level,
     rank: game.rank.tier,
     bosses,
     ascensions: Math.max(0, ...game.journey.defeated.filter((d) => d.biome === 'astral').map((d) => d.loop + 1)),
   };
+  return world ? withWorldMarks(marks, world) : marks;
 }
 
-export function detectCeremonies(marks: CeremonyMarks, game: GameState): CeremonyEvent[] {
+/** Marks from before World Mode: what has already fallen counts as seen (nothing replays). Unchanged when present. */
+export function withWorldMarks(marks: CeremonyMarks, world: WorldMoments): CeremonyMarks {
+  if (marks.worldBosses && marks.realms) return marks;
+  return { ...marks, worldBosses: marks.worldBosses ?? world.bosses.map((b) => b.id), realms: marks.realms ?? world.realms.map((r) => r.id) };
+}
+
+export function detectCeremonies(marks: CeremonyMarks, game: GameState, world?: WorldMoments): CeremonyEvent[] {
+  const fell = new Set(marks.worldBosses ?? []);
+  const conquered = new Set(marks.realms ?? []);
+  // Unseeded world marks announce nothing (withWorldMarks seeds them first).
+  const worldBosses: CeremonyEvent[] = world && marks.worldBosses ? world.bosses.filter((b) => !fell.has(b.id)).map((b) => ({ id: `world:${b.id}`, kind: 'world_boss', questId: b.id, title: b.title })) : [];
+  const realms: CeremonyEvent[] = world && marks.realms ? world.realms.filter((r) => !conquered.has(r.id)).map((r) => ({ id: `realm:${r.id}`, kind: 'realm_conquered', realmId: r.id, name: r.name })) : [];
   const seen = new Set(marks.bosses);
   const bosses: CeremonyEvent[] = game.journey.defeated
     .filter((d) => game.bossAchievements.includes(ref(d.biome, d.loop)) && !seen.has(ref(d.biome, d.loop)))
@@ -35,12 +52,15 @@ export function detectCeremonies(marks: CeremonyMarks, game: GameState): Ceremon
   const level: CeremonyEvent[] = !rank.length && game.xp.level > marks.level
     ? [{ id: `level:${game.xp.level}`, kind: 'level_up', level: game.xp.level }]
     : [];
-  return [...bosses, ...ascensions, ...level, ...rank];
+  return [...worldBosses, ...realms, ...bosses, ...ascensions, ...level, ...rank];
 }
 
 export function markCeremonyStarted(marks: CeremonyMarks, event: CeremonyEvent, game: GameState): CeremonyMarks {
   switch (event.kind) {
     case 'boss_defeated': return { ...marks, bosses: [...new Set([...marks.bosses, ref(event.biomeId, event.loop)])] };
+    case 'world_boss': return { ...marks, worldBosses: [...new Set([...(marks.worldBosses ?? []), event.questId])] };
+    // Once per realm: conquering it again after adding a quest doesn't replay.
+    case 'realm_conquered': return { ...marks, realms: [...new Set([...(marks.realms ?? []), event.realmId])] };
     case 'ascension': return { ...marks, ascensions: Math.max(marks.ascensions, event.loop) };
     case 'level_up': return { ...marks, level: Math.max(marks.level, event.level) };
     case 'rank_up': return { ...marks, rank: Math.max(marks.rank, event.rankIndex), level: Math.max(marks.level, game.xp.level) };

@@ -106,8 +106,14 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   }, []);
   useEffect(() => {
     if (!undo) return;
+    // A boss can't fall on screen and then be undone: ceremonies wait out the undo window.
+    const release = holdCeremonies();
     const t = setTimeout(() => setUndo(null), RESULT_UNDO_MS);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      release();
+      ceremonyHost.evaluate();
+    };
   }, [undo]);
   // Evaluate ceremonies once the screen settles (as the reveal used to).
   useEffect(() => {

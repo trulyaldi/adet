@@ -99,7 +99,7 @@ test('moments: a fallen boss and a conquered realm', () => {
   assert.deepEqual(worldMoments(liveWorld(q.items)), { bosses: [], realms: [] });
   q = worldOps.recordResult(q, 'p1', 'done', T0 + 10, 'a');
   q = worldOps.recordResult(q, 'p2', 'done', T0 + 11, 'b');
-  assert.deepEqual(worldMoments(liveWorld(q.items)), { bosses: ['m'], realms: ['realm:0'] });
+  assert.deepEqual(worldMoments(liveWorld(q.items)), { bosses: [{ id: 'm', title: 'Normalize the schema' }], realms: [{ id: 'realm:0', name: 'Databases' }] });
 });
 
 test('a free session stays free: no result asked, its chest as before', () => {
