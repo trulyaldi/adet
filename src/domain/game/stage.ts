@@ -12,9 +12,6 @@ export const SCENE_STATES: readonly SceneState[] = ['fight', 'defeat', 'walkIn',
 
 /** Slow, calm timings (milliseconds). */
 export const STAGE_TIMING = {
-  /** A gentle attack every 4–6 seconds while fighting. */
-  attackMinMs: 4000,
-  attackMaxMs: 6000,
   /** The enemy dissolves into petals and a coin sparkles. */
   defeatMs: 2400,
   /** The next enemy walks in from the right. */
@@ -90,29 +87,4 @@ export function stageStep(prev: StageState | null, timer: TimerState, enc: Encou
   if (enc.global !== prev.enemy.global) return { scene: 'defeat', since: now, enemy: { ...prev.enemy, hp: 0 } };
   const scene = fightOrStagger(enc);
   return { scene, since: prev.scene === scene ? prev.since : now, enemy: enc };
-}
-
-/** Milliseconds from one gentle attack to the next (4–6 s, varied but deterministic). */
-export function attackGap(n: number): number {
-  const span = STAGE_TIMING.attackMaxMs - STAGE_TIMING.attackMinMs;
-  return STAGE_TIMING.attackMinMs + ((n * 7919 + 1237) % (span + 1));
-}
-
-/** Where the Stage may go: the band between the timer ring and the controls. */
-export interface StageBand {
-  top: number;
-  bottom: number;
-  screenHeight: number;
-  width: number;
-}
-
-/** Short screens get a slim strip; others at most 28% of the screen. */
-export const STAGE_SLIM_H = 72;
-export const STAGE_SLIM_BELOW = 700;
-export const STAGE_MAX_SHARE = 0.28;
-
-export function stageSize(band: StageBand): { height: number; slim: boolean } {
-  const room = Math.max(0, band.bottom - band.top);
-  if (band.screenHeight < STAGE_SLIM_BELOW || room < 120) return { height: Math.min(STAGE_SLIM_H, room), slim: true };
-  return { height: Math.floor(Math.min(room, band.screenHeight * STAGE_MAX_SHARE)), slim: false };
 }

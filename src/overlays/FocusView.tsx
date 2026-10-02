@@ -18,7 +18,8 @@ import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { fmtDur, sayDur } from '../domain/time';
 import { Scene } from '../scenes/Scene';
-import { QuestFocusRow, QuestFocusStage } from '../screens/Quest/session/QuestFocus';
+import { QUEST_ENABLED } from '../game/enabled';
+import { QuestFocusContent } from '../screens/Quest/session/QuestFocus';
 import { useDevicePrefs } from '../store/devicePrefs';
 import { useActions, useData, useUi } from '../store/StreakStore';
 import { TIMER_FRAME_MS, useActiveProgress } from '../store/useActiveProgress';
@@ -44,7 +45,7 @@ export function FocusView() {
   const open = timerOpen && !!data.active;
   return (
     <Modal visible={open} animationType="slide" onRequestClose={actions.closeTimer} statusBarTranslucent>
-      <GestureHandlerRootView style={{ flex: 1 }}>{open && <FocusContent />}</GestureHandlerRootView>
+      <GestureHandlerRootView style={{ flex: 1 }}>{open && (QUEST_ENABLED ? <QuestFocusContent /> : <FocusContent />)}</GestureHandlerRootView>
     </Modal>
   );
 }
@@ -136,9 +137,6 @@ function FocusContent() {
           <IconButton label="Minimize" name="chevronDown" size={22} color={colors.sub} bg={colors.card} diameter={40} onPress={actions.closeTimer} tipBelow />
         </View>
 
-        {/* Quest Mode: weak points for this session (optional, collapsed). */}
-        <QuestFocusRow habitId={habit.id} top={insets.top + 60} />
-
         {/* The timer */}
         <View style={{ position: 'absolute', left: 0, right: 0, top: cy - ringSize / 2, alignItems: 'center' }}>
           <ProgressRing
@@ -157,17 +155,10 @@ function FocusContent() {
           </ProgressRing>
         </View>
 
-        {/* Quest Mode: the Stage between the ring and the controls; else your character in a corner. */}
-        <QuestFocusStage
-          band={{ top: cy + ringSize / 2 + 12, bottom: height - insets.bottom - 108, screenHeight: height, width }}
-          paused={p.paused}
-          dimmed={dimmed}
-          portrait={
-            <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
-              <Character mood={mood} size={78} />
-            </View>
-          }
-        />
+        {/* Your character in a corner. */}
+        <View style={{ position: 'absolute', left: 14, bottom: insets.bottom + 108, pointerEvents: 'none' }}>
+          <Character mood={mood} size={78} />
+        </View>
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, alignItems: 'center' }}>
           <MessageToast />

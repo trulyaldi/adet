@@ -11,13 +11,13 @@ type QuestScreenModule = typeof import('../../screens/Quest/QuestScreen');
 type PlaygroundModule = typeof import('../../screens/Quest/Playground');
 type SceneModule = typeof import('../../screens/Quest/ceremonies/Scene');
 type LootSheetModule = typeof import('../../screens/Quest/session/LootSheet');
-type StageModule = typeof import('../../screens/Quest/session/Stage');
+type StageModule = typeof import('../../screens/Quest/session/TimerStage');
 
 export const loadQuestScreen = (): QuestScreenModule => require('../../screens/Quest/QuestScreen');
 // Dev builds only: __DEV__ folds to false in production, so the QA tools aren't bundled.
 export const loadPlayground = __DEV__ ? (): PlaygroundModule => require('../../screens/Quest/Playground') : null;
 export const loadScene = (): SceneModule => require('../../screens/Quest/ceremonies/Scene');
 export const loadLootSheet = (): LootSheetModule => require('../../screens/Quest/session/LootSheet');
-export const loadStage = (): StageModule => require('../../screens/Quest/session/Stage');
+export const loadStage = (): StageModule => require('../../screens/Quest/session/TimerStage');
 type CharacterArtModule = typeof import('./CharacterArt');
 export const loadCharacterArt = (): CharacterArtModule => require('./CharacterArt');
