@@ -38,7 +38,7 @@ import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { PE } from '../../game/ui/pointer';
 import { QUI } from '../../game/ui/theme';
-import { useActions } from '../../store/StreakStore';
+import { useActions, useSyncStatus } from '../../store/StreakStore';
 import { MODAL_GAP_MS } from '../../theme/motion';
 import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
@@ -107,12 +107,14 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   // A realm conquered since the map was last seen: its flag rises there (world-6).
   const conquered = slots.flatMap((s) => (s.conquered && s.realm ? [s.realm.id] : [])).join(',');
   const [raise, setRaise] = useState<string[]>([]);
+  // Seeded once sync has settled, so realms pulled onto a new device don't all raise their flags.
+  const { settled } = useSyncStatus();
   useEffect(() => {
-    if (!local.loaded) return;
+    if (!local.loaded || !settled) return;
     const fresh = newlyConquered(conquered ? conquered.split(',') : []);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fresh.length) setRaise((r) => [...r, ...fresh]);
-  }, [conquered, local.loaded]);
+  }, [conquered, local.loaded, settled]);
   const onRaised = useCallback(() => setRaise([]), []);
   const closeRealm = useCallback(() => {
     if (open === null || moving) return;

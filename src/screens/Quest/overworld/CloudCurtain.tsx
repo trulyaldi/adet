@@ -51,7 +51,7 @@ function Half({ t, layer, side, viewW, viewH, biome }: { t: SharedValue<number>;
       const reach = half + OVERLAP + e;
       const x = side < 0 ? -viewW : viewW - reach;
       path.addRect(Skia.XYWHRect(x, i * row, viewW + reach, row));
-      if (layer === LAYERS.length - 1 && i % 4 === 1) items.push({ id: `parallax.${biome}.cloud`, x: side < 0 ? reach - 26 : viewW - reach - 10, y: i * row - 4, flip: side > 0 });
+      if (layer === LAYERS.length - 1 && i % 4 === 1) items.push({ id: `parallax.${biome}.cloud`, x: side < 0 ? reach - 26 : viewW - reach - 10, y: i * row - 4 });
     });
     return { path, items };
   }, [layer, side, viewW, viewH, row, half, biome]);
