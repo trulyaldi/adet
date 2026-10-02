@@ -1,13 +1,12 @@
 // The timer Stage (the pixel redesign): the hero of the focus screen. One
 // canvas draws the world as a clock (the skin, driven by today's time
-// against the target), your character, and, once the journey has started,
-// the current enemy with its HP above it as a chunky pixel bar.
+// against the target), your character, and, when the session targets a
+// quest (World Mode), that quest's enemy with its hearts above it.
 //
-// Two signals, one each: the skin shows the target, the HP shows the enemy.
-// The HP comes from a live preview of the running session through the
-// game's own rules (domain/game/stage), so it matches the loot chest; the
-// enemy never heals. Every minute the preview moves, your character swings
-// once and the enemy loses its share.
+// Two signals, one each: the skin shows the target, the hearts show the
+// enemy. Time never damages it: only the result told after the session
+// does (world-4). The result sheet draws this same Stage to play it: Done,
+// a swing and the enemy falls; Partly, a swing, a flash and one heart pops.
 //
 // Calm: no sound, no haptics, nothing white or flashing, nothing red. The
 // world runs on a stepped ~8 fps clock that stops while paused, dimmed, in
@@ -20,19 +19,18 @@ import { Pressable, View } from 'react-native';
 import { SharedValue, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useQuestMeta } from '../../../data/itemsRepo';
-import { NODE_MOBS } from '../../../domain/game/balance';
+import { QUEST_HEARTS } from '../../../domain/game/balance';
 import type { BiomeId } from '../../../domain/game/biomes';
 import type { ColorMatrix } from '../../../domain/game/daylight';
 import { nodeAt } from '../../../domain/game/derive';
-import { gameInput } from '../../../domain/game/fromData';
-import { encounterOf, liveSession, previewGame, SceneState, STAGE_TIMING, stageStep, StageState, TimerState } from '../../../domain/game/stage';
-import { hpPips, TimerSkin } from '../../../domain/game/timerSkin';
-import { dkey } from '../../../domain/time';
+import { gameStateOf } from '../../../domain/game/fromData';
+import { encounterOf, SceneState, STAGE_TIMING, stageStep, StageState, TimerState } from '../../../domain/game/stage';
+import type { TimerSkin } from '../../../domain/game/timerSkin';
+import type { ResultEffect } from '../../../domain/world/target';
 import { sprite } from '../../../game/assets/manifest';
 import { avatarLayers, AvatarLook } from '../../../game/avatar';
 import { BIOMES } from '../../../game/content/biomes';
 import { PALETTES } from '../../../game/content/palettes';
-import { bossId, mobId, ROSTER } from '../../../game/content/roster';
 import { useAtlas } from '../../../game/render/atlas';
 import { useGameClock } from '../../../game/render/clock';
 import { Graded } from '../../../game/render/Lighting';
@@ -58,8 +56,10 @@ const CHEER_MS = 900;
 /** The Sage flies over once, this far into a session. */
 const OWL_AFTER_SEC = 20 * 60;
 const OWL_FLIGHT_MS = 7000;
-/** HP: a warm pink from the forest's accent ramp (no warning red). */
-const HP_FILL = PALETTES.forest.accentA[1];
+/** A boss's phase pips: cleared ones in gold. */
+const PIP_ON = '#f4c542';
+/** Done: the swing lands, then the enemy falls. */
+const KO_AFTER_MS = 450;
 
 /** Habits the Sage has already flown over for, this app run (once per session, roughly). */
 const owlFlown = new Set<string>();
@@ -78,32 +78,41 @@ export interface TimerStageProps {
   reduced: boolean;
   /** The clock may run (app in front, screen not dimmed). */
   live: boolean;
-  /** Show the enemy and its HP (the journey has started and the setting is on). */
+  /** Show the enemy and its hearts (a quest is targeted and the setting is on). */
   battle: boolean;
   /** Bumped when the target is reached: a one-shot cheer. */
   payoff: number;
   /** Done was pressed: a short victory pose before the chest. */
   victory: boolean;
+  /** The quest's enemy on stage (null: a free session, no enemy). */
+  target?: StageTarget | null;
+  /** The result sheet: what the told result does, played once. */
+  reaction?: ResultEffect | null;
   /** QA: hold one scene. */
   force?: SceneState;
 }
 
-export default function TimerStage({ width, height, skin, progress, past, sessionSec, paused, reduced, live, battle, payoff, victory, force }: TimerStageProps) {
+/** The enemy a session fights: its sprite from the realm's biome, and its hearts. */
+export interface StageTarget {
+  biome: BiomeId;
+  /** The sprite's base id (mob or boss). */
+  enemyId: string;
+  boss: boolean;
+  name: string;
+  hearts: number;
+  /** A boss's phases (pips under the hearts). */
+  phases: { cleared: number; total: number } | null;
+}
+
+export default function TimerStage({ width, height, skin, progress, past, sessionSec, paused, reduced, live, battle, payoff, victory, target, reaction, force }: TimerStageProps) {
   const data = useData();
   const meta = useQuestMeta();
   const active = data.active;
   const timer: TimerState = !active ? 'ended' : paused ? 'paused' : 'running';
-  // The preview moves once a focused minute (damage is per minute): the clock
-  // is checked every 5 s, and the game is derived again only when the minute turns.
-  const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
-  useEffect(() => {
-    if (timer !== 'running') return;
-    const t = setInterval(() => setMinute(Math.floor(Date.now() / 60_000) * 60_000), 5000);
-    return () => clearInterval(t);
-  }, [timer]);
-  const at = Math.max(minute, active?.startedAt ?? 0);
-  const game = useMemo(() => previewGame(gameInput(data, 0, undefined, dkey(new Date(at))), liveSession(active, at)), [data, active, at]);
+  // The scene (nap, wake…) only; the legacy journey no longer moves, so its encounter stays put.
+  const game = gameStateOf(data);
   const enc = encounterOf(game);
+  const at = active?.startedAt ?? Date.now();
 
   // The scene machine: stepped when its inputs change and when a timed scene ends.
   const [stage, setStage] = useState<StageState>(() => stageStep(null, timer, enc, at));
@@ -121,8 +130,15 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
     const t = setTimeout(() => setTick((n) => n + 1), Math.max(0, stage.since + left - Date.now()) + 20);
     return () => clearTimeout(t);
   }, [stage]);
-  const scene: SceneState = force ?? (reduced ? (timer === 'paused' ? 'nap' : 'fight') : stage.scene);
-  // On stage: the machine's enemy (the falling one during a defeat); with reduced motion, simply the current one.
+  // Done on the result sheet: the swing lands, then the enemy falls.
+  const [ko, setKo] = useState(false);
+  useEffect(() => {
+    if (reaction !== 'cleared') return;
+    const t = setTimeout(() => setKo(true), reduced ? 0 : KO_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [reaction, reduced]);
+  const scene: SceneState = force ?? (ko ? 'defeat' : reduced ? (timer === 'paused' ? 'nap' : 'fight') : stage.scene);
+  // Free sessions keep the scenery of the journey's (now still) node.
   const shown = reduced ? enc : stage.enemy;
 
   // Shared values the canvas reads. The clock runs for a victory even while paused.
@@ -139,14 +155,11 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
     dusk.value = reduced ? (scene === 'nap' ? STAGE_TIMING.napDusk : 0) : withTiming(scene === 'nap' ? STAGE_TIMING.napDusk : 0, { duration: QUEST_MS.light });
   }, [scene, reduced, clock, sceneCode, since, dusk]);
 
-  // A swing each time the enemy loses HP (once a focused minute), not on a timer.
-  const lastHit = useRef({ global: enc.global, hp: enc.hp });
+  // A swing for a Done or a Partly (time alone never hits).
   useEffect(() => {
-    const prev = lastHit.current;
-    lastHit.current = { global: enc.global, hp: enc.hp };
-    if (!battle || reduced || timer !== 'running') return;
-    if (enc.global !== prev.global || enc.hp < prev.hp) attackAt.value = clock.value;
-  }, [enc.global, enc.hp, battle, reduced, timer, clock, attackAt]);
+    if (reduced || (reaction !== 'cleared' && reaction !== 'heart')) return;
+    attackAt.value = clock.value;
+  }, [reaction, reduced, clock, attackAt]);
 
   // One-shot cheers: reaching the target, and Done.
   const firstPayoff = useRef(payoff);
@@ -165,17 +178,15 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   }, [owlDue, owlKey, clock, owlAt]);
 
   // The world: a fixed pixel scale for the whole Stage.
-  const node = nodeAt(shown.global);
-  const b: BiomeId = node.biome;
-  const boss = node.kind === 'boss';
+  const b: BiomeId = target?.biome ?? nodeAt(shown.global).biome;
+  const boss = !!target?.boss;
+  const fight = battle && !!target;
   const scale = Math.max(2, Math.min(5, Math.floor(Math.min(height / 64, width / 96))));
   const worldW = Math.floor(width / scale);
   const worldH = Math.floor(height / scale);
   const horizon = Math.round(worldH * 0.62);
   const look: AvatarLook = { tier: game.rank.tier, gear: meta?.props.avatar.gear ?? {} };
-  const mob = ROSTER[b].mobs[Math.max(0, NODE_MOBS[node.node] as number)];
-  const name = boss ? ROSTER[b].boss.name : mob.name;
-  const enemyBase = boss ? bossId(b) : mobId(b, mob.key);
+  const name = target?.name ?? '';
   const renderer = skinRenderer(skin);
   const skinProps: SkinProps = { biome: b, worldW, worldH, horizon, progress, past, clock, reduced };
   const heroX = Math.round(worldW * 0.24);
@@ -188,10 +199,10 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
     if (namedTimer.current) clearTimeout(namedTimer.current);
     namedTimer.current = setTimeout(() => setNamed(false), 2500);
   };
-  const pose = scene === 'nap' ? 'resting' : scene === 'wake' ? 'stretching' : victory ? 'cheering' : battle ? 'fighting' : 'standing ready';
+  const pose = scene === 'nap' ? 'resting' : scene === 'wake' ? 'stretching' : victory ? 'cheering' : fight ? 'fighting' : 'standing ready';
   const label = [
     renderer.say(progress, past),
-    battle ? `${name}, ${Math.ceil(shown.hp)} of ${shown.maxHp} health` : null,
+    fight && target ? `${name}, ${target.hearts} of ${QUEST_HEARTS} hearts` : null,
     `Your character, ${pose}`,
   ]
     .filter(Boolean)
@@ -200,10 +211,10 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
   const { Back, Mid, Front } = renderer;
   return (
     <Pressable
-      onPress={battle ? tap : undefined}
-      accessibilityRole={battle ? 'button' : 'image'}
+      onPress={fight ? tap : undefined}
+      accessibilityRole={fight ? 'button' : 'image'}
       accessibilityLabel={label}
-      accessibilityHint={battle ? "Shows the enemy's name" : undefined}
+      accessibilityHint={fight ? "Shows the quest's name" : undefined}
       style={{ width, height, borderRadius: 8, overflow: 'hidden' }}
     >
       <Canvas style={{ width, height }}>
@@ -217,13 +228,13 @@ export default function TimerStage({ width, height, skin, progress, past, sessio
           <StageAvatar look={look} x={heroX} y={worldH - 4} clock={clock} scene={sceneCode} since={since} attackAt={attackAt} cheerAt={cheerAt} />
           {scene === 'nap' && <SpriteBatch atlas="shared" items={[{ id: 'fx.zzz', x: heroX + 8, y: worldH - 24 }]} clock={reduced ? undefined : clock} />}
           {!reduced && <Particles kind="sparkle" x={heroX - 8} y={worldH - 40} w={16} h={14} count={10} clock={clock} startAt={cheerAt} />}
-          {battle && <Enemy id={enemyBase} boss={boss} worldW={worldW} worldH={worldH} scene={scene} clock={clock} since={since} attackAt={attackAt} reduced={reduced} biome={b} hp={shown.hp} maxHp={shown.maxHp} />}
+          {fight && target && !(reduced && ko) && <Enemy id={target.enemyId} boss={boss} worldW={worldW} worldH={worldH} scene={scene} clock={clock} since={since} attackAt={attackAt} reduced={reduced} biome={b} hearts={target.hearts} popped={reaction === 'heart'} phases={target.phases} />}
           {!reduced && <Owl worldW={worldW} y={Math.max(18, Math.round(horizon * 0.5))} clock={clock} owlAt={owlAt} />}
           <Rect x={0} y={0} width={worldW} height={worldH} color="#2a2350" opacity={dusk} />
           <Rect x={0} y={0} width={worldW} height={worldH} color="#ffb46a" opacity={0.05} />
         </Group>
       </Canvas>
-      {battle && named && (
+      {fight && named && (
         <View style={{ position: 'absolute', top: 8, right: 10, alignItems: 'flex-end', gap: 4, pointerEvents: 'none' }}>
           <PixelText size="tiny" color={QUI.ink} numberOfLines={1}>
             {name}
@@ -329,8 +340,8 @@ function StageAvatar({ look, x, y, clock, scene, since, attackAt, cheerAt }: { l
   return <Atlas image={image} sprites={sprites} transforms={transforms} sampling={NEAREST} />;
 }
 
-/** The enemy: idle, a soft recoil and warm tint when hit; dazed; dissolving; walking in. Its HP rides above it. */
-function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduced, biome, hp, maxHp }: { id: string; boss: boolean; worldW: number; worldH: number; scene: SceneState; clock: SharedValue<number>; since: SharedValue<number>; attackAt: SharedValue<number>; reduced: boolean; biome: BiomeId; hp: number; maxHp: number }) {
+/** The enemy: idle, a soft recoil and warm tint when hit; dissolving. Its hearts ride above it (a boss's phase pips under them). */
+function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduced, biome, hearts, popped, phases }: { id: string; boss: boolean; worldW: number; worldH: number; scene: SceneState; clock: SharedValue<number>; since: SharedValue<number>; attackAt: SharedValue<number>; reduced: boolean; biome: BiomeId; hearts: number; popped: boolean; phases: { cleared: number; total: number } | null }) {
   const home = worldW - (boss ? 30 : 24);
   const feet = worldH - 4;
   const pose = `${id}.idle`;
@@ -366,15 +377,25 @@ function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduce
   });
   const hitAt = useDerivedValue(() => attackAt.value + 250);
   const embers = rgb(PALETTES[biome].accentA[1]);
-  // HP: a chunky segmented bar anchored above the enemy (follows it in, fades with it).
+  // Hearts anchored above the enemy (they follow it in and fade with it). A
+  // Partly pops the last full one just as the swing lands.
   const pal = PALETTES[biome];
-  const segments = boss ? 16 : 10;
-  const segW = 2;
-  const barW = segments * (segW + 1) + 1;
-  const pips = hpPips(hp, maxHp, segments);
+  const heart = sprite('icon.heart');
+  const rowW = QUEST_HEARTS * (heart.w + 1) - 1;
   const barT = useDerivedValue(() => [{ translateX: x.value - home }]);
-  const barX = home - Math.round(barW / 2);
-  const barY = feet - m.h - 7;
+  const rowX = home - Math.round(rowW / 2);
+  const pipsH = phases ? 3 : 0;
+  const rowY = feet - m.h - heart.h - 2 - pipsH;
+  const full = popped ? hearts - 1 : hearts;
+  const popT = useDerivedValue(() => {
+    const dt = clock.value - attackAt.value - 250;
+    return [{ translateY: popped && !reduced && dt >= 0 ? -Math.min(4, Math.floor(dt / 80)) : 0 }];
+  });
+  const popOpacity = useDerivedValue(() => {
+    if (reduced) return 0.3;
+    const dt = clock.value - attackAt.value - 250;
+    return dt < 0 ? 1 : Math.max(0.3, 1 - dt / 500);
+  });
   return (
     <Group>
       <Group opacity={opacity}>
@@ -387,13 +408,29 @@ function Enemy({ id, boss, worldW, worldH, scene, clock, since, attackAt, reduce
           </Group>
         )}
         <Group transform={barT}>
-          <Rect x={barX} y={barY} width={barW} height={5} color={pal.outline} />
-          {Array.from({ length: segments }, (_, i) => (
-            <Rect key={i} x={barX + 1 + i * (segW + 1)} y={barY + 1} width={segW} height={3} color={i < pips ? HP_FILL : mix(pal.outline, HP_FILL, 0.22)} />
-          ))}
+          {Array.from({ length: QUEST_HEARTS }, (_, i) => {
+            const hx = rowX + i * (heart.w + 1) + heart.ax;
+            const hy = rowY + heart.ay;
+            if (popped && i === full) {
+              return (
+                <Group key={i} opacity={popOpacity} transform={popT}>
+                  <AnimatedSprite id="icon.heart" x={hx} y={hy} clock={clock} />
+                </Group>
+              );
+            }
+            return (
+              <Group key={i} opacity={i < full ? 1 : 0.3}>
+                <AnimatedSprite id="icon.heart" x={hx} y={hy} clock={clock} />
+              </Group>
+            );
+          })}
+          {phases &&
+            Array.from({ length: phases.total }, (_, i) => (
+              <Rect key={`p${i}`} x={home - Math.round((phases.total * 3 - 1) / 2) + i * 3} y={feet - m.h - 3} width={2} height={2} color={i < phases.cleared ? PIP_ON : mix(pal.outline, PIP_ON, 0.25)} />
+            ))}
         </Group>
       </Group>
-      {!reduced && scene === 'fight' && <AnimatedSprite id="fx.hit" x={home - 2} y={feet - Math.round(m.h / 2)} clock={clock} startAt={hitAt} transient />}
+      {!reduced && scene !== 'defeat' && scene !== 'walkIn' && <AnimatedSprite id="fx.hit" x={home - 2} y={feet - Math.round(m.h / 2)} clock={clock} startAt={hitAt} transient />}
       {!reduced && scene === 'defeat' && (
         <>
           <Particles kind="dissolve" x={home - m.w / 2 + 2} y={feet - m.h + 2} w={m.w - 4} h={m.h - 4} count={boss ? 50 : 24} clock={clock} startAt={petalsAt} tint={embers} />
