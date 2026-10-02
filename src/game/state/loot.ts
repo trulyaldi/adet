@@ -7,7 +7,7 @@ import { holdCeremonies } from '../ceremonies/gate';
 
 export interface LootRequest {
   sessionId: string;
-  /** Just finished (bounces in with the session's planned weak points) or from the pile. */
+  /** Just finished (bounces in) or from the pile. */
   fresh: boolean;
 }
 

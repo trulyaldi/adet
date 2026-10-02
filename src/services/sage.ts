@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 
-import { fallbackInsight, fallbackRecap, fallbackSuggestions, SageAdvice, trailInsight } from '../domain/game/sageFallback';
+import { fallbackInsight, fallbackRecap, SageAdvice, trailInsight } from '../domain/game/sageFallback';
 import { trailOf } from '../domain/progress';
 import { activeHabits } from '../domain/projects';
 import { itemsOfType, QuestSettings } from '../domain/items/types';
@@ -63,12 +63,13 @@ export function useSageAdvice(data: PersistedState, now: number): { advice: Sage
     // The Trail first ("Reading is rising this week"), else the day-part pattern.
     const trail = trailOf({ sessions: data.sessions, habits: habits.map((id) => ({ id })), items: data.items, now });
     const names = new Map(data.habits.map((h) => [h.id, h.name]));
-    return { suggestions: fallbackSuggestions(data.sessions, data.items, habits, now), insight: trailInsight(trail, (id) => names.get(id)) ?? fallbackInsight(data.sessions) };
+    return { suggestions: [], insight: trailInsight(trail, (id) => names.get(id)) ?? fallbackInsight(data.sessions) };
   }, [data.sessions, data.items, data.habits, day]);
   const payload = useMemo<SuggestPayload>(() => ({
     habits: activeHabits(data).filter((h) => h.kind !== 'check').map((h) => ({
       id: h.id, name: h.name,
-      openTasks: itemsOfType(data.items, 'task').filter((t) => t.habitId === h.id && t.props.status === 'open').slice(0, 10).map((t) => t.title),
+      // Dormant: weak points are gone; the edge function still expects the field.
+      openTasks: [],
     })),
     entries: itemsOfType(data.items, 'log').filter((l) => !!l.body.trim() && !!l.habitId).sort((a, b) => b.createdAt - a.createdAt).slice(0, 20).map((l) => ({ habitId: l.habitId!, text: l.body.slice(0, 500), at: new Date(l.createdAt).toISOString() })),
   }), [data.habits, data.items]);
@@ -87,10 +88,10 @@ export function useSageAdvice(data: PersistedState, now: number): { advice: Sage
   return { advice, source: 'local', loading: true };
 }
 
-export function useSageRecap(bossName: string, run: { sessions: number; tasks: number; entries: string[] }, enabled = false, biomeName = ''): { recap: string; loading: boolean } {
-  const fallback = fallbackRecap(bossName, run.sessions, run.tasks, run.entries.length);
+export function useSageRecap(bossName: string, run: { sessions: number; entries: string[] }, enabled = false, biomeName = ''): { recap: string; loading: boolean } {
+  const fallback = fallbackRecap(bossName, run.sessions, run.entries.length);
   const entriesKey = JSON.stringify(run.entries);
-  const payload = useMemo<RecapPayload>(() => ({ biomeName, bossName, entries: run.entries.slice(0, 20), sessionCount: run.sessions, taskCount: run.tasks }), [biomeName, bossName, entriesKey, run.sessions, run.tasks]);
+  const payload = useMemo<RecapPayload>(() => ({ biomeName, bossName, entries: run.entries.slice(0, 20), sessionCount: run.sessions, taskCount: 0 }), [biomeName, bossName, entriesKey, run.sessions]); // taskCount: dormant (weak points removed); the edge function still requires it
   // The recap for one request: the AI's, or the local one after 3 s.
   const [answer, setAnswer] = useState<{ payload: RecapPayload; fallback: string; recap: string } | null>(null);
   useEffect(() => {

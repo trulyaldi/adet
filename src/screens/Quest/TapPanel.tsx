@@ -4,17 +4,15 @@
 import React, { useEffect } from 'react';
 import { AccessibilityInfo, Pressable, View } from 'react-native';
 
-import type { SealState } from '../../domain/game/derive';
 import { SpriteView } from '../../game/render/SpriteView';
 import { HPBar } from '../../game/ui/HPBar';
 import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
-import { SealPips, sealsLabel } from '../../game/ui/SealPips';
 import { QUI } from '../../game/ui/theme';
 
 export type Panel =
   | { kind: 'mob'; sprite: string; name: string; hp: number; max: number; x: number; y: number }
-  | { kind: 'boss'; sprite: string; name: string; hp: number; max: number; active: boolean; line?: string; seals?: SealState[]; staggered?: boolean; x: number; y: number }
+  | { kind: 'boss'; sprite: string; name: string; hp: number; max: number; active: boolean; line?: string; x: number; y: number }
   | { kind: 'say'; text: string; x: number; y: number }
   | { kind: 'emote'; x: number; y: number };
 
@@ -24,7 +22,7 @@ export function panelLabel(panel: Panel): string {
     case 'emote': return 'A happy little critter';
     case 'say': return panel.text;
     case 'mob': return `${panel.name}, ${Math.ceil(panel.hp)} of ${panel.max} health`;
-    case 'boss': return [`${panel.name}, ${Math.ceil(panel.hp)} of ${panel.max} health`, panel.staggered ? 'Staggered, waiting for its seals' : '', panel.seals ? sealsLabel(panel.seals) : '', panel.line].filter(Boolean).join('. ');
+    case 'boss': return [`${panel.name}, ${Math.ceil(panel.hp)} of ${panel.max} health`, panel.line].filter(Boolean).join('. ');
   }
 }
 
@@ -66,7 +64,6 @@ export function TapPanel({ panel, width, onClose, reduced }: { panel: Panel; wid
           <View>
             <HPBar hp={panel.hp} max={panel.max} width={w - 30} reduced={reduced} label={`${panel.name}, ${Math.ceil(panel.hp)} of ${panel.max} health`} />
           </View>
-          {panel.kind === 'boss' && panel.seals && <SealPips seals={panel.seals} counts />}
         </PixelPanel>
       )}
     </Pressable>

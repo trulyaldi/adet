@@ -37,19 +37,13 @@ export function useQuestMeta(): ItemOf<'quest_meta'> | null {
 
 /**
  * The journey has started (onboarding done). Before that, sessions end
- * exactly as they did before Quest Mode: no loot, strip or weak points.
+ * exactly as they did before Quest Mode: no loot or strip.
  */
 export function useQuestStarted(): boolean {
   return useQuestMeta() !== null;
 }
 
 export interface QuestWrites {
-  addTask(habitId: string, title: string): void;
-  renameTask(id: string, title: string): void;
-  setTaskStatus(id: string, status: 'open' | 'done'): void;
-  reorderTasks(habitId: string, orderedIds: string[]): void;
-  deleteTask(id: string): void;
-  planTasks(sessionId: string, taskIds: string[]): void;
   claimChest(claim: Omit<ops.ChestClaim, 'now'>): void;
   editLog(id: string, body: string): void;
   purchase(sku: string, cost: number, month?: string): void;
@@ -71,12 +65,6 @@ export function useQuestWrites(): QuestWrites {
       editQuest((q) => fn(q, Date.now()));
     };
     return {
-      addTask: (habitId, title) => edit((q, now) => ops.addTask(q, habitId, title, now)),
-      renameTask: (id, title) => edit((q) => ops.renameTask(q, id, title)),
-      setTaskStatus: (id, status) => edit((q, now) => ops.setTaskStatus(q, id, status, now)),
-      reorderTasks: (habitId, ids) => edit((q) => ops.reorderTasks(q, habitId, ids)),
-      deleteTask: (id) => edit((q) => ops.deleteTask(q, id)),
-      planTasks: (sessionId, taskIds) => edit((q, now) => ops.planTasks(q, sessionId, taskIds, now)),
       claimChest: (claim) => edit((q, now) => ops.claimChest(q, { ...claim, now })),
       editLog: (id, body) => edit((q) => ops.editLog(q, id, body)),
       purchase: (sku, cost, month) => edit((q, now) => ops.addPurchase(q, sku, cost, now, month)),

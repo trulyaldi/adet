@@ -235,9 +235,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           const beaten = biome < g.position.biomeIndex;
           // The boss you face speaks a pre-fight line each tap (the Hollow Echo also quotes you).
           const line = active ? bossLine(m.game, map.id, bossTaps.current++) : undefined;
-          const staggered = active && g.staggered;
-          const here = biome === g.position.biomeIndex;
-          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.${staggered ? 'low' : 'idle'}`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, seals: here ? g.seals : undefined, staggered, x: sx, y: sy });
+          setPanel({ kind: 'boss', sprite: beaten ? `trophy.${map.id}` : `${bossId(map.id)}.idle`, name: ROSTER[map.id].boss.name, hp: beaten ? 0 : active ? g.hp : g.bossMaxHp, max: g.bossMaxHp, active, line, x: sx, y: sy });
           break;
         }
         case 'villager':
@@ -249,10 +247,6 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         case 'npc':
           setPanel(null);
           setSheet(t.key as SheetId);
-          break;
-        case 'board':
-          setPanel(null);
-          setSheet('board');
           break;
         case 'chests':
           setPanel(null);
@@ -314,8 +308,8 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}
       {screenReader && Platform.OS !== 'web' && (
         <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {(['sage', 'board', 'merchant', 'scribe'] as SheetId[]).map((id) => (
-            <PixelButton key={id} small tone="parchment" label={id === 'board' ? 'Quest Board' : npcName(id as NpcId, m.meta?.props.settings)} accessibilityLabel={id === 'board' ? 'Quest Board' : npcTitle(id as NpcId, m.meta?.props.settings)} onPress={() => setSheet(id)} />
+          {(['sage', 'merchant', 'scribe'] as SheetId[]).map((id) => (
+            <PixelButton key={id} small tone="parchment" label={npcName(id as NpcId, m.meta?.props.settings)} accessibilityLabel={npcTitle(id as NpcId, m.meta?.props.settings)} onPress={() => setSheet(id)} />
           ))}
           {m.chests > 0 && <PixelButton small tone="gold" label={`${m.chests}`} accessibilityLabel={`${m.chests} unopened chests`} onPress={() => setSheet('chests')} />}
           <PixelButton small tone="night" label="Enemy" accessibilityLabel={`Current enemy, ${Math.ceil(hp)} of ${m.game.journey.maxHp} health`} onPress={() => {

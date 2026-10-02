@@ -48,9 +48,6 @@ export const CampLayer = memo(function CampLayer(p: CampProps) {
         case 'scribe':
           items.push({ id: 'npc.scribe.idle', x: c.x, y: c.y, flip: c.x > p.at.x });
           break;
-        case 'board':
-          items.push({ id: 'prop.board', x: c.x, y: c.y });
-          break;
         case 'chests':
           for (let i = 0; i < Math.min(3, p.chests); i++) items.push({ id: 'prop.chest.closed', x: c.x - 5 + i * 7, y: c.y - (i === 1 ? 4 : 0), phase: i * 2 });
           break;

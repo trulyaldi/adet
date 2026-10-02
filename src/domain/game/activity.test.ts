@@ -20,55 +20,9 @@ const started = ops.startQuest({ items: [], links: [] }, D0 - DAY);
 const derive = (q: ops.QuestSlice, extra: Partial<DeriveInput> = {}) =>
   deriveGameState({ sessions: [], habits: [{ id: 'h1', weeklyTargetMin: 300 }], items: q.items, links: q.links, now: D0 + 30 * DAY, tz: UTC, ...extra });
 
-/** `n` weak points done outside any session, one an hour from `at`. */
-function doneOutside(q: ops.QuestSlice, n: number, at: number, prefix = 't') {
-  for (let i = 0; i < n; i++) {
-    q = ops.addTask(q, 'h1', `wp ${i}`, at - DAY, `${prefix}${i}`);
-    q = ops.setTaskStatus(q, `${prefix}${i}`, 'done', at + i * H);
-  }
-  return q;
-}
-
 test('the non-session day cap is 10% of what a day of sessions can earn', () => {
   assert.equal(DAY_SESSION_XP_MAX, 300);
   assert.equal(DAY_ACTIVITY_XP_MAX, 30);
-});
-
-test('a weak point done outside a session: +5 XP, at most 5 a day', () => {
-  const g = derive(doneOutside(started, 7, D0 + 8 * H));
-  assert.equal(g.activity.outsideTaskXp, 5 * B.OUTSIDE_TASK_XP);
-  assert.equal(g.xp.total, 25);
-  // The next day starts again (UTC+0), and a UTC+5 zone moves 20:00 UTC into the next local day.
-  const late = doneOutside(doneOutside(started, 5, D0 + 8 * H, 'a'), 1, D0 + 20 * H, 'b');
-  assert.equal(derive(late).activity.outsideTaskXp, 25);
-  assert.equal(derive(late, { tz: fixedTz(300) }).activity.outsideTaskXp, 30);
-});
-
-test('a weak point completed in a session pays through its chest, not twice', () => {
-  const s = sess('s1', 'h1', D0 + 9 * H, 30);
-  let q = ops.addTask(started, 'h1', 'wp', D0, 'w1');
-  q = ops.claimChest(q, { sessionId: 's1', habitId: 'h1', doneTaskIds: ['w1'], text: '', now: D0 + 10 * H });
-  const g = derive(q, { sessions: [s] });
-  assert.equal(g.activity.outsideTaskXp, 0);
-  assert.equal(g.sessions[0].completedTasks, 1);
-});
-
-test('only on the journey: a weak point done before it started earns nothing', () => {
-  assert.equal(derive(doneOutside(started, 2, D0 - 3 * DAY)).activity.outsideTaskXp, 0);
-});
-
-test('deleting a weak point done outside a session removes its XP (like deleting a session)', () => {
-  const q = doneOutside(started, 2, D0 + 8 * H);
-  assert.equal(derive(q).xp.total, 10);
-  assert.equal(derive(ops.deleteTask(q, 't0')).xp.total, 5);
-});
-
-test('quick logs and outside weak points share the 30 XP day cap', () => {
-  let q = doneOutside(started, 5, D0 + 8 * H); // 25
-  for (let i = 0; i < 3; i++) q = ops.addQuickLog(q, { habitId: 'h1', text: 'x', now: D0 + (14 + i) * H }, `q${i}`); // 9
-  const g = derive(q);
-  assert.equal(g.activity.outsideTaskXp + g.activity.quickLogXp, DAY_ACTIVITY_XP_MAX);
-  assert.deepEqual([g.activity.outsideTaskXp, g.activity.quickLogXp], [25, 5], 'in time order: the last quick log gets what is left');
 });
 
 test('a completed day plan: +5 credits once per day, on the journey only', () => {

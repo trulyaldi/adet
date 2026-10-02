@@ -15,7 +15,7 @@ export function useStopTimer(): () => void {
   const data = useData();
   const settings = useSettings();
   const actions = useActions();
-  // Quest Mode: planned weak points, and the Loot sheet for 10+ minutes.
+  // Quest Mode: the Loot sheet for 10+ minutes.
   const afterStop = useQuestAfterStop();
   return () => {
     const secs = activeSec(data.active, Date.now());

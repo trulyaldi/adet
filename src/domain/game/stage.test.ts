@@ -9,13 +9,12 @@ import { DeriveInput, deriveGameState, mobHp } from './derive';
 import { Encounter, encounterOf, liveSession, previewGame, STAGE_TIMING, stageStep, StageState } from './stage';
 import { fixedTz } from './tz';
 
-const E = (p: Partial<Encounter> = {}): Encounter => ({ global: 0, kind: 'mob', hp: 90, maxHp: 90, staggered: false, seals: [], ...p });
+const E = (p: Partial<Encounter> = {}): Encounter => ({ global: 0, kind: 'mob', hp: 90, maxHp: 90, ...p });
 const T = STAGE_TIMING;
 
-test('first frame: running fights, paused naps, a staggered boss kneels', () => {
+test('first frame: running fights, paused naps', () => {
   assert.equal(stageStep(null, 'running', E(), 0).scene, 'fight');
   assert.equal(stageStep(null, 'paused', E(), 0).scene, 'nap');
-  assert.equal(stageStep(null, 'running', E({ kind: 'boss', hp: 0, staggered: true }), 0).scene, 'stagger');
 });
 
 test('pause → nap; resume → wake → fight', () => {
@@ -45,12 +44,6 @@ test('HP to 0 with the seals met: defeat, then the next enemy walks in, then fig
   assert.equal(s.scene, 'fight');
 });
 
-test('HP to 0 with seals unmet: stagger (no defeat, no walk-in)', () => {
-  let s = stageStep(null, 'running', E({ global: 7, kind: 'boss', hp: 5, maxHp: 420 }), 0);
-  s = stageStep(s, 'running', E({ global: 7, kind: 'boss', hp: 0, maxHp: 420, staggered: true }), 3000);
-  assert.deepEqual([s.scene, s.enemy.global], ['stagger', 7]);
-});
-
 test('the session ends: ended, whatever was playing', () => {
   for (const scene of ['fight', 'defeat', 'nap', 'wake'] as const) assert.equal(stageStep({ scene, since: 0, enemy: E() }, 'ended', E(), 10).scene, 'ended');
 });
@@ -62,7 +55,7 @@ test('the live preview is exactly what the saved session derives to, including a
   // The Wisp at 120 HP with its seals met (see derive.test.ts): a 2 h session fells it.
   const history: Session[] = [...Array.from({ length: 6 }, (_, i) => ({ id: `m${i}`, habitId: 'h1', start: D0 + i * DAY, end: D0 + i * DAY + 90 * 60_000, duration: 90 * 60 })), ...[6, 7].map((d) => ({ id: `b${d}`, habitId: 'h1', start: D0 + d * DAY, end: D0 + d * DAY + 150 * 60_000, duration: 150 * 60 }))];
   let q: ops.QuestSlice = ops.startQuest({ items: [], links: [] }, D0 - 1);
-  for (const id of ['b6', 'b7']) q = ops.claimChest(q, { sessionId: id, habitId: 'h1', doneTaskIds: [], text: 'a line', now: D0 });
+  for (const id of ['b6', 'b7']) q = ops.claimChest(q, { sessionId: id, habitId: 'h1', text: 'a line', now: D0 });
   const input: DeriveInput = { sessions: history, habits, items: q.items, links: q.links, now: D0 + 9 * DAY, tz: fixedTz(0) };
   // Started at 08:00 on day 8, paused for 10 minutes along the way.
   const started = D0 + 8 * DAY + 2 * 3600_000;

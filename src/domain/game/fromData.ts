@@ -87,7 +87,6 @@ export function hasFreshChest(game: GameState, now: number): boolean {
 export interface ClaimPreview {
   before: GameState;
   after: GameState;
-  critDamage: number;
   xpGained: number;
   creditsGained: number;
 }
@@ -96,16 +95,14 @@ export interface ClaimPreview {
 export function previewClaim(
   data: PersistedState,
   now: number,
-  claim: { sessionId: string; habitId: string | null; doneTaskIds: string[]; text: string }
+  claim: { sessionId: string; habitId: string | null; text: string }
 ): ClaimPreview {
   const before = gameStateOf(data);
   const q = claimChest({ items: data.items, links: data.links }, { ...claim, now });
   const after = deriveGameState(gameInput(data, 0, q, dkey(new Date(now))));
-  const r = after.sessions.find((x) => x.sessionId === claim.sessionId);
   return {
     before,
     after,
-    critDamage: r?.critDamage ?? 0,
     xpGained: after.xp.total - before.xp.total,
     creditsGained: after.credits.earned - before.credits.earned,
   };

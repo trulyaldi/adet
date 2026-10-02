@@ -19,7 +19,7 @@ export const desert: BiomeDef = {
     'The Djinn loves a list with no finish line.',
     'Pick the task that matters. Mirages fade after.',
     'Water first, then the dunes. Care for yourself.',
-    'A finished weak point hits twice as hard here.',
+    'One unhurried hour beats a scattered day.',
     'Sand shifts. Small, real steps stay put.',
     'Check it off. Watch the mirage flicker.',
     'The obelisk points up. So can you.',
