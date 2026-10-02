@@ -32,6 +32,20 @@ const TIMER_SKIN_ART = [
   '- **Settings previews:** four 12×10 grids (`SKIN_PREVIEWS`).',
 ];
 
+// World Mode (world-5, world-6) draws a few things in code too: placeholders for the P9 art pass.
+const WORLD_MODE_ART = [
+  '## World Mode: code-drawn placeholders (P9 art pass)',
+  '',
+  'Drawn in code in `src/screens/Quest/overworld/` and `src/game/ui/PixelSplash.tsx`; no external art.',
+  '',
+  '- **Overworld islands:** procedural 2 px tiles in each palette (`islandCells`); want a real island tile set per biome.',
+  '- **Overworld sky and path:** flat banded sky (`skySteps`) and a dotted path (rects).',
+  '- **Unclaimed slots and the claim lift:** reuse `parallax.<biome>.cloud` (a needs-art stand-in); want a 2–3 frame cloud puff.',
+  '- **Cloud transition:** three procedural cloud walls (`CloudCurtain.tsx`, stepped edges in flat colour), edged with `parallax.<biome>.cloud`; want a tiling cloud-bank sprite with a soft edge.',
+  '- **Conquered flag rising:** reuses `prop.<biome>.flag`; a short raise animation (pole, then cloth) would replace the slide.',
+  '- **Boss intro card and KO banner:** the pixel splash (`PixelSplash`, stacked flat rows) and plain pixel text; want a splash burst sprite, a "KO" lettering sprite and a boss portrait frame.',
+];
+
 const NEEDS_ART: Record<string, string> = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/game/needs-art.json'), 'utf8'));
 
 const CATEGORIES: [string, RegExp][] = [
@@ -115,7 +129,9 @@ function main() {
     '',
     `**Stroke, no pixel version yet (${stroke.length}):** ${stroke.map((g) => '`' + g + '`').join(', ')}`,
     '',
-    ...TIMER_SKIN_ART
+    ...TIMER_SKIN_ART,
+    '',
+    ...WORLD_MODE_ART
   );
   fs.writeFileSync(path.join(ROOT, 'docs/quest/art/INVENTORY.md'), lines.join('\n') + '\n');
   console.log(`docs/quest/art/INVENTORY.md: ${ids.length} ids (${[...total].map(([k, v]) => `${k} ${v}`).join(', ')})`);

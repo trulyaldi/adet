@@ -167,6 +167,37 @@ and a Pro Max.
 - [ ] Reduce Motion on: the Stage is still, loading dots don't step, chips only fade.
 - [ ] During a running or paused timer: no Quest sound and no Quest vibration at all.
 
+## 17. World Mode (Overworld, realms, results)
+- [ ] **Transition smoothness (real iPhone):** tap a realm. The hero walks, then the map scales toward
+      it while three cloud layers close and part on the Realm (about 0.7 s, in visible pixel steps,
+      no stutter or white flash). Back (chevron) runs it in reverse. Do it for slot 0 and for the top
+      slot with the map scrolled all the way up (the long Overworld). The map zooms toward the slot
+      you tapped, not toward the middle.
+- [ ] **Claim:** tap a cloud, name it, Claim. That island's clouds rise and drift apart, then the
+      zoom opens the new realm.
+- [ ] **Safe areas:** on a notched iPhone and on an SE, the Overworld's labels, the "+" and the
+      HUD clear the notch and the home indicator; the Realm's Back and quill buttons sit above the
+      home indicator; the clouds cover the whole screen edge to edge.
+- [ ] **Reduce Motion on:** no walk, no clouds, no zoom; realms open and close with a short
+      crossfade. The claim opens the realm straight away. The boss card and the KO banner appear
+      and go without moving. A newly conquered realm's flag simply stands.
+- [ ] **Background mid-session, then relaunch:** start a session on a quest, background the app
+      for a minute (the map and Stage stop animating; nothing plays on return), come back and Done.
+      Then start another, force-quit and relaunch: the session is free (no enemy, no result
+      sheet), and nothing breaks.
+- [ ] **All 7 slots:** claim every slot, one at a time. Each lifts its clouds and opens. Then
+      no "+" is left, every realm can be opened and renamed (long-press), and the map scrolls end to end.
+- [ ] **Boss moments:** start a session on a boss. The "BOSS" card shows its name over the splash
+      for 1.5 s, and a tap skips it. Minimize and reopen the timer: no card. Start the same boss again
+      in the same app session: no card. After a relaunch it shows once more.
+- [ ] **Undo of a Done on a boss's last phase:** Mark done the last phase, then tap Undo within
+      6 s. No KO plays, the boss is back with that phase, and the realm is not conquered. Done it
+      again and let the undo lapse: KO, then "Conquered", then Back. The realm's flag rises out of
+      its island once.
+- [ ] **Done on a quest deleted meanwhile:** start a session on a quest, delete that quest on
+      another device (or from the Realm while the timer is minimized), then Done. The result
+      sheet doesn't ask about it (a free session), the chest still comes from time, and nothing errors.
+
 ## If something's wrong, send back
 - a screenshot or screen recording;
 - the iPhone model and iOS version;

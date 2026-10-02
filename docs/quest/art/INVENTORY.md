@@ -223,3 +223,14 @@ no external art. Each wants a real sprite (or sheet) in the atlas.
 - **The Sage flying over:** reuses `npc.sage.idle@flip` (a sitting pose); wants a 2–4 frame flight cycle.
 - **Enemy HP:** a segmented bar (rects), fine as UI; pixel hearts are an option.
 - **Settings previews:** four 12×10 grids (`SKIN_PREVIEWS`).
+
+## World Mode: code-drawn placeholders (P9 art pass)
+
+Drawn in code in `src/screens/Quest/overworld/` and `src/game/ui/PixelSplash.tsx`; no external art.
+
+- **Overworld islands:** procedural 2 px tiles in each palette (`islandCells`); want a real island tile set per biome.
+- **Overworld sky and path:** flat banded sky (`skySteps`) and a dotted path (rects).
+- **Unclaimed slots and the claim lift:** reuse `parallax.<biome>.cloud` (a needs-art stand-in); want a 2–3 frame cloud puff.
+- **Cloud transition:** three procedural cloud walls (`CloudCurtain.tsx`, stepped edges in flat colour), edged with `parallax.<biome>.cloud`; want a tiling cloud-bank sprite with a soft edge.
+- **Conquered flag rising:** reuses `prop.<biome>.flag`; a short raise animation (pole, then cloth) would replace the slide.
+- **Boss intro card and KO banner:** the pixel splash (`PixelSplash`, stacked flat rows) and plain pixel text; want a splash burst sprite, a "KO" lettering sprite and a boss portrait frame.

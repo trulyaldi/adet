@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { cancelAnimation, Easing, scrollTo, SharedValue, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, scrollTo, SharedValue, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Icon } from '../../../components/Icon';
@@ -21,8 +21,10 @@ import { PixelPanel } from '../../../game/ui/PixelPanel';
 import { PixelText } from '../../../game/ui/PixelText';
 import { PE } from '../../../game/ui/pointer';
 import { QUI } from '../../../game/ui/theme';
+import { MODAL_GAP_MS } from '../../../theme/motion';
 import { OverworldMap } from './OverworldMap';
 import { along, nextClaimable, OW_H, overworldLayout, route, SLOT_H, travelMs } from './overworldModel';
+import { focalShift, LIFT_MS, mapOpacityOf, quantize, RAISE_MS, zoomOf, ZOOM_MS, ZOOM_STEPS } from './transitionModel';
 
 /** Pips past this many would crowd the label: they scale down to it. */
 const MAX_PIPS = 8;
@@ -38,6 +40,12 @@ export function Overworld({
   onOpen,
   onClaim,
   onRename,
+  zoom,
+  focus,
+  lift,
+  onLifted,
+  raise,
+  onRaised,
 }: {
   width: number;
   height: number;
@@ -51,6 +59,15 @@ export function Overworld({
   onOpen(slot: number): void;
   onClaim(slot: number): void;
   onRename(slot: number): void;
+  /** The cloud transition's t (0 here, 1 inside a realm): the map scales toward `focus` and fades. */
+  zoom: SharedValue<number>;
+  focus: number | null;
+  /** A slot just claimed: its clouds lift, then `onLifted` (straight away with reduced motion). */
+  lift: number | null;
+  onLifted(slot: number): void;
+  /** Realms newly conquered: their flags rise once the map is back, then `onRaised`. */
+  raise: readonly string[];
+  onRaised(): void;
 }) {
   const layout = useMemo(() => overworldLayout(), []);
   const scale = pixelScale(width);
@@ -132,9 +149,47 @@ export function Overworld({
     );
   };
 
+  // Scale about the focus slot's screen point, read from the camera on the UI thread.
+  const focusSpot = focus === null ? null : layout.slots[focus];
+  const zoomStyle = useAnimatedStyle(() => {
+    const v = zoom.value;
+    if (reduced || !focusSpot) return { opacity: mapOpacityOf(v, reduced), transform: [] };
+    const q = quantize(v, ZOOM_STEPS);
+    const s = zoomOf(q);
+    const f = focalShift((focusSpot.x - camX) * scale, (focusSpot.y - camY.value) * scale, width, height, s);
+    return { opacity: mapOpacityOf(q, false), transform: [{ translateX: Math.round(f.x) }, { translateY: Math.round(f.y) }, { scale: s }] };
+  });
+
+  const liftT = useSharedValue(0);
+  useEffect(() => {
+    if (lift === null) return;
+    if (reduced) {
+      onLifted(lift);
+      return;
+    }
+    liftT.set(0);
+    // Waits out the claim sheet closing; lands even if cut short.
+    liftT.set(withDelay(MODAL_GAP_MS, withTiming(1, { duration: LIFT_MS, easing: Easing.linear }, () => scheduleOnRN(onLifted, lift))));
+    return () => cancelAnimation(liftT);
+  }, [lift, reduced, onLifted, liftT]);
+
+  const raiseT = useSharedValue(0);
+  const raiseKey = raise.join(',');
+  useEffect(() => {
+    if (!raiseKey) return;
+    if (reduced) {
+      onRaised();
+      return;
+    }
+    raiseT.set(0);
+    // After the zoom out that brought the map back.
+    raiseT.set(withDelay(ZOOM_MS, withTiming(1, { duration: RAISE_MS, easing: Easing.linear }, () => scheduleOnRN(onRaised))));
+    return () => cancelAnimation(raiseT);
+  }, [raiseKey, reduced, onRaised, raiseT]);
+
   const next = nextClaimable(slots);
   return (
-    <View style={{ width, height }}>
+    <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width, height }, zoomStyle]}>
       <OverworldMap
         width={width}
         height={height}
@@ -149,6 +204,10 @@ export function Overworld({
         heroX={heroX}
         heroY={heroY}
         heroMode={heroMode}
+        lift={lift}
+        liftT={liftT}
+        raising={raise}
+        raiseT={raiseT}
       />
       <Animated.ScrollView
         ref={scroller}
@@ -209,7 +268,7 @@ export function Overworld({
       {walking !== null && (
         <Pressable style={StyleSheet.absoluteFill} onPress={() => arrive(walking)} accessibilityRole="button" accessibilityLabel="Skip the walk" />
       )}
-    </View>
+    </Animated.View>
   );
 }
 

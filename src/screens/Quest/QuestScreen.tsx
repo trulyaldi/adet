@@ -9,7 +9,7 @@
 // credits.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, BackHandler, LayoutChangeEvent, Modal, Platform, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, LayoutChangeEvent, Modal, Platform, StyleSheet, View } from 'react-native';
 import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
 import { Glyph } from '../../components/Glyph';
@@ -27,6 +27,7 @@ import { npcName, npcTitle } from '../../game/content/npcs';
 import { NpcId } from '../../game/content/roster';
 import { feedback } from '../../game/feedback';
 import { useGameClock } from '../../game/render/clock';
+import { pixelScale } from '../../game/render/pixel';
 import { SpriteView } from '../../game/render/SpriteView';
 import { setCurrentSlot, useQuestLocal } from '../../game/state/local';
 import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
@@ -37,7 +38,7 @@ import { PixelPanel } from '../../game/ui/PixelPanel';
 import { PixelText } from '../../game/ui/PixelText';
 import { PE } from '../../game/ui/pointer';
 import { QUI } from '../../game/ui/theme';
-import { useActions } from '../../store/StreakStore';
+import { useActions, useSyncStatus } from '../../store/StreakStore';
 import { MODAL_GAP_MS } from '../../theme/motion';
 import { Onboarding } from './ceremonies/Onboarding';
 import { Hud } from './Hud';
@@ -46,8 +47,11 @@ import { QuestNodeSheet } from './realm/QuestNodeSheet';
 import { RealmMap, realmCamera, realmCameraFor } from './realm/RealmMap';
 import { realmLayout } from './realm/realmModel';
 import { ClaimSheet } from './overworld/ClaimSheet';
+import { CloudCurtain } from './overworld/CloudCurtain';
 import { Overworld } from './overworld/Overworld';
+import { newlyConquered } from './overworld/flagMemory';
 import { currentSlot } from './overworld/overworldModel';
+import { useRealmTransition } from './overworld/useRealmTransition';
 import { QuestSheets, SheetId } from './sheets';
 import { Panel, TapPanel } from './TapPanel';
 import { useQuestModel } from './useQuestModel';
@@ -77,25 +81,57 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const current = currentSlot(slots, local.slot);
   const [open, setOpen] = useState<number | null>(null);
   const [claim, setClaim] = useState<{ slot: number; rename?: string } | null>(null);
-  const realm = open !== null ? slots[open]?.realm ?? null : null;
-  const openRealm = useCallback((slot: number) => {
-    setCurrentSlot(slot);
-    setOpen(slot);
-  }, []);
+  // Clouds close over the map as it zooms toward the slot, and part on the realm (world-6).
+  // While they move both screens stay mounted: the realm under, the map fading over it.
+  const { t: zoomT, moving, run } = useRealmTransition(reduced);
+  const shown = open ?? (moving?.dir === 'out' ? moving.slot : null);
+  const realm = shown !== null ? slots[shown]?.realm ?? null : null;
+  const inRealm = open !== null && !moving;
+  const openRealm = useCallback(
+    (slot: number) => {
+      setOpen(slot);
+      // The hero moves there once the map has gone (a claimed slot is a jump).
+      run('in', slot, () => setCurrentSlot(slot));
+    },
+    [run]
+  );
+  // A claimed slot's clouds lift first, then the zoom.
+  const [lift, setLift] = useState<number | null>(null);
+  const onLifted = useCallback(
+    (slot: number) => {
+      setLift(null);
+      openRealm(slot);
+    },
+    [openRealm]
+  );
+  // A realm conquered since the map was last seen: its flag rises there (world-6).
+  const conquered = slots.flatMap((s) => (s.conquered && s.realm ? [s.realm.id] : [])).join(',');
+  const [raise, setRaise] = useState<string[]>([]);
+  // Seeded once sync has settled, so realms pulled onto a new device don't all raise their flags.
+  const { settled } = useSyncStatus();
+  useEffect(() => {
+    if (!local.loaded || !settled) return;
+    const fresh = newlyConquered(conquered ? conquered.split(',') : []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (fresh.length) setRaise((r) => [...r, ...fresh]);
+  }, [conquered, local.loaded, settled]);
+  const onRaised = useCallback(() => setRaise([]), []);
   const closeRealm = useCallback(() => {
+    if (open === null || moving) return;
     setOpen(null);
     setNodeId(null);
     setAdding(false);
     setPanel(null);
-  }, []);
+    run('out', open);
+  }, [open, moving, run]);
   useEffect(() => {
-    if (!realm) return;
+    if (open === null && !moving) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       closeRealm();
       return true;
     });
     return () => sub.remove();
-  }, [realm, closeRealm]);
+  }, [open, moving, closeRealm]);
   const view = useRealmView(realm?.id ?? null);
   const map = m.maps[realm?.slot ?? 0];
   const layout = useMemo(() => (view ? realmLayout(map, view) : null), [map, view]);
@@ -111,7 +147,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   }, []);
   const leaveQuest = useCallback(() => actions.setScreen('today'), [actions]);
   // Ceremonies wait while a sheet, a panel or the intro replay is up.
-  const busy = !!sheet || !!panel || !!nodeId || adding || replayIntro || !!claim;
+  const busy = !!sheet || !!panel || !!nodeId || adding || replayIntro || !!claim || !!moving || lift !== null;
   useEffect(() => (busy ? holdCeremonies() : undefined), [busy]);
   useEffect(() => { preloadQuestSounds(); }, []);
   useEffect(() => {
@@ -265,7 +301,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         />
       )}
       {/* Only once this device's state has loaded, so the map opens on the hero's realm. */}
-      {size && !realm && local.loaded && (
+      {size && (open === null || moving) && local.loaded && (
         <Overworld
           width={size.w}
           height={size.h}
@@ -277,26 +313,35 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           onOpen={openRealm}
           onClaim={(slot) => setClaim({ slot })}
           onRename={(slot) => setClaim({ slot, rename: slots[slot].realm?.name ?? '' })}
+          zoom={zoomT}
+          focus={moving?.slot ?? current}
+          lift={lift}
+          onLifted={onLifted}
+          raise={raise}
+          onRaised={onRaised}
         />
       )}
+      {moving && size && !reduced && <CloudCurtain t={zoomT} width={size.w} height={size.h} scale={pixelScale(size.w)} biome={BIOME_IDS[moving.slot]} />}
+      {/* Nothing under the clouds takes a tap while they move. */}
+      {(moving || lift !== null) && <View style={StyleSheet.absoluteFill} onStartShouldSetResponder={() => true} />}
       <View style={{ position: 'absolute', top: 8, left: 8, right: 8 }}>
         <Hud game={m.game} look={m.look} width={size?.w ?? 360} onAvatar={() => setSheet('character')} onLongPress={__DEV__ ? onPlayground : undefined} />
       </View>
 
       {/* An empty realm: only the pulsing "+" on the map, and this line. */}
-      {view?.empty && !adding && !panel && (
+      {inRealm && view?.empty && !adding && !panel && (
         <View style={[PE.none, { position: 'absolute', left: 16, right: 16, top: 84, alignItems: 'center' }]}>
           <PixelPanel tone="parchment" padding={2}>
             <PixelText size="md">What do you want to beat?</PixelText>
           </PixelPanel>
         </View>
       )}
-      {realm && !adding && !panel && !undo && !(screenReader && Platform.OS !== 'web') && (
+      {inRealm && !adding && !panel && !undo && !(screenReader && Platform.OS !== 'web') && (
         <View style={{ position: 'absolute', left: 12, bottom: 12 }}>
           <PixelButton small tone="parchment" icon={<Glyph name="chevronLeft" size={20} color={QUI.ink} />} accessibilityLabel="Back to the map" onPress={closeRealm} />
         </View>
       )}
-      {realm && !view?.empty && !adding && !panel && !undo && (
+      {inRealm && !view?.empty && !adding && !panel && !undo && (
         <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
           <PixelButton small tone="parchment" icon={<SpriteView id="icon.quill" scale={2} />} accessibilityLabel="Quick log: record something you did" onPress={() => setSheet('quicklog')} />
         </View>
@@ -337,7 +382,7 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
       )}
 
       {panel && size && <TapPanel panel={panel} width={size.w} onClose={() => setPanel(null)} reduced={reduced} />}
-      {realm && screenReader && Platform.OS !== 'web' && (
+      {inRealm && screenReader && Platform.OS !== 'web' && (
         <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           <PixelButton small tone="parchment" label="‹" accessibilityLabel="Back to the map" onPress={closeRealm} />
           <PixelButton small tone="gold" label="+" accessibilityLabel="Add a quest" onPress={() => setAdding(true)} />
@@ -413,8 +458,8 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
             setClaim(null);
             // Taken on another device meanwhile: the map shows whose it is.
             if (!claimed) return;
-            // The clouds lift (Session 6 animates it) and the new realm opens.
-            setTimeout(() => openRealm(claim.slot), MODAL_GAP_MS);
+            // Its clouds lift, then the new realm opens.
+            setLift(claim.slot);
           }}
         />
       )}
