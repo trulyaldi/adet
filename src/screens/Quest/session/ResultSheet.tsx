@@ -6,9 +6,14 @@
 // and one heart pops; Not yet: a calm "See you soon") with a 6 s Undo, then
 // the chest (if the session earned one) opens. Loaded at first use
 // (ResultHost), so Skia stays off the start-up path.
+//
+// Projects as Realms: a free session in a project that has a realm may open
+// on a naming step first (NamingStep). A chip or a typed quest leads to the
+// same question below; Skip, a swipe, the backdrop or Back leave it a free
+// session, and nothing is recorded.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -34,6 +39,7 @@ import { useDevicePrefs } from '../../../store/devicePrefs';
 import { MODAL_GAP_MS } from '../../../theme/motion';
 import { useAppActive } from '../../../theme/useMotion';
 import { stageTargetOf } from '../realm/realmModel';
+import { NamingStep, useNamedTarget } from './NamingStep';
 
 const STAGE_H = 132;
 
@@ -61,20 +67,22 @@ export default function ResultSheet({ req, reduced }: { req: ResultRequest; redu
   // One result per tap burst, and one close.
   const [answer] = useState(createLatch);
   const [closing] = useState(createLatch);
-  const base = useMemo(() => stageTargetOf(req.target), [req.target]);
+  // The fight: given, or (a named free session) the quest picked or typed in the first step.
+  const { session, pick, create } = useNamedTarget(req, world);
+  const base = useMemo(() => (session ? stageTargetOf(session) : null), [session]);
   // A phase that fell lights its pip; the boss stands.
-  const target = told?.reaction === 'phaseHit' && base.phases ? { ...base, phases: { ...base.phases, cleared: base.phases.cleared + 1 } } : base;
-  const quest = req.target.quest;
+  const target = base && told?.reaction === 'phaseHit' && base.phases ? { ...base, phases: { ...base.phases, cleared: base.phases.cleared + 1 } } : base;
 
   const tell = (kind: ResultKind) => {
-    if (!answer.take()) return;
+    if (!session || !answer.take()) return;
+    const quest = session.quest;
     const resultId = world.recordResult(quest.id, kind, req.sessionId);
     // Rejected (the quest fell meanwhile on another device): nothing happens, calmly.
-    setTold({ kind, resultId, reaction: resultId ? stageReactionOf(kind, req.target) : 'none' });
+    setTold({ kind, resultId, reaction: resultId ? stageReactionOf(kind, session) : 'none' });
   };
-  /** Away without an answer: that's Not yet, and the sheet simply goes. */
+  /** Away without an answer: that's Not yet, and the sheet simply goes. Before a quest is named it is Skip: nothing is recorded. */
   const dismiss = () => {
-    if (!told && answer.take()) world.recordResult(quest.id, 'not_yet', req.sessionId);
+    if (session && !told && answer.take()) world.recordResult(session.quest.id, 'not_yet', req.sessionId);
     finish(closing);
   };
   const undo = () => {
@@ -106,55 +114,61 @@ export default function ResultSheet({ req, reduced }: { req: ResultRequest; redu
   return (
     <Modal visible transparent animationType={reduced ? 'fade' : 'slide'} onRequestClose={dismiss} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,20,0.55)' }]} onPress={dismiss} accessibilityRole="button" accessibilityLabel={told ? 'Continue' : 'Not yet'} />
-        <GestureDetector gesture={swipe}>
-          <View style={{ marginTop: 'auto', alignSelf: 'center', width: panelW, paddingBottom: Math.max(insets.bottom, 12) + 8 }}>
-            <PixelPanel tone="parchment" padding={3}>
-              <View style={{ gap: 10, alignItems: 'center' }}>
-                <PixelText size="md" bold numberOfLines={2} style={{ textAlign: 'center' }}>
-                  {quest.title}
-                </PixelText>
-                <View style={{ width: stageW, height: STAGE_H, borderRadius: 6, overflow: 'hidden' }}>
-                  <SkiaGate
-                    key={attempt}
-                    load={loadStage}
-                    props={{
-                      width: stageW,
-                      height: STAGE_H,
-                      skin: resolveTimerSkin(prefs.timerSkin, undefined),
-                      progress: 1,
-                      past: false,
-                      sessionSec: 0,
-                      paused: false,
-                      reduced,
-                      live: appActive,
-                      battle: true,
-                      payoff: 0,
-                      victory: told?.reaction === 'ko',
-                      target,
-                      reaction: told?.reaction ?? null,
-                    }}
-                    fallback={blank}
-                    errorFallback={blank}
-                  />
-                </View>
-                {!told ? (
-                  <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
-                    <BigChoice label="Done" tone="gold" icon={<SpriteView id="icon.check" scale={3} />} onPress={() => tell('done')} />
-                    <BigChoice label="Partly" tone="parchment" icon={<HalfHeart />} onPress={() => tell('partly')} />
-                    <BigChoice label="Not yet" tone="parchment" icon={<Hourglass />} onPress={() => tell('not_yet')} />
+        <KeyboardAvoidingView enabled={!session} behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,20,0.55)' }]} onPress={dismiss} accessibilityRole="button" accessibilityLabel={!session ? 'Skip' : told ? 'Continue' : 'Not yet'} />
+          <GestureDetector gesture={swipe}>
+            <View style={{ marginTop: 'auto', alignSelf: 'center', width: panelW, paddingBottom: Math.max(insets.bottom, 12) + 8 }}>
+              <PixelPanel tone="parchment" padding={3}>
+                {session && target ? (
+                  <View style={{ gap: 10, alignItems: 'center' }}>
+                    <PixelText size="md" bold numberOfLines={2} style={{ textAlign: 'center' }}>
+                      {session.quest.title}
+                    </PixelText>
+                    <View style={{ width: stageW, height: STAGE_H, borderRadius: 6, overflow: 'hidden' }}>
+                      <SkiaGate
+                        key={attempt}
+                        load={loadStage}
+                        props={{
+                          width: stageW,
+                          height: STAGE_H,
+                          skin: resolveTimerSkin(prefs.timerSkin, undefined),
+                          progress: 1,
+                          past: false,
+                          sessionSec: 0,
+                          paused: false,
+                          reduced,
+                          live: appActive,
+                          battle: true,
+                          payoff: 0,
+                          victory: told?.reaction === 'ko',
+                          target,
+                          reaction: told?.reaction ?? null,
+                        }}
+                        fallback={blank}
+                        errorFallback={blank}
+                      />
+                    </View>
+                    {!told ? (
+                      <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
+                        <BigChoice label="Done" tone="gold" icon={<SpriteView id="icon.check" scale={3} />} onPress={() => tell('done')} />
+                        <BigChoice label="Partly" tone="parchment" icon={<HalfHeart />} onPress={() => tell('partly')} />
+                        <BigChoice label="Not yet" tone="parchment" icon={<Hourglass />} onPress={() => tell('not_yet')} />
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', justifyContent: 'center', minHeight: 72 }}>
+                        {told.kind === 'not_yet' && <PixelText size="md">See you soon</PixelText>}
+                        {told.resultId && <PixelButton small tone="parchment" label="Undo" accessibilityLabel="Undo the result" onPress={undo} />}
+                        <PixelButton small tone="gold" label="OK" accessibilityLabel={req.lootFor ? 'Continue to the chest' : 'Continue'} onPress={() => finish(closing)} />
+                      </View>
+                    )}
                   </View>
                 ) : (
-                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', justifyContent: 'center', minHeight: 72 }}>
-                    {told.kind === 'not_yet' && <PixelText size="md">See you soon</PixelText>}
-                    {told.resultId && <PixelButton small tone="parchment" label="Undo" accessibilityLabel="Undo the result" onPress={undo} />}
-                    <PixelButton small tone="gold" label="OK" accessibilityLabel={req.lootFor ? 'Continue to the chest' : 'Continue'} onPress={() => finish(closing)} />
-                  </View>
+                  <NamingStep req={req} onPick={pick} onCreate={(title) => !create(title) && finish(closing)} onSkip={() => finish(closing)} />
                 )}
-              </View>
-            </PixelPanel>
-          </View>
-        </GestureDetector>
+              </PixelPanel>
+            </View>
+          </GestureDetector>
+        </KeyboardAvoidingView>
       </GestureHandlerRootView>
     </Modal>
   );

@@ -87,13 +87,36 @@ export function worldMoments(world: World): { bosses: { id: string; title: strin
   return { bosses, realms };
 }
 
+/** Projects as Realms: a free session in a project that has a realm may be named after the fact. */
+export interface NamingStep {
+  realm: Realm;
+  /** What is left to fight in the realm, oldest first (see openQuestsOf). May be empty. */
+  quests: Quest[];
+}
+
+export interface AfterSession {
+  lootFor: string | null;
+  target: SessionTarget | null;
+  /** Present only when the session may be named (never alongside a target). */
+  naming?: NamingStep;
+}
+
 /**
  * After a saved session: its chest (MIN_SESSION_MIN or more) and, if it
  * targeted a quest still there to fight, the result to ask for. A session
  * without one stays a free session. Editing the times first: the chest waits
  * at camp and no result is asked (Mark done is on the Realm).
+ *
+ * `projectId` is the session's habit's project, and is passed only when
+ * Projects as Realms is on. A session started without a quest (`questId`
+ * null: not one whose quest has since gone), long enough for a chest, not
+ * sent to edit, in a project with a placed realm, is offered a naming step
+ * instead of no target. A project with no realm, or a resting one, is not.
  */
-export function afterSession(saved: Pick<Session, 'id' | 'duration'>, questId: string | null, world: World, editAfter: boolean): { lootFor: string | null; target: SessionTarget | null } {
+export function afterSession(saved: Pick<Session, 'id' | 'duration'>, questId: string | null, world: World, editAfter: boolean, projectId?: string | null): AfterSession {
   const loot = !editAfter && saved.duration / 60 >= MIN_SESSION_MIN;
-  return { lootFor: loot ? saved.id : null, target: editAfter ? null : targetOf(world, questId) };
+  const out: AfterSession = { lootFor: loot ? saved.id : null, target: editAfter ? null : targetOf(world, questId) };
+  const realm = loot && !questId && projectId ? world.realms.find((r) => r.projectId === projectId) : undefined;
+  if (realm) out.naming = { realm, quests: openQuestsOf(world, realm.id) };
+  return out;
 }

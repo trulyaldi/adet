@@ -6,13 +6,15 @@
 
 import { useSyncExternalStore } from 'react';
 
-import type { SessionTarget } from '../../domain/world/target';
+import type { NamingStep, SessionTarget } from '../../domain/world/target';
 import { holdCeremonies } from '../ceremonies/gate';
 
 export interface ResultRequest {
   sessionId: string;
-  /** The fight as the session ended (the sheet plays its result on it). */
-  target: SessionTarget;
+  /** The fight as the session ended (the sheet plays its result on it). Null while the session is still to be named. */
+  target: SessionTarget | null;
+  /** Projects as Realms: a free session offered a quest to name (set only when `target` is null). */
+  naming?: NamingStep;
   /** The chest to open next, if the session earned one. */
   lootFor: string | null;
 }
