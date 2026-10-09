@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { CloseButton, Glyph, IconButton } from '../components/Glyph';
@@ -6,15 +6,23 @@ import { Icon } from '../components/Icon';
 import { AnimatedBar } from '../components/motion/AnimatedBar';
 import { Press } from '../components/motion/Press';
 import { Sheet } from '../components/Sheet';
+import { Text, TextInput } from '../components/Text';
+import { useQuestStarted } from '../data/itemsRepo';
+import { useWorldWrites } from '../data/worldRepo';
 import { ICONS } from '../domain/constants';
 import { projectLook } from '../domain/look';
 import { isCheck } from '../domain/marks';
-import { bindTimerQuest, dropTimerQuest } from '../game/state/timerQuest';
 import { activeProjects, projectWeekSec } from '../domain/projects';
-import { useActions, useData, useStoreNow, useUi } from '../store/StreakStore';
+import { liveWorld } from '../domain/world/select';
+import { QUEST_TITLE_MAX } from '../domain/world/types';
+import { PROJECT_REALMS } from '../game/enabled';
+import { chipsFor, firstTimedHabit, placedRealmOf, planStart } from '../game/state/startFlow';
+import { bindTimerQuest, dropTimerQuest, pendingTimerQuest, setTimerQuest } from '../game/state/timerQuest';
+import { useActions, useData, useStoreNow, useSyncStatus, useUi } from '../store/StreakStore';
+import { useQuestTables } from '../sync/questTables';
+import { inputStyle } from '../theme/styles';
 import { MODAL_GAP_MS } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
-import { Text } from '../components/Text';
 
 /**
  * Start anything, planned or not: every project with its habits. Tap a
@@ -29,22 +37,48 @@ export function StartSheet() {
   const actions = useActions();
   const projects = activeProjects(data);
   const weekSec = (pid: string) => projectWeekSec(data, pid, now);
+
+  // Projects as Realms: a typed objective and open-quest chips, only where a project has a realm on the map.
+  const world = useWorld(open);
+  const writes = useWorldWrites();
+  const [objective, setObjective] = useState('');
+  // A quest the Realm screen picked is the chosen objective (read as the sheet opens; module state doesn't re-render).
+  const pendingId = world ? pendingTimerQuest() : null;
+  const pendingTitle = pendingId ? world?.quests.find((q) => q.id === pendingId)?.title ?? null : null;
+  const habitsOf = (pid: string) => data.habits.filter((h) => h.projectId === pid);
+  const canType = !!world && projects.some((p) => placedRealmOf(world, p.id) && firstTimedHabit(habitsOf(p.id)));
+
   const close = () => {
     dropTimerQuest();
+    setObjective('');
     actions.closeStartSheet();
   };
-  const start = (habitId: string) => {
+  const start = (habitId: string, chipQuestId: string | null = null) => {
     const h = data.habits.find((x) => x.id === habitId);
     if (!h) return;
     actions.closeStartSheet();
-    // A quest picked on the Realm screen goes with the timer it starts (a check has no session).
+    setObjective('');
+    // A quest goes with the timer it starts (a check has no session, so no quest is made or bound).
+    const plan = planStart({
+      check: isCheck(h),
+      pending: pendingTimerQuest(),
+      chipQuestId: world ? chipQuestId : null,
+      objective: world ? objective : '',
+      realmId: world ? placedRealmOf(world, h.projectId)?.id ?? null : null,
+    });
     if (isCheck(h)) {
       dropTimerQuest();
       actions.toggleCheck(h.id);
-    } else {
-      bindTimerQuest(h.id);
-      setTimeout(() => actions.startTimer(h.id), MODAL_GAP_MS); // focus opens once the sheet is gone
+      return;
     }
+    if (plan.kind === 'create') {
+      const id = writes.addQuest(plan.realmId, plan.title); // null: not written, so a free session
+      if (id) setTimerQuest(id);
+    } else if (plan.kind === 'bind') {
+      setTimerQuest(plan.questId);
+    }
+    bindTimerQuest(h.id);
+    setTimeout(() => actions.startTimer(h.id), MODAL_GAP_MS); // focus opens once the sheet is gone
   };
 
   return (
@@ -54,11 +88,26 @@ export function StartSheet() {
           <Glyph name="play" size={22} color={colors.ink} label="Start something" />
           <CloseButton onPress={close} />
         </View>
+        {(canType || !!pendingId) && (
+          <TextInput
+            value={pendingTitle ?? objective}
+            onChangeText={setObjective}
+            editable={!pendingId}
+            maxLength={QUEST_TITLE_MAX}
+            placeholder="Objective"
+            placeholderTextColor={colors.muted}
+            returnKeyType="done"
+            accessibilityLabel={pendingId ? 'Objective, chosen' : 'Objective for this session, optional'}
+            style={[inputStyle(colors, radius), pendingId ? { opacity: 0.6 } : null]}
+          />
+        )}
         {projects.map((p) => {
           const look = projectLook(p);
           const sw = t.swatch(look.color);
-          const habits = data.habits.filter((h) => h.projectId === p.id);
+          const habits = habitsOf(p.id);
           const first = habits.find((h) => !isCheck(h)) ?? habits[0];
+          const timed = firstTimedHabit(habits);
+          const chips = world && timed && !pendingId ? chipsFor(world, p.id, habits) : [];
           return (
             <View key={p.id} style={{ backgroundColor: sw.light, borderRadius: radius.xl, padding: 12, gap: 10 }}>
               <Press
@@ -98,6 +147,25 @@ export function StartSheet() {
                   ))}
                 </View>
               )}
+              {chips.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {chips.map((q) => (
+                    <IconButton
+                      key={q.id}
+                      label={`Start ${p.name}: ${q.title}`}
+                      quiet
+                      onPress={() => timed && start(timed.id, q.id)}
+                      bg={colors.card}
+                      style={{ flexDirection: 'row', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.pill }}
+                    >
+                      <Icon path={ICONS.target} size={16} color={t.dark ? sw.base : sw.dark} />
+                      <Text numberOfLines={1} style={{ fontSize: 13.5, fontWeight: '800', color: colors.ink, maxWidth: 150 }}>
+                        {q.title}
+                      </Text>
+                    </IconButton>
+                  ))}
+                </View>
+              )}
             </View>
           );
         })}
@@ -123,4 +191,18 @@ export function StartSheet() {
       </View>
     </Sheet>
   );
+}
+
+/**
+ * The world as the sheet needs it, or null when Projects as Realms is off, the
+ * sheet is closed, the journey hasn't started or the quest tables aren't
+ * ready (nothing can be written then). Project-aware once sync has settled.
+ */
+function useWorld(open: boolean) {
+  const data = useData();
+  const { settled } = useSyncStatus();
+  const started = useQuestStarted();
+  const tables = useQuestTables();
+  const on = PROJECT_REALMS && open && started && tables === 'available';
+  return useMemo(() => (on ? liveWorld(data.items, settled ? data.projects : undefined) : null), [on, data.items, data.projects, settled]);
 }

@@ -12,12 +12,14 @@ import { useQuestTables } from '../../sync/questTables';
 import { useQuestFonts } from '../assets/fonts';
 import { feedback } from '../feedback';
 import { useQuestLocalFor } from './local';
+import { useTimerQuestPersistence } from './useTimerQuestPersistence';
 
 export function QuestWatcher() {
   // The pixel fonts, app-wide (a Loot sheet can open before the Quest tab ever has).
   useQuestFonts();
   const { session } = useAuth();
   useQuestLocalFor(session?.user.id ?? 'anon');
+  useTimerQuestPersistence();
   const data = useData();
   const tables = useQuestTables();
   const writes = useQuestWrites();
