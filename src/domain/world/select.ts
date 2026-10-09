@@ -3,7 +3,7 @@
 import type { Item } from '../items/types';
 import { MAX_REALMS } from '../game/balance';
 import { BossProgress, bossProgress, heartsOf, isBoss, isCleared, isRealmConquered, liveQuests, phasesOf, resultsFor, World } from './rules';
-import { Quest, Realm, Result, worldOf } from './types';
+import { ProjectRef, Quest, Realm, Result, worldOf } from './types';
 
 export interface QuestView {
   quest: Quest;
@@ -47,9 +47,13 @@ export interface SlotView {
   total: number;
 }
 
-/** The world with only live quests (deleted ones and their phases dropped). */
-export function liveWorld(items: readonly Item[]): World {
-  const w = worldOf(items);
+/**
+ * The world with only live quests (deleted ones and their phases dropped).
+ * `projects`: see worldOf (pass once sync has settled; a realm whose project
+ * is archived or missing then rests at once, before the reconcile writes it).
+ */
+export function liveWorld(items: readonly Item[], projects?: readonly ProjectRef[]): World & { resting: Realm[] } {
+  const w = worldOf(items, projects);
   return { ...w, quests: liveQuests(w) };
 }
 
@@ -60,8 +64,8 @@ function questView(q: Quest, w: World): QuestView {
 }
 
 /** One realm's screen, or null if there's no such realm. */
-export function realmView(items: readonly Item[], realmId: string): RealmView | null {
-  const w = liveWorld(items);
+export function realmView(items: readonly Item[], realmId: string, projects?: readonly ProjectRef[]): RealmView | null {
+  const w = liveWorld(items, projects);
   const realm = w.realms.find((r) => r.id === realmId);
   if (!realm) return null;
   const top = w.quests.filter((q) => q.realmId === realmId && !q.parentQuestId);
@@ -74,8 +78,8 @@ export function realmView(items: readonly Item[], realmId: string): RealmView | 
 }
 
 /** The Overworld: all 7 slots, claimed or under cloud. */
-export function slotsView(items: readonly Item[]): SlotView[] {
-  const w = liveWorld(items);
+export function slotsView(items: readonly Item[], projects?: readonly ProjectRef[]): SlotView[] {
+  const w = liveWorld(items, projects);
   return Array.from({ length: MAX_REALMS }, (_, slot) => {
     const realm = w.realms.find((r) => r.slot === slot) ?? null;
     if (!realm) return { slot, realm, conquered: false, cleared: 0, total: 0 };
@@ -86,8 +90,8 @@ export function slotsView(items: readonly Item[]): SlotView[] {
 }
 
 /** A quest by id with its realm, for a sheet or the timer (null when gone). */
-export function questById(items: readonly Item[], questId: string): { quest: Quest; realm: Realm; view: QuestView } | null {
-  const w = liveWorld(items);
+export function questById(items: readonly Item[], questId: string, projects?: readonly ProjectRef[]): { quest: Quest; realm: Realm; view: QuestView } | null {
+  const w = liveWorld(items, projects);
   const quest = w.quests.find((q) => q.id === questId);
   const realm = quest && w.realms.find((r) => r.id === quest.realmId);
   return quest && realm ? { quest, realm, view: questView(quest, w) } : null;
