@@ -40,6 +40,21 @@ export function targetOf(world: World, questId: string | null): SessionTarget | 
   };
 }
 
+/**
+ * What is left to fight in a realm, oldest first: each uncleared top-level
+ * quest as a session would target it, so a boss is its next uncleared phase
+ * (`parentQuestId` names the boss). Empty for a resting or unknown realm.
+ */
+export function openQuestsOf(world: World, realmId: string): Quest[] {
+  const out: Quest[] = [];
+  for (const q of world.quests) {
+    if (q.realmId !== realmId || q.parentQuestId) continue;
+    const t = targetOf(world, q.id);
+    if (t) out.push(t.quest);
+  }
+  return out;
+}
+
 export type ResultEffect = 'cleared' | 'heart' | 'none';
 
 /** What a result does to an enemy with `hearts` left: the Damage rules, as one picture. */
@@ -64,9 +79,10 @@ export function stageReactionOf(kind: ResultKind, target: Pick<SessionTarget, 'b
   return kind === 'partly' ? 'hit' : 'none';
 }
 
-/** Bosses that fell and realms that are conquered: what the ceremony host announces. */
+/** Bosses that fell and realms that are conquered: what the ceremony host announces. A resting realm announces nothing. */
 export function worldMoments(world: World): { bosses: { id: string; title: string }[]; realms: { id: string; name: string }[] } {
-  const bosses = world.quests.filter((q) => isBoss(q, world.quests) && isCleared(q, world.results, world.quests)).map((q) => ({ id: q.id, title: q.title }));
+  const placed = new Set(world.realms.map((r) => r.id));
+  const bosses = world.quests.filter((q) => placed.has(q.realmId) && isBoss(q, world.quests) && isCleared(q, world.results, world.quests)).map((q) => ({ id: q.id, title: q.title }));
   const realms = world.realms.filter((r) => isRealmConquered(r, world.quests, world.results)).map((r) => ({ id: r.id, name: r.name }));
   return { bosses, realms };
 }

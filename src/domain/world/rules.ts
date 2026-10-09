@@ -15,7 +15,10 @@ import { BOSS_DEFEAT_CREDITS, BOSS_MIN_PHASES, CLEAR_CREDITS, MAX_REALMS, QUEST_
 import type { Quest, Realm, Result } from './types';
 
 export interface World {
+  /** Placed realms (on the map). */
   realms: Realm[];
+  /** Realms that exist but rest (see worldOf): their quests stay live for credits and trophies, but nothing places or targets them. */
+  resting?: Realm[];
   quests: Quest[];
   results: Result[];
 }
@@ -23,11 +26,11 @@ export interface World {
 const byOrder = (a: Quest, b: Quest) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1);
 
 /**
- * The quests still in play: their realm exists and, for a phase, its parent is
+ * The quests still in play: their realm exists (placed or resting) and, for a phase, its parent is
  * a live top-level quest of the same realm (phases don't nest).
  */
-export function liveQuests(world: { realms: readonly Realm[]; quests: readonly Quest[] }): Quest[] {
-  const realms = new Set(world.realms.map((r) => r.id));
+export function liveQuests(world: { realms: readonly Realm[]; resting?: readonly Realm[]; quests: readonly Quest[] }): Quest[] {
+  const realms = new Set([...world.realms, ...(world.resting ?? [])].map((r) => r.id));
   const top = new Map<string, Quest>();
   for (const q of world.quests) if (!q.parentQuestId && realms.has(q.realmId)) top.set(q.id, q);
   const out: Quest[] = [...top.values()];
@@ -93,6 +96,31 @@ export function isRealmConquered(realm: Realm, quests: readonly Quest[], results
 export function availableSlots(realms: readonly Realm[]): number[] {
   const taken = new Set(realms.map((r) => r.slot));
   return Array.from({ length: MAX_REALMS }, (_, i) => i).filter((s) => !taken.has(s));
+}
+
+/**
+ * A project's realm, placed or resting (a resting one has `slot` UNPLACED),
+ * or undefined when the project has none (an eighth project, or one not yet
+ * reconciled).
+ */
+export function realmOfProject(world: Pick<World, 'realms' | 'resting'>, projectId: string): Realm | undefined {
+  return world.realms.find((r) => r.projectId === projectId) ?? world.resting?.find((r) => r.projectId === projectId);
+}
+
+/** Of `projectIds`, those with no realm at all, in the order given (the attach choice's candidates, and what the reconcile creates for). */
+export function projectsWithoutRealm(world: Pick<World, 'realms' | 'resting'>, projectIds: readonly string[]): string[] {
+  const has = new Set([...world.realms, ...(world.resting ?? [])].flatMap((r) => (r.projectId ? [r.projectId] : [])));
+  return projectIds.filter((id) => !has.has(id));
+}
+
+/** Placed realms with no project and no answer yet to the attach choice (hand-claimed before project realms). */
+export function unlinkedRealms(world: Pick<World, 'realms'>): Realm[] {
+  return world.realms.filter((r) => !r.projectId && !r.manual);
+}
+
+/** The attach sheet has something to ask: an unanswered realm and a project with no realm. The reconcile waits while this holds. */
+export function attachPending(world: Pick<World, 'realms' | 'resting'>, activeProjectIds: readonly string[]): boolean {
+  return unlinkedRealms(world).length > 0 && projectsWithoutRealm(world, activeProjectIds).length > 0;
 }
 
 /** When a quest was cleared: its first Done, or for a boss the moment its last phase fell. Null if not cleared. */

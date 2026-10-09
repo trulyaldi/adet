@@ -10,7 +10,8 @@
 //   purchase      a shop purchase                  { sku, cost, month? }
 //   achievement   an append-only milestone         { kind, ref, at }
 //   quest_meta    the quest's singleton            { startedAt, avatar, companion?, campfire?, settings }
-//   realm         a World Mode goal area on a biome slot (title = name)   { slot, icon }   (id `realm:<slot>`)
+//   realm         a World Mode goal area on a biome slot (title = name)   { slot, icon, projectId?, manual? }
+//                 id `realm:<slot>` (hand-claimed) or `realm:p:<projectId>` (a project's realm); slot -1 = not placed
 //   quest         a mob, or a phase of a boss (title = what to beat)      { realmId, parentQuestId? }
 //   result        what a session (or Mark done) did to a quest            { questId, sessionId?, kind, at }
 //
@@ -115,10 +116,17 @@ export interface QuestMetaProps {
   settings: QuestSettings;
 }
 
-/** World Mode: a realm claims one of the 7 biome slots (0–6). `icon` is an IconKey, checked by domain/world. */
+/**
+ * World Mode: a realm claims one of the 7 biome slots (0–6; -1 while it rests).
+ * `icon` is an IconKey, checked by domain/world. With `projectId` it is that
+ * project's realm (the project gives its name and icon); `manual` marks a
+ * hand-claimed realm kept as it is (PROJECT_REALMS.md).
+ */
 export interface RealmProps {
   slot: number;
   icon: string;
+  projectId?: string;
+  manual?: boolean;
 }
 
 /** World Mode: a quest in a realm; with `parentQuestId` it is a phase of that (boss) quest. */
@@ -314,7 +322,11 @@ export function parseProps<T extends ItemType>(type: T, raw: unknown): PropsByTy
     }
     case 'realm': {
       const slot = Math.round(num(p.slot, -1));
-      return { slot, icon: str(p.icon) ?? '' } as PropsByType[T];
+      const out: RealmProps = { slot, icon: str(p.icon) ?? '' };
+      const projectId = str(p.projectId);
+      if (projectId) out.projectId = projectId;
+      if (p.manual === true) out.manual = true;
+      return out as PropsByType[T];
     }
     case 'quest': {
       const out: QuestItemProps = { realmId: str(p.realmId) ?? '' };
