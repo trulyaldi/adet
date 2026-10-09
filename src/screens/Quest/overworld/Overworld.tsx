@@ -39,6 +39,7 @@ export function Overworld({
   reduced,
   onOpen,
   onClaim,
+  claimable = true,
   onRename,
   zoom,
   focus,
@@ -58,6 +59,8 @@ export function Overworld({
   /** The hero has arrived: open this realm. */
   onOpen(slot: number): void;
   onClaim(slot: number): void;
+  /** False once realms come from projects: a free slot stays quietly under cloud, with no "+" and no tap. */
+  claimable?: boolean;
   onRename(slot: number): void;
   /** The cloud transition's t (0 here, 1 inside a realm): the map scales toward `focus` and fades. */
   zoom: SharedValue<number>;
@@ -187,7 +190,7 @@ export function Overworld({
     return () => cancelAnimation(raiseT);
   }, [raiseKey, reduced, onRaised, raiseT]);
 
-  const next = nextClaimable(slots);
+  const next = claimable ? nextClaimable(slots) : null;
   return (
     <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width, height }, zoomStyle]}>
       <OverworldMap
@@ -227,10 +230,11 @@ export function Overworld({
           return (
             <Pressable
               key={spot.slot}
+              disabled={!r && !claimable}
               onPress={() => (r ? travel(spot.slot) : onClaim(spot.slot))}
               onLongPress={r ? () => onRename(spot.slot) : undefined}
               accessibilityRole="button"
-              accessibilityLabel={r ? `${r.name}: ${s.cleared} of ${s.total} quests cleared${s.conquered ? ', conquered' : ''}. Open` : 'Land under cloud: claim it'}
+              accessibilityLabel={r ? `${r.name}: ${s.cleared} of ${s.total} quests cleared${s.conquered ? ', conquered' : ''}. Open` : claimable ? 'Land under cloud: claim it' : 'Land under cloud'}
               accessibilityActions={r ? [{ name: 'longpress', label: 'Rename' }] : undefined}
               onAccessibilityAction={r ? () => onRename(spot.slot) : undefined}
               style={{ position: 'absolute', left: 0, right: 0, top, height: SLOT_H * scale }}

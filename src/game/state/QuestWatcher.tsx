@@ -5,6 +5,7 @@
 import { useEffect } from 'react';
 
 import { useQuestWrites } from '../../data/itemsRepo';
+import { useProjectRealms } from '../../data/projectRealms';
 import { gameStateOf } from '../../domain/game/fromData';
 import { useData } from '../../store/StreakStore';
 import { useAuth } from '../../sync/AuthProvider';
@@ -21,6 +22,8 @@ export function QuestWatcher() {
   const data = useData();
   const tables = useQuestTables();
   const writes = useQuestWrites();
+  // Projects as realms: each project's realm follows its lifecycle (a no-op with the flag off).
+  useProjectRealms();
   const game = gameStateOf(data);
   const pending = game.newAchievements;
   const started = game.journey.started;
