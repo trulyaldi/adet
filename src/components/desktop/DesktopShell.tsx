@@ -72,7 +72,6 @@ export function DesktopShell({
 function Sidebar({ active, onChange, onOpenSettings }: { active: Screen; onChange(s: Screen): void; onOpenSettings(): void }) {
   const { colors } = useTheme();
   const { sidebarW, gutter } = useLayout();
-  const quest = useQuestTab();
   return (
     <View
       style={{
@@ -93,7 +92,7 @@ function Sidebar({ active, onChange, onOpenSettings }: { active: Screen; onChang
       <View accessibilityRole="tablist" style={{ gap: 4 }}>
         {TABS.map((tab) =>
           tab.key === 'quest' ? (
-            <NavItem key={tab.key} label={quest.label} text={shownName(tab)} glyph="quest" on={active === tab.key} badge={quest.badge} onPress={() => onChange(tab.key)} />
+            <QuestNavItem key={tab.key} text={shownName(tab)} on={active === tab.key} onPress={() => onChange(tab.key)} />
           ) : (
             <NavItem key={tab.key} label={tab.label} text={shownName(tab)} glyph={tab.glyph} on={active === tab.key} onPress={() => onChange(tab.key)} />
           ),
@@ -108,6 +107,12 @@ function Sidebar({ active, onChange, onOpenSettings }: { active: Screen; onChang
       </View>
     </View>
   );
+}
+
+/** Reads the game on its own (like the tab bar's Quest item), so data changes re-render just this item. */
+function QuestNavItem({ text, on, onPress }: { text: string; on: boolean; onPress(): void }) {
+  const { label, badge } = useQuestTab();
+  return <NavItem label={label} text={text} glyph="quest" on={on} badge={badge} onPress={onPress} />;
 }
 
 function NavItem({

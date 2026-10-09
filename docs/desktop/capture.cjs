@@ -3,7 +3,10 @@
 const { chromium } = require(process.env.PW || 'playwright');
 const [base, w, h, prefix, ...rest] = process.argv.slice(2);
 const tabs = rest.length ? rest : ['Today', 'Projects', 'Almanac', 'Quest'];
-const REF = 'bmebumdotlsunvvsxycx';
+// The Supabase project ref, from EXPO_PUBLIC_SUPABASE_URL (the environment, or ./.env), for the session key.
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL || (require('fs').readFileSync('.env', 'utf8').match(/^EXPO_PUBLIC_SUPABASE_URL=(.*)$/m) || [])[1] || '';
+const REF = (url.match(/https:\/\/([^.]+)\./) || [])[1];
+if (!REF) throw new Error('Set EXPO_PUBLIC_SUPABASE_URL (or run from the repo root with a .env).');
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: +w, height: +h }, deviceScaleFactor: 1 });
@@ -37,11 +40,11 @@ const REF = 'bmebumdotlsunvvsxycx';
   for (const t of tabs) {
     await dismiss();
     const tab = page.getByRole('tab', { name: new RegExp('^' + t) });
-    if (await tab.count()) { await tab.first().click(); await page.waitForTimeout(2500); await dismiss(); }
+    if (await tab.count()) { await tab.first().click(); await page.waitForTimeout(6000); await dismiss(); }
     else console.log('no tab', t);
     await page.screenshot({ path: `${prefix}-${t.toLowerCase()}.png` });
   }
-  const info = await page.evaluate(() => ({ scrollH: document.documentElement.scrollHeight, bodyScroll: document.body.scrollHeight, innerH: innerHeight, title: document.title }));
+  const info = await page.evaluate(() => ({ canvasRendering: document.querySelector('canvas') ? getComputedStyle(document.querySelector('canvas')).imageRendering : null, desktopAttr: document.documentElement.hasAttribute('data-adet-desktop'), scrollH: document.documentElement.scrollHeight, bodyScroll: document.body.scrollHeight, innerH: innerHeight, title: document.title }));
   console.log(JSON.stringify(info));
   console.log(errs.slice(0, 8).join('\n'));
   await browser.close();
