@@ -2,7 +2,7 @@
 
 Branch `feat/project-realms-4-start` (worktree `../adet-p4`), cut from `origin/main` (d544a8c, #37 merged). Uses only the P2 domain API (`realmOfProject`, `openQuestsOf`, `liveWorld(items, projects)`, `worldOps.addQuest` through the existing `useWorldWrites().addQuest`). Nothing under `src/domain/world/`, `supabase/`, `QuestScreen.tsx`, `overworld/*`, `ResultSheet.tsx` or `target.ts` changed. No migration, no dependency, no sync change. **Not committed**: the tree is left for you to commit.
 
-Checks: `tsc` clean. Lint 0 errors / 81 warnings (same as main). Tests 603/603 (576 + 27 new). The new test files also type-check (scratch tsconfig, since `tsconfig.json` excludes tests). Not run on a device or on web: §18 of `DEVICE_QA.md` is the checklist.
+Checks: `tsc` clean. Lint 0 errors / 81 warnings (same as main). Tests 603/603 (576 + 27 new). The new test files also type-check (scratch tsconfig, since `tsconfig.json` excludes tests). Not run on a device or on web: §19 of `DEVICE_QA.md` is the checklist.
 
 ## What it does (flag `EXPO_PUBLIC_PROJECT_REALMS` on)
 
@@ -22,7 +22,7 @@ Flag off: the field, chips and persistence code never run. `start()` goes throug
 - `src/game/state/useTimerQuestPersistence.ts`: the device copy (called from `QuestWatcher`, one line).
 - `src/game/state/local.ts`: `QuestLocal.timerQuest` (the parser is a whitelist, so the field had to be added there).
 - `src/game/enabled.ts` (+ test): `PROJECT_REALMS` / `projectRealmsFrom`.
-- `src/overlays/StartSheet.tsx`, `docs/quest/DEVICE_QA.md` (§18, and a pointer in §17's relaunch line).
+- `src/overlays/StartSheet.tsx`, `docs/quest/DEVICE_QA.md` (§19, and a pointer in §17's relaunch line).
 
 ## Persistence (item 5)
 
@@ -46,7 +46,7 @@ Done, and cheap. The running timer survives a relaunch through `data.active`, wh
 9. **The binding stores `at`** and a 16 h cap (`SESSION_MAX_SEC`), which guards against a stale copy matching a later timer on the same habit after the old one was stopped elsewhere. A timer paused for longer than that and resumed becomes a free session.
 10. **A typed objective that creates a quest stays when the session ends short or is discarded** (the mob remains in the realm, open, and shows as a chip next time). Nothing is deleted on a short session.
 11. **Chip order:** quest chips go after the habit chips in the card; the target icon tells them apart. Title is truncated at 150 px.
-12. **Keyboard:** no change to the shared `Sheet`. It already pads for the keyboard on iOS and lets a tap through while the keyboard is up (`keyboardShouldPersistTaps="handled"`). The field is one line at the top, so the first project's card and chips sit within the first screenful, and the Done key closes the keyboard. Not verified on a small iPhone: it is the first §18 item to check. If the sheet clips, the next step is a `keyboardDismissMode="on-drag"` prop on `Sheet`.
+12. **Keyboard:** no change to the shared `Sheet`. It already pads for the keyboard on iOS and lets a tap through while the keyboard is up (`keyboardShouldPersistTaps="handled"`). The field is one line at the top, so the first project's card and chips sit within the first screenful, and the Done key closes the keyboard. Not verified on a small iPhone: it is the first §19 item to check. If the sheet clips, the next step is a `keyboardDismissMode="on-drag"` prop on `Sheet`.
 13. **`useWorldWrites()` is always called in `StartSheet`** (hooks can't be conditional): one ref and one effect on data change, with the flag off too. `StartSheet` already re-renders on every data change.
 14. **Sound:** the quest chips are `quiet` (no tap sound or haptic). The project card (`Press`) makes none, the field makes none, and the start itself plays the existing `session_start` cue like any timer start. The old habit chips are untouched and keep their tap sound.
 15. **Placeholder "Objective"** (one word, like "Note" in the log sheet).

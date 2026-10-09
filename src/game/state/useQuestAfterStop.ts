@@ -7,6 +7,7 @@
 import { useCallback } from 'react';
 
 import { useQuestStarted } from '../../data/itemsRepo';
+import { useWorldProjects } from '../../data/worldRepo';
 import { liveWorld } from '../../domain/world/select';
 import { afterSession } from '../../domain/world/target';
 import { useData } from '../../store/StreakStore';
@@ -21,16 +22,17 @@ import { boundQuest, releaseTimerQuest } from './timerQuest';
 export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?: boolean }) => void {
   const started = useQuestStarted();
   const { items } = useData();
+  const projects = useWorldProjects();
   return useCallback(
     (saved, opts) => {
       // The quest goes with this session only, whatever happens next.
       const questId = saved ? boundQuest(saved.habitId) : null;
       releaseTimerQuest();
       if (!QUEST_ENABLED || !saved || !started || !questTablesReady()) return;
-      const { lootFor, target } = afterSession(saved, questId, liveWorld(items), !!opts?.editAfter);
+      const { lootFor, target } = afterSession(saved, questId, liveWorld(items, projects), !!opts?.editAfter);
       const ask = target ? (loot: string | null) => openResult({ sessionId: saved.id, target, lootFor: loot }) : undefined;
       handOffAfterStop(lootFor, MODAL_GAP_MS, ask);
     },
-    [started, items]
+    [started, items, projects]
   );
 }
