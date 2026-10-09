@@ -198,6 +198,41 @@ and a Pro Max.
       another device (or from the Realm while the timer is minimized), then Done. The result
       sheet doesn't ask about it (a free session), the chest still comes from time, and nothing errors.
 
+## 18. Naming a free session (Projects as Realms)
+Needs a build with `EXPO_PUBLIC_PROJECT_REALMS=true` and Session 3's reconcile merged (otherwise no
+project has a realm and nothing here can appear). Start every timer from **Today**, not from the
+Realm, so it has no quest. The project needs a realm and the habit a timer of at least 10 minutes
+(MIN_SESSION_MIN).
+- [ ] **Naming with a chip:** run a 10+ minute session on a habit of a project that has open quests,
+      stop it. After the focus view goes, the sheet shows the realm's name, "What was it for?", the
+      open quests as chips, one text field and **Skip**. Tap a chip: the Stage and Done, Partly, Not
+      yet follow for that quest. Tell Done: it falls (a boss's phase: the next phase is the next
+      chip). The chest opens after, as for any session. Open the Realm: the result is on that quest.
+- [ ] **Naming with text:** same, but type a title and press Add (or the keyboard's Done). A new mob
+      appears on the realm's path, the same question follows for it, and the result is on it. An
+      empty realm shows no chips, only the field and Skip. Add is dimmed while the field is empty.
+      The keyboard never hides the field or Skip, and it doesn't open by itself.
+- [ ] **Skip:** tap Skip, or swipe the sheet down, tap outside it, or press Back. The sheet goes, the
+      chest still opens (if earned), nothing was recorded, no quest was added (even if you had typed
+      something), and nothing asks again. The Realm looks as before.
+- [ ] **After picking, leaving counts as Not yet:** pick a chip, then swipe the sheet down before
+      answering. The quest gets a Not yet (no change to its hearts), as after any result sheet.
+- [ ] **Under the minimum:** stop a session shorter than 10 minutes (Today's timer). No sheet and
+      no chest, exactly as before.
+- [ ] **Edited-times session:** stop a 10+ minute session and choose to edit its times first. No
+      naming step and no result sheet; the chest waits at camp, as before.
+- [ ] **Started from a Realm:** a session started on a quest from the Realm asks Done, Partly, Not
+      yet at once, with no naming step.
+- [ ] **A project with no realm** (the eighth): its sessions end as free sessions, with no naming step.
+- [ ] **Archive mid-session:** archive the project while its timer runs. The session is saved and no
+      sheet appears.
+- [ ] **Many quests:** with enough open quests that the chips scroll, scroll them up and down. They
+      scroll, and the sheet stays open (only a drag on the sheet's edge or backdrop closes it).
+- [ ] **Reduce Motion on:** the naming step appears with a fade, and nothing moves.
+- [ ] **No sound, no vibration, no flashing** anywhere in the naming step.
+- [ ] **Flag off** (a build without the variable): every session ends as in section 17; no naming
+      step ever appears.
+
 ## If something's wrong, send back
 - a screenshot or screen recording;
 - the iPhone model and iOS version;

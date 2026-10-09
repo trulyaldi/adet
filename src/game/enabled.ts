@@ -8,3 +8,13 @@ export function questEnabledFrom(raw: string | undefined): boolean {
 }
 
 export const QUEST_ENABLED = questEnabledFrom(process.env.EXPO_PUBLIC_QUEST_ENABLED);
+
+// Projects as Realms. EXPO_PUBLIC_PROJECT_REALMS=true turns it on. Default
+// OFF, and it counts only while Quest Mode itself is on.
+
+/** On only for an explicit true-like value; unset or anything else is off. */
+export function projectRealmsFrom(raw: string | undefined): boolean {
+  return /^(1|true|on|yes)$/i.test((raw ?? '').trim());
+}
+
+export const PROJECT_REALMS = QUEST_ENABLED && projectRealmsFrom(process.env.EXPO_PUBLIC_PROJECT_REALMS);
