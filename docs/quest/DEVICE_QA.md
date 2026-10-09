@@ -184,7 +184,8 @@ and a Pro Max.
 - [ ] **Background mid-session, then relaunch:** start a session on a quest, background the app
       for a minute (the map and Stage stop animating; nothing plays on return), come back and Done.
       Then start another, force-quit and relaunch: the session is free (no enemy, no result
-      sheet), and nothing breaks.
+      sheet), and nothing breaks. (Flag off. With `EXPO_PUBLIC_PROJECT_REALMS` on the quest
+      survives the relaunch: see §19.)
 - [ ] **All 7 slots:** claim every slot, one at a time. Each lifts its clouds and opens. Then
       no "+" is left, every realm can be opened and renamed (long-press), and the map scrolls end to end.
 - [ ] **Boss moments:** start a session on a boss. The "BOSS" card shows its name over the splash
@@ -226,6 +227,49 @@ the whole of §17 still holds: a free slot shows its "+" and claims by tap.
       link it (the realm keeps its name and quests), or Skip to keep it as it is. Closing the sheet
       asks again on the next launch. After the last answer, projects without a realm get theirs.
 - [ ] **Calm:** no message anywhere about full slots, resting realms or missing realms.
+## 19. Projects as Realms: Start (session 4)
+Needs `EXPO_PUBLIC_PROJECT_REALMS=true`, and projects that already have a realm: Session 3's
+reconcile creates them, or link a realm to a project by hand in the data. Without that, no project
+has a realm and the sheet looks like before (see "No-realm project"). Use at least two projects,
+each with a timed habit, one of them with a check habit as well.
+- [ ] **Flag off:** the Start sheet has no field and no chips; a Realm-screen Start, a project
+      tap and a habit tap behave exactly as before.
+- [ ] **Typed objective:** open Start (the play button). One quiet "Objective" field sits above
+      the projects. Type "Fix the joins" and tap a project card: the sheet closes, the timer opens
+      with that quest as the enemy (hearts above it), and the quest is now a mob in that project's
+      realm (open the Realm: it is there once). Stop 10+ minutes in: the result sheet asks about
+      "Fix the joins". Do the same by tapping a single habit chip instead of the card: same result.
+- [ ] **Blank or spaces only:** tap a project: a free session, no quest made.
+- [ ] **Chip start:** a project whose realm has open quests shows up to 3 as small chips under its
+      card, oldest first (a fourth open quest is not shown). Tap a chip: that project's first timed
+      habit starts with that quest as the enemy. Clear one with Done: its chip is gone and the next
+      open quest takes its place. A boss shows its next open phase, not the boss. Cleared quests never show.
+- [ ] **Text and chip together:** type something, then tap a chip: the chip's quest is the
+      enemy and nothing new is created (the typed text is dropped).
+- [ ] **No-realm project:** with all 7 realms placed, add an eighth project. The eighth shows no chips and the field does
+      not apply to it: type something and tap it, a free session starts and no quest is created.
+      If none of the listed projects has a realm, the field is not shown at all (unless a quest
+      from the Realm screen is pending, see below). Nothing says why.
+- [ ] **Check habit:** type something, then tap a check habit (or a project whose only habit is a
+      check): it is checked off as before, no quest is created or bound, nothing is left over.
+- [ ] **Realm screen path:** from a quest's Start in the Realm, the Start sheet opens with the
+      quest's title in the field, greyed and not editable, and no chips. Tapping any habit starts
+      with that quest, as before. Close the sheet without starting: reopen it from the play
+      button and the field is empty again.
+- [ ] **Relaunch with an objective:** start a session from a typed objective or a chip, force-quit
+      the app mid-session and relaunch. The timer is still running; open it: the same enemy and
+      hearts show. Stop 10+ minutes in: the result sheet asks about the quest. Repeat, but stop the
+      timer on another device before relaunching: this device starts clean (a free session next time).
+- [ ] **Relaunch, flag off:** the old behaviour: the relaunched session is free.
+- [ ] **Keyboard, iPhone SE (or the smallest you have):** open Start with 3+ projects, tap the
+      field. The keyboard opens, the field and the first project's card with its chips stay on
+      screen (scroll for the rest). Tap a chip with the keyboard still up: it starts on the first
+      tap. The Done key closes the keyboard and leaves the sheet as it was. Check once with a
+      long quest title and with a large text size.
+- [ ] **Calm:** typing, picking a chip and the objective field make no sound or haptic of
+      their own (the chips are quiet; the start itself plays the same start cue as any timer
+      start), nothing flashes or animates, and Reduce Motion changes nothing here. Habit chips
+      beside them keep their usual tap sound, as before.
 
 ## If something's wrong, send back
 - a screenshot or screen recording;

@@ -1,19 +1,24 @@
 // Quest state that stays on this device (never synced): the journey
 // position last shown (for the reveal) and the Overworld's current realm
 // slot (where the hero token stands). Kept per account. Ceremony marks have
-// their own v1 key. An old `plan` key (weak points, removed) is ignored.
+// their own v1 key, and the quest bound to a running timer (Projects as
+// Realms) is kept here too. An old `plan` key (weak points, removed) is ignored.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
+
+import { isBindingShape, TimerBinding } from './timerQuest';
 
 export interface QuestLocal {
   /** Journey position when the map was last shown: node index and HP left. */
   seen: { global: number; hp: number } | null;
   /** The Overworld slot the hero token stands on (null: none chosen yet). */
   slot: number | null;
+  /** The quest the running timer targets, kept so a relaunch mid-session keeps it (only with Projects as Realms on). */
+  timerQuest: TimerBinding | null;
 }
 
-const EMPTY: QuestLocal = { seen: null, slot: null };
+const EMPTY: QuestLocal = { seen: null, slot: null, timerQuest: null };
 
 let user: string | null = null;
 let state: QuestLocal = EMPTY;
@@ -31,7 +36,8 @@ function parse(raw: string | null): QuestLocal {
     if (!v || typeof v !== 'object') return EMPTY;
     const seen = v.seen && Number.isFinite(v.seen.global) && Number.isFinite(v.seen.hp) ? { global: v.seen.global, hp: v.seen.hp } : null;
     const slot = Number.isInteger(v.slot) && v.slot >= 0 && v.slot <= 6 ? (v.slot as number) : null;
-    return { seen, slot };
+    const timerQuest = isBindingShape(v.timerQuest) ? { questId: v.timerQuest.questId, habitId: v.timerQuest.habitId, at: v.timerQuest.at } : null;
+    return { seen, slot, timerQuest };
   } catch {
     return EMPTY;
   }
