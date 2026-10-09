@@ -20,8 +20,8 @@ const ALL_TABS: { key: Screen; label: string; glyph: GlyphName }[] = [
   { key: 'stats', label: spoken(WORDS.stats), glyph: 'stats' },
   { key: 'quest', label: 'Quest', glyph: 'quest' },
 ];
-/** The Quest tab disappears with the kill switch. */
-const TABS = ALL_TABS.filter((t) => QUEST_ENABLED || t.key !== 'quest');
+/** The Quest tab disappears with the kill switch. Shared with the desktop sidebar. */
+export const TABS = ALL_TABS.filter((t) => QUEST_ENABLED || t.key !== 'quest');
 
 /**
  * Four icon tabs. Inactive icons use the secondary ink (readable in bright
@@ -59,10 +59,16 @@ export function TabBar({ active, onChange }: { active: Screen; onChange(s: Scree
  * re-render just this item, not the whole bar.
  */
 function QuestTabItem({ on, onPress }: { on: boolean; onPress(): void }) {
+  const { label, badge } = useQuestTab();
+  return <Tab label={label} glyph="quest" on={on} onPress={onPress} badge={badge ? <QuestBadge /> : null} />;
+}
+
+/** The Quest destination's spoken label, and whether it carries the badge dot (a chest waits, or a journey awaits). */
+export function useQuestTab(): { label: string; badge: boolean } {
   const fresh = useFreshChest();
   const invite = useQuestInvite();
   const label = fresh ? 'Quest, a chest is waiting' : invite ? 'Quest, a journey awaits' : 'Quest';
-  return <Tab label={label} glyph="quest" on={on} onPress={onPress} badge={fresh || invite ? <QuestBadge /> : null} />;
+  return { label, badge: fresh || invite };
 }
 
 function Tab({ label, glyph, on, onPress, badge }: { label: string; glyph: GlyphName; on: boolean; onPress(): void; badge?: React.ReactNode }) {

@@ -6,6 +6,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import { Loading } from './src/components/Loading';
 import { TabBar } from './src/components/TabBar';
+import { DesktopShell } from './src/components/desktop';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { ScreenIn } from './src/components/motion/Appear';
 import { MessageToast, UndoToast } from './src/components/UndoToast';
@@ -42,6 +43,7 @@ import { preloadSounds } from './src/feedback/audio';
 import { logFirstScreen } from './src/startup';
 import { DevicePrefsProvider } from './src/store/devicePrefs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
+import { useLayout } from './src/theme/useLayout';
 
 /** Sounds load just after launch, off the path to the first screen. */
 const SOUND_PRELOAD_DELAY_MS = 500;
@@ -57,31 +59,48 @@ const Root = memo(function Root() {
   }, [ready]);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useLayout();
 
   if (!ready) {
     return <Loading />;
   }
 
+  const screenView = (
+    <ErrorBoundary key={screen}>
+      <ScreenIn>
+        {screen === 'today' && <TodayScreen />}
+        {screen === 'projects' && <ProjectsScreen />}
+        {screen === 'stats' && <StatsScreen />}
+        {screen === 'quest' && QUEST_ENABLED && <QuestTab />}
+      </ScreenIn>
+    </ErrorBoundary>
+  );
+  const toasts = (
+    <>
+      <MessageToast />
+      <UndoToast />
+    </>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Screens scroll below the status bar, never under it. */}
-      <View style={{ height: insets.top, backgroundColor: colors.bg }} />
-      <View style={{ flex: 1 }}>
-        <ErrorBoundary key={screen}>
-          <ScreenIn>
-            {screen === 'today' && <TodayScreen />}
-            {screen === 'projects' && <ProjectsScreen />}
-            {screen === 'stats' && <StatsScreen />}
-            {screen === 'quest' && QUEST_ENABLED && <QuestTab />}
-          </ScreenIn>
-        </ErrorBoundary>
-        <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>
-          <MessageToast />
-          <UndoToast />
-        </View>
-      </View>
+      {/* The app's chrome is one slot, so crossing the desktop width never remounts the overlays below. */}
+      {isDesktop ? (
+        <DesktopShell active={screen} onChange={actions.setScreen} onOpenSettings={actions.openSettings} toasts={toasts}>
+          {screenView}
+        </DesktopShell>
+      ) : (
+        <>
+          {/* Screens scroll below the status bar, never under it. */}
+          <View style={{ height: insets.top, backgroundColor: colors.bg }} />
+          <View style={{ flex: 1 }}>
+            {screenView}
+            <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, gap: 8 }}>{toasts}</View>
+          </View>
 
-      <TabBar active={screen} onChange={actions.setScreen} />
+          <TabBar active={screen} onChange={actions.setScreen} />
+        </>
+      )}
 
       {/* Overlays (each is a Modal, safe to always mount) */}
       <FocusView />
