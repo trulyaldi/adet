@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Modal } from 'react-native';
 
+import { useWorldProjects } from '../../data/worldRepo';
 import { ceremonyMayPlay, ceremonyVisible, CeremonyEvent, CeremonyMarks, detectCeremonies, markCeremonyStarted, seedCeremonyMarks, withWorldMarks } from '../../domain/game/ceremonies';
 import type { GameState } from '../../domain/game/derive';
 import { gameStateOf } from '../../domain/game/fromData';
@@ -51,7 +52,12 @@ export function RootCeremonyHost() {
   const data = useData();
   const game = gameStateOf(data);
   // World Mode: fallen bosses and conquered realms, from result rows.
-  const moments = useMemo(() => worldMoments(liveWorld(data.items)), [data.items]);
+  const projects = useWorldProjects();
+  const world = useMemo(() => liveWorld(data.items, projects), [data.items, projects]);
+  const moments = useMemo(() => worldMoments(world), [world]);
+  // What has already happened, resting realms included: marks seeded from this never announce an archived
+  // project's old conquest when the project is restored. (Detection above stays on the placed realms.)
+  const history = useMemo(() => worldMoments({ ...world, realms: [...world.realms, ...world.resting] }), [world]);
   const screen = useUi((u) => u.screen);
   const { settled } = useSyncStatus();
   const tables = useQuestTables();
@@ -75,10 +81,10 @@ export function RootCeremonyHost() {
   const bump = useCallback(() => setRequest((n) => n + 1), []);
   const seed = useCallback((g: GameState) => {
     if (!userId) return;
-    const seeded = seedCeremonyMarks(g, moments);
+    const seeded = seedCeremonyMarks(g, history);
     marksRef.current = { userId, marks: seeded };
     saveCeremonyMarks(userId, seeded);
-  }, [userId, moments]);
+  }, [userId, history]);
   const preview = useCallback((event: CeremonyEvent, g?: GameState) => setPlaying({ event, game: g, preview: true }), []);
   const forgetMarks = useCallback(() => {
     if (!userId) return;
@@ -116,7 +122,7 @@ export function RootCeremonyHost() {
       return;
     }
     // Marks from before World Mode: what has already fallen is seen.
-    const marks = settled ? withWorldMarks(stored, moments) : stored;
+    const marks = settled ? withWorldMarks(stored, history) : stored;
     if (marks !== stored) {
       marksRef.current = { userId, marks };
       saveCeremonyMarks(userId, marks);
@@ -132,7 +138,7 @@ export function RootCeremonyHost() {
     // derived during render: this effect is the one transition into "playing".
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlaying({ event: next });
-  }, [loaded, userId, tables, settled, game, moments, playing, cooldown, data.active, loot, modalOpen, revealPending, active, request, seed]);
+  }, [loaded, userId, tables, settled, game, moments, history, playing, cooldown, data.active, loot, modalOpen, revealPending, active, request, seed]);
 
   // A session starting mid-scene hides it; it comes back when the session has
   // ended and the Loot sheet (and anything else) is closed: one modal at a time.

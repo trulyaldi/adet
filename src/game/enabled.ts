@@ -8,3 +8,14 @@ export function questEnabledFrom(raw: string | undefined): boolean {
 }
 
 export const QUEST_ENABLED = questEnabledFrom(process.env.EXPO_PUBLIC_QUEST_ENABLED);
+
+/**
+ * Projects as Realms (EXPO_PUBLIC_PROJECT_REALMS): off unless explicitly on,
+ * and only counts while Quest Mode is on. Off: nothing about a project's realm
+ * shows, and Start behaves as it did before.
+ */
+export function projectRealmsFrom(raw: string | undefined, questOn: boolean): boolean {
+  return questOn && /^(1|true|on|yes)$/i.test((raw ?? '').trim());
+}
+
+export const PROJECT_REALMS = projectRealmsFrom(process.env.EXPO_PUBLIC_PROJECT_REALMS, QUEST_ENABLED);

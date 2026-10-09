@@ -10,9 +10,21 @@ import type { ResultKind } from '../domain/items/types';
 import { worldOps } from '../domain/world';
 import { liveWorld, questById, realmView, RealmView, SlotView, slotsView } from '../domain/world/select';
 import { SessionTarget, targetOf } from '../domain/world/target';
-import { realmIdFor } from '../domain/world/types';
-import { useActions, useData } from '../store/StreakStore';
+import { ProjectRef, realmIdFor } from '../domain/world/types';
+import { PROJECT_REALMS } from '../game/enabled';
+import { useActions, useData, useSyncStatus } from '../store/StreakStore';
 import { questTablesReady } from '../sync/questTables';
+
+/**
+ * The project list for world reads: only with projects-as-realms on and sync
+ * settled (items arrive before projects, so earlier a realm's project would
+ * read as deleted). `undefined` is the project-blind world, exactly as before.
+ */
+export function useWorldProjects(): readonly ProjectRef[] | undefined {
+  const { projects } = useData();
+  const { settled } = useSyncStatus();
+  return PROJECT_REALMS && settled ? projects : undefined;
+}
 
 export interface WorldWrites {
   /** Claim a free biome slot (0–6). Returns the realm's id, or null if it can't be claimed now. */
@@ -27,6 +39,10 @@ export interface WorldWrites {
   recordResult(questId: string, kind: ResultKind, sessionId?: string): string | null;
   /** A Done with no session. Returns the result's id for undo (null if it didn't apply). */
   markDone(questId: string): string | null;
+  /** The attach choice: link a hand-claimed realm to a project (once; refused if either already has a link). */
+  linkRealm(realmId: string, projectId: string): void;
+  /** The attach choice "skip": the realm stays hand-claimed for good. */
+  keepRealm(realmId: string): void;
   /** Take a result back (within 6 s of telling it). */
   undoResult(resultId: string): void;
   /** Soft-delete a quest and its phases. */
@@ -68,6 +84,8 @@ export function useWorldWrites(): WorldWrites {
       renameQuest: (questId, title) => void edit((q) => worldOps.renameQuest(q, questId, title)),
       recordResult: (questId, kind, sessionId) => created('r', (id) => (q, now) => worldOps.recordResult(q, questId, kind, now, sessionId, id)),
       markDone: (questId) => created('r', (id) => (q, now) => worldOps.markDone(q, questId, now, id)),
+      linkRealm: (realmId, projectId) => void edit((q) => worldOps.linkRealm(q, realmId, projectId)),
+      keepRealm: (realmId) => void edit((q) => worldOps.keepRealm(q, realmId)),
       undoResult: (resultId) => void edit((q, now) => worldOps.undoResult(q, resultId, now)),
       softDeleteQuest: (questId) => void edit((q) => worldOps.softDeleteQuest(q, questId)),
     };
@@ -77,23 +95,27 @@ export function useWorldWrites(): WorldWrites {
 /** The Overworld's 7 slots. */
 export function useSlots(): SlotView[] {
   const { items } = useData();
-  return useMemo(() => slotsView(items), [items]);
+  const projects = useWorldProjects();
+  return useMemo(() => slotsView(items, projects), [items, projects]);
 }
 
 /** One realm's path (null when it doesn't exist). */
 export function useRealmView(realmId: string | null): RealmView | null {
   const { items } = useData();
-  return useMemo(() => (realmId ? realmView(items, realmId) : null), [items, realmId]);
+  const projects = useWorldProjects();
+  return useMemo(() => (realmId ? realmView(items, realmId, projects) : null), [items, realmId, projects]);
 }
 
 /** One quest, its realm and its hearts (null when it's gone). */
 export function useWorldQuest(questId: string | null): ReturnType<typeof questById> {
   const { items } = useData();
-  return useMemo(() => (questId ? questById(items, questId) : null), [items, questId]);
+  const projects = useWorldProjects();
+  return useMemo(() => (questId ? questById(items, questId, projects) : null), [items, questId, projects]);
 }
 
 /** What a session for `questId` fights right now (null: a free session, or nothing left to fight). */
 export function useSessionTarget(questId: string | null): SessionTarget | null {
   const { items } = useData();
-  return useMemo(() => (questId ? targetOf(liveWorld(items), questId) : null), [items, questId]);
+  const projects = useWorldProjects();
+  return useMemo(() => (questId ? targetOf(liveWorld(items, projects), questId) : null), [items, questId, projects]);
 }
