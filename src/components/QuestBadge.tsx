@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 
 import { useQuestStarted } from '../data/itemsRepo';
 import { gameStateOf, hasFreshChest } from '../domain/game/fromData';
@@ -23,13 +23,13 @@ export function useQuestInvite(): boolean {
  * The dot on the Quest tab while a chest from the last day waits (older chests
  * just sit at camp), or until the journey begins.
  */
-export function QuestBadge() {
+export function QuestBadge({ style }: { style?: ViewStyle } = {}) {
   const { colors } = useTheme();
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no"
-      style={{ position: 'absolute', top: 6, right: 18, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.amber, borderWidth: 2, borderColor: colors.card }}
+      style={{ position: 'absolute', top: 6, right: 18, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.amber, borderWidth: 2, borderColor: colors.card, ...style }}
     />
   );
 }
