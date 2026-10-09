@@ -15,7 +15,9 @@ import { makeMutable, useSharedValue } from 'react-native-reanimated';
 import { Glyph } from '../../components/Glyph';
 import { TextInput } from '../../components/Text';
 import { useQuestWrites } from '../../data/itemsRepo';
+import { useAttachChoice } from '../../data/projectRealms';
 import { useRealmView, useSlots, useWorldWrites } from '../../data/worldRepo';
+import { PROJECT_REALMS } from '../../game/enabled';
 import { RESULT_UNDO_MS } from '../../domain/game/balance';
 import { BIOME_IDS } from '../../domain/game/biomes';
 import { QUEST_TITLE_MAX } from '../../domain/world/types';
@@ -32,6 +34,7 @@ import { SpriteView } from '../../game/render/SpriteView';
 import { setCurrentSlot, useQuestLocal } from '../../game/state/local';
 import { onQuestSheetRequest, takeQuestSheet } from '../../game/state/questOpen';
 import { useQuestReduced, useWorldRunning } from '../../game/state/settings';
+import { attachWasClosed, closeAttach } from '../../game/state/attachAsked';
 import { setTimerQuest } from '../../game/state/timerQuest';
 import { PixelButton } from '../../game/ui/PixelButton';
 import { PixelPanel } from '../../game/ui/PixelPanel';
@@ -46,6 +49,7 @@ import { campLayout, hitTest, Target, targetAt } from './model';
 import { QuestNodeSheet } from './realm/QuestNodeSheet';
 import { RealmMap, realmCamera, realmCameraFor } from './realm/RealmMap';
 import { realmLayout } from './realm/realmModel';
+import { AttachSheet } from './overworld/AttachSheet';
 import { ClaimSheet } from './overworld/ClaimSheet';
 import { CloudCurtain } from './overworld/CloudCurtain';
 import { Overworld } from './overworld/Overworld';
@@ -81,6 +85,10 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
   const current = currentSlot(slots, local.slot);
   const [open, setOpen] = useState<number | null>(null);
   const [claim, setClaim] = useState<{ slot: number; rename?: string } | null>(null);
+  // Projects as realms: a hand-claimed realm asks once which project it is. Closing the sheet
+  // answers nothing; it asks again on the next launch.
+  const attach = useAttachChoice();
+  const [attachClosed, setAttachClosed] = useState(attachWasClosed);
   // Clouds close over the map as it zooms toward the slot, and part on the realm (world-6).
   // While they move both screens stay mounted: the realm under, the map fading over it.
   const { t: zoomT, moving, run } = useRealmTransition(reduced);
@@ -312,7 +320,13 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
           reduced={reduced}
           onOpen={openRealm}
           onClaim={(slot) => setClaim({ slot })}
-          onRename={(slot) => setClaim({ slot, rename: slots[slot].realm?.name ?? '' })}
+          claimable={!PROJECT_REALMS}
+          onRename={(slot) => {
+            const r = slots[slot].realm;
+            // A project's realm is renamed in its project; a hand-claimed one still renames here.
+            if (PROJECT_REALMS && r?.projectId) actions.openEditProject(r.projectId);
+            else setClaim({ slot, rename: r?.name ?? '' });
+          }}
           zoom={zoomT}
           focus={moving?.slot ?? current}
           lift={lift}
@@ -441,6 +455,20 @@ export default function QuestScreen({ onPlayground }: { onPlayground?(): void })
         <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => setReplayIntro(false)}>
           <Onboarding game={m.game} look={m.look} sageName={npcName('sage', m.meta.props.settings)} reduced={reduced} replay onBegin={() => setReplayIntro(false)} />
         </Modal>
+      )}
+      {attach && !attachClosed && open === null && !moving && lift === null && !claim && sheet === null && local.loaded && (
+        <AttachSheet
+          key={attach.realm.id}
+          realm={attach.realm}
+          candidates={attach.candidates}
+          reduced={reduced}
+          onPick={(projectId) => world.linkRealm(attach.realm.id, projectId)}
+          onSkip={() => world.keepRealm(attach.realm.id)}
+          onClose={() => {
+            closeAttach();
+            setAttachClosed(true);
+          }}
+        />
       )}
       {claim && (
         <ClaimSheet

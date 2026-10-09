@@ -198,7 +198,35 @@ and a Pro Max.
       another device (or from the Realm while the timer is minimized), then Done. The result
       sheet doesn't ask about it (a free session), the chest still comes from time, and nothing errors.
 
-## 18. Naming a free session (Projects as Realms)
+## 18. Projects as realms (EXPO_PUBLIC_PROJECT_REALMS=true)
+Build with the flag on, signed in, Quest Mode started (the onboarding done). With the flag **off**,
+the whole of §17 still holds: a free slot shows its "+" and claims by tap.
+- [ ] **Fresh account:** create a project on Projects. Open the Quest tab (Begin the onboarding if it
+      shows). The Overworld has that project's realm on the first island, with the project's name and
+      icon, and no claim tap. Free islands stay under cloud: no "+", nothing happens on tap.
+- [ ] **Rename and icon:** edit the project's name or icon. The island's label follows. Long-press the
+      realm: the project's edit sheet opens (a realm of a project is renamed there).
+- [ ] **Archive:** archive that project. Its realm leaves the map, and its island goes back under
+      cloud. Create another project: it takes that island. Open the Scribe: the old realm's cleared
+      quests are still listed as trophies, and the credits did not drop.
+- [ ] **Restore:** unarchive the first project. Its realm is back, on the lowest free island (possibly
+      a different biome), with its quests and hearts exactly as they were. The project already on the
+      map did not move.
+- [ ] **Delete:** delete a project that had a realm. The realm leaves the map. Its trophies and the
+      credits stay. A new project does not inherit its quests.
+- [ ] **8th project:** with seven realms placed, create an eighth project. It has no realm and
+      nothing says so; a session on it is a free session. Archive another project: the eighth gets
+      the freed island without any tap.
+- [ ] **Two-device backfill:** sign in on a second device (flag on). Its map shows the same realms on
+      the same islands, with no flag-raise or ceremony replay. Create a project on each device while
+      both are offline, reconnect both: each project has one realm, on different islands, and no
+      quest moved.
+- [ ] **Attach sheet** (an account with realms claimed before this build): a realm whose name equals a
+      project's (any case) is linked without a question. Any other realm asks once: tap a project to
+      link it (the realm keeps its name and quests), or Skip to keep it as it is. Closing the sheet
+      asks again on the next launch. After the last answer, projects without a realm get theirs.
+- [ ] **Calm:** no message anywhere about full slots, resting realms or missing realms.
+## 20. Naming a free session (Projects as Realms)
 Needs a build with `EXPO_PUBLIC_PROJECT_REALMS=true` and Session 3's reconcile merged (otherwise no
 project has a realm and nothing here can appear). Start every timer from **Today**, not from the
 Realm, so it has no quest. The project needs a realm and the habit a timer of at least 10 minutes

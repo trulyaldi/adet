@@ -8,9 +8,10 @@
 import { useCallback } from 'react';
 
 import { useQuestStarted } from '../../data/itemsRepo';
+import { useWorldProjects } from '../../data/worldRepo';
 import { liveWorld } from '../../domain/world/select';
 import { afterSession } from '../../domain/world/target';
-import { useData, useSyncStatus } from '../../store/StreakStore';
+import { useData } from '../../store/StreakStore';
 import { PROJECT_REALMS, QUEST_ENABLED } from '../enabled';
 import type { Session } from '../../domain/types';
 import { questTablesReady } from '../../sync/questTables';
@@ -21,8 +22,9 @@ import { boundQuest, releaseTimerQuest } from './timerQuest';
 
 export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?: boolean }) => void {
   const started = useQuestStarted();
-  const { items, habits, projects } = useData();
-  const { settled } = useSyncStatus();
+  const { items, habits } = useData();
+  // The project list once the flag is on and sync has settled; undefined is the project-blind world.
+  const projects = useWorldProjects();
   return useCallback(
     (saved, opts) => {
       // The quest goes with this session only, whatever happens next.
@@ -31,11 +33,11 @@ export function useQuestAfterStop(): (saved: Session | null, opts?: { editAfter?
       if (!QUEST_ENABLED || !saved || !started || !questTablesReady()) return;
       // Projects as Realms (flag): the session's project, so a free session may be named.
       const projectId = PROJECT_REALMS ? habits.find((h) => h.id === saved.habitId)?.projectId : undefined;
-      const world = liveWorld(items, PROJECT_REALMS && settled ? projects : undefined);
+      const world = liveWorld(items, projects);
       const { lootFor, target, naming } = afterSession(saved, questId, world, !!opts?.editAfter, projectId);
       const ask = target || naming ? (loot: string | null) => openResult({ sessionId: saved.id, target, naming, lootFor: loot }) : undefined;
       handOffAfterStop(lootFor, MODAL_GAP_MS, ask);
     },
-    [started, items, habits, projects, settled]
+    [started, items, habits, projects]
   );
 }
